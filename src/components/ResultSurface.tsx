@@ -1,6 +1,5 @@
 import { LoaderCircle, ScanSearch, ShieldCheck } from 'lucide-react'
 import { forwardRef, useRef, type ReactNode } from 'react'
-import { BRAND } from '../config/branding'
 import { SYNTHETIC_LABEL } from '../domain/provenance'
 import { compareScores, formatDelta } from '../domain/scoring'
 import { STAGES, STAGE_LABELS } from '../domain/stages'
@@ -236,7 +235,7 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
         <h2 id="result-heading" ref={headingRef} tabIndex={-1} className="wide max-w-[30ch] text-display font-semibold text-ink focus:outline-none">
           {scenario.narrative.idleQuestion}
         </h2>
-        <p className="mt-3 max-w-[68ch] text-lead text-ink-2">{BRAND.claim}</p>
+        <p className="mt-3 max-w-[68ch] text-lead text-ink-2">{scenario.narrative.idleClaim}</p>
         <ol className="mt-7 grid grid-cols-5 border-t-2 border-ink text-body">
           {STAGES.map((stage, i) => (
             <li key={stage} className="border-l border-rule px-3 pb-1 pt-2 first:border-l-0 first:pl-0">
