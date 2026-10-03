@@ -30,6 +30,7 @@ export function BenchmarkPicker({ activeId, onSelect }: Props) {
                     <span className="font-mono">{b.id}</span> · {b.track}
                   </span>
                   <span className="block text-body font-medium text-ink">{b.title}</span>
+                  <span className="block text-meta text-ink-2">{b.subject}</span>
                 </span>
                 {active && (
                   <span className="inline-flex items-center gap-1 text-meta text-ink-2">
