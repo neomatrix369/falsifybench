@@ -4,6 +4,7 @@ import { ComingNextCards } from './components/ComingNextCards'
 import { UnavailableModesNote } from './components/DataModeSelector'
 import { ErrorCard, WalkthroughErrorBoundary } from './components/ErrorCard'
 import { Header } from './components/Header'
+import { RunLog } from './components/RunLog'
 import { ReceiptSummary } from './components/ReceiptSummary'
 import { ResultSurface } from './components/ResultSurface'
 import { ScenarioCard } from './components/ScenarioCard'
@@ -12,6 +13,7 @@ import { MAT_001_ID } from './data/mat001'
 import { syntheticScenarioSource } from './data/scenarioSource'
 import { isRunnableProvenance, PARTNER_UNAVAILABLE_REASON } from './domain/provenance'
 import { randomRunId, systemClock } from './domain/receipt'
+import { buildRunLog } from './domain/runLog'
 import { LAST_STAGE_INDEX } from './domain/stages'
 import type { Scenario, ScenarioSource } from './domain/types'
 import { useWalkthrough, type WalkthroughDeps } from './hooks/useWalkthrough'
@@ -26,7 +28,7 @@ interface BenchProps {
 }
 
 function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: BenchProps) {
-  const { state, evaluation, receipt, error, controls, actions } = useWalkthrough(scenario, deps)
+  const { state, evaluation, receipt, error, controls, actions, unseal } = useWalkthrough(scenario, deps)
   const resultHeading = useRef<HTMLHeadingElement>(null)
   const activeScenarioHeading = useRef<HTMLHeadingElement>(null)
   const [focusRequest, setFocusRequest] = useState(0)
@@ -107,6 +109,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
                 onSelectTab={actions.select}
               />
             )}
+            <RunLog entries={buildRunLog({ state, scenario, evaluation, receipt, unseal })} />
             <ReceiptSummary receipt={receipt} onOpen={openReceipt} />
           </WalkthroughErrorBoundary>
         </div>
