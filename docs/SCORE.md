@@ -45,6 +45,7 @@ Any failure sets G = 0, so the score is not reported.
 | Concern | Location |
 |---|---|
 | Score and gates (pure, unit-tested) | `src/domain/benchmarkScore.ts`, `src/domain/benchmarkScore.test.ts` |
+| Score equations and legend (MathML, shared by the score page and the stage-4 scorecard) | `src/domain/scoreMath.ts`, `src/components/ScoreMath.tsx` |
 | Data vs playbook spec (gate S1, also runs in `npm test`) | `tools/score/spec.mat001.test.ts`, `tools/score/spec.ei001.test.ts` |
 | CLI, page and JSON | `tools/score/score.ts` |
 

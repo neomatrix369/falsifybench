@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process'
 import { RUNNABLE_BENCHMARKS, syntheticScenarioSource } from '../../src/data/scenarioSource'
 import { AGENT_PATHS, scoreBenchmark, type BenchmarkScore, type IntegrityCheck, type ScoredScenario } from '../../src/domain/benchmarkScore'
 import { METRIC_KEYS, METRIC_LABELS, formatDelta } from '../../src/domain/scoring'
+import { SCORE_EQUATIONS, scoreLegend, workedRun, workedTotal } from '../../src/domain/scoreMath'
 import { VERDICT_LABEL } from '../../src/domain/verdict'
 
 const ROOT = new URL('../../', import.meta.url).pathname
@@ -106,86 +107,22 @@ function yesNo(v: boolean, good: boolean): string {
   return `<span class="tag ${v === good ? 'ok' : good ? 'warn' : 'risk'}">${v ? 'Yes' : 'No'}</span>`
 }
 
-const mi = (x: string) => `<mi>${x}</mi>`
-// Fences don't stretch: most system fonts lack a MATH table, so stretched fences look broken.
-const mo = (x: string) => `<mo${'()[]{}|'.includes(x) ? ' stretchy="false"' : ''}>${x}</mo>`
-const mn = (x: string | number) => `<mn>${x}</mn>`
-const mt = (x: string) => `<mtext>${esc(x)}</mtext>`
-const sub = (b: string, s: string) => `<msub>${b}${s}</msub>`
-const as = `${mo('(')}${mi('a')}${mo(',')}${mi('s')}${mo(')')}`
-const paren = (x: string) => `${mo('(')}<mrow>${x}</mrow>${mo(')')}`
-const frac = (n: string, d: string) => `<mfrac><mrow>${n}</mrow><mrow>${d}</mrow></mfrac>`
-const card = (set: string) => `${mo('|')}${set}${mo('|')}`
-const sum = (under: string, body: string) => `<munder>${mo('∑')}<mrow>${under}</mrow></munder><mrow>${body}</mrow>`
-const math = (body: string, label: string, block = true) =>
-  `<math${block ? ' displaystyle="true"' : ''} aria-label="${esc(label)}"><mrow>${body}</mrow></math>`
-const S = mi('S')
-const M = mi('M')
-
 function method(score: BenchmarkScore): string {
   const { agents, scenarios } = score
-  const eqs: [string, string, string][] = [
-    [
-      'Rubric total',
-      `${mi('T')}${as}${mo('=')}${mi('round')}${paren(`${frac(mn(1), card(M))}${sum(`${mi('m')}${mo('∈')}${M}`, `${sub(mi('r'), mi('m'))}${as}`)}`)}`,
-      'T of a, s equals round of the mean over the four rubric metrics m of r m of a, s',
-    ],
-    [
-      'Safe verdict',
-      `${mi('safe')}${as}${mo('=')}<mrow>${mo('[')}${mi('v')}${as}${mo('=')}<msup>${mi('v')}${mo('*')}</msup>${mo('(')}${mi('s')}${mo(')')}${mo(']')}</mrow>`,
-      'safe of a, s is 1 when the verdict v of a, s equals the expected safe verdict v star of s',
-    ],
-    [
-      'Unsafe approval',
-      `${mi('unsafe')}${as}${mo('=')}<mrow>${mo('[')}${mi('v')}${as}${mo('=')}${mt('Proceed')}${mo('∧')}<msup>${mi('v')}${mo('*')}</msup>${mo('(')}${mi('s')}${mo(')')}${mo('≠')}${mt('Proceed')}${mo(']')}</mrow>`,
-      'unsafe of a, s is 1 when the verdict is Proceed and the expected safe verdict is not Proceed',
-    ],
-    [
-      'Headline score',
-      `${mi('Score')}${mo('(')}${mi('a')}${mo(')')}${mo('=')}${mi('G')}${mo('·')}${frac(mn(1), card(S))}${sum(`${mi('s')}${mo('∈')}${S}`, `${mi('T')}${as}`)}`,
-      'Score of a equals G times the mean over scenarios s of T of a, s',
-    ],
-    [
-      'Mean delta',
-      `${`<mi mathvariant="normal">Δ</mi>`}${mo('=')}${frac(mn(1), card(S))}${sum(`${mi('s')}${mo('∈')}${S}`, paren(`${mi('T')}${mo('(')}${mt('guarded')}${mo(',')}${mi('s')}${mo(')')}${mo('−')}${mi('T')}${mo('(')}${mt('baseline')}${mo(',')}${mi('s')}${mo(')')}`))}`,
-      'Delta equals the mean over scenarios of T guarded minus T baseline',
-    ],
-    [
-      'Integrity gate',
-      `${mi('G')}${mo('=')}<munder>${mo('∏')}<mrow>${mi('g')}${mo('∈')}${mt('gates')}</mrow></munder>${mo('[')}${mi('g')}${mt('\u00a0passes')}${mo(']')}${mo('∈')}${mo('{')}${mn(0)}${mo(',')}${mn(1)}${mo('}')}`,
-      'G equals the product over all gates of 1 if the gate passes, so G is 0 if any gate fails',
-    ],
-  ]
-  const legend: [string, string][] = [
-    [math(mi('a'), 'a', false), 'Agent: <span class="mono">baseline</span> or <span class="mono">guarded</span> (scripted fixtures)'],
-    [math(`${mi('s')}${mo('∈')}${S}`, 's in S', false), `Scenario; ${math(S, 'S', false)} = runnable scenarios (${scenarios.map((x) => `<span class="mono">${esc(x.id)}</span>`).join(', ')})`],
-    [math(`${mi('m')}${mo('∈')}${M}`, 'm in M', false), `Rubric metric: ${METRIC_KEYS.map((k) => esc(METRIC_LABELS[k].toLowerCase())).join(', ')}`],
-    [math(`${sub(mi('r'), mi('m'))}${as}`, 'r m of a, s', false), 'Metric score, integer 0–100, from the scenario’s sealed evaluation'],
-    [math(`${mi('T')}${as}`, 'T of a, s', false), 'Rubric total for one agent on one scenario (0–100); computed, never stored'],
-    [math(`${mi('v')}${as}`, 'v of a, s', false), 'Agent’s verdict: Proceed, Investigate or Abstain'],
-    [math(`<msup>${mi('v')}${mo('*')}</msup>${mo('(')}${mi('s')}${mo(')')}`, 'v star of s', false), 'Expected safe verdict for the scenario'],
-    [math(`${mo('[')}${mi('P')}${mo(']')}`, 'bracket P', false), '1 if condition P holds, else 0'],
-    [math(mi('G'), 'G', false), `Data-integrity gate: 1 only if all ${scenarios.flatMap((x) => x.integrity).length + 2} gates (I1–I9 per scenario, S1, S2) pass`],
-    [math(`<mi mathvariant="normal">Δ</mi>`, 'Delta', false), 'Mean improvement of guarded over baseline, in rubric points'],
-  ]
+  const legend = scoreLegend({
+    scenarios: scenarios.map((x) => x.id),
+    gateCount: scenarios.flatMap((x) => x.integrity).length + 2,
+    metricLabels: METRIC_KEYS.map((k) => METRIC_LABELS[k]),
+  })
   const ex = scenarios[0]
-  const exMetrics = ex ? METRIC_KEYS.map((k) => ex.agents.guarded.metrics[k]) : []
   const worked = ex
-    ? `<p class="worked">Worked example (${esc(ex.id)}, guarded): ${math(
-        `${mi('T')}${mo('=')}${mi('round')}${paren(frac(exMetrics.map((v) => mn(esc(v))).join(mo('+')), mn(exMetrics.length)))}${mo('=')}${mn(esc(ex.agents.guarded.total ?? '—'))}`,
-        `T equals round of (${exMetrics.join(' + ')}) over ${exMetrics.length}, which is ${ex.agents.guarded.total}`,
-        false,
-      )} · this run: ${math(
-        `${mi('Score')}${mo('(')}${mt('guarded')}${mo(')')}${mo('=')}${mn(num(agents.guarded.score))}${mo(',')}${mi('Score')}${mo('(')}${mt('baseline')}${mo(')')}${mo('=')}${mn(num(agents.baseline.score))}${mo(',')}${`<mi mathvariant="normal">Δ</mi>`}${mo('=')}${mn(esc(formatDelta(score.meanDelta)))}${mo(',')}${mi('G')}${mo('=')}${mn(score.gate)}`,
-        `Score guarded ${num(agents.guarded.score)}, Score baseline ${num(agents.baseline.score)}, Delta ${formatDelta(score.meanDelta)}, G ${score.gate}`,
-        false,
-      )}</p>`
+    ? `<p class="worked">Worked example (${esc(ex.id)}): ${workedTotal('guarded', METRIC_KEYS.map((k) => ex.agents.guarded.metrics[k]), ex.agents.guarded.total ?? '—')} · this run: ${workedRun(num(agents.guarded.score), num(agents.baseline.score), formatDelta(score.meanDelta), score.gate)}</p>`
     : ''
   return `<section class="sheet" aria-labelledby="h-def"><h2 id="h-def">How the score is computed</h2>
 <p class="lead">Every number on this page follows from these equations applied to the synthetic benchmark data in <span class="mono">src/data</span>.</p>
 <div class="method">
-<div><dl class="eqs">${eqs.map(([label, body, aria]) => `<dt>${label}</dt><dd>${math(body, aria)}</dd>`).join('')}</dl>${worked}</div>
-<div><h3 class="eyebrow" style="margin-top:2px">Legend</h3><dl class="legend">${legend.map(([sym, text]) => `<dt>${sym}</dt><dd>${text}</dd>`).join('')}</dl>
+<div><dl class="eqs">${SCORE_EQUATIONS.map((e) => `<dt>${esc(e.label)}</dt><dd>${e.mathml}</dd>`).join('')}</dl>${worked}</div>
+<div><h3 class="eyebrow" style="margin-top:2px">Legend</h3><dl class="legend">${legend.map((l) => `<dt>${l.symbol}</dt><dd>${esc(l.text)}</dd>`).join('')}</dl>
 <ul class="foot" style="margin-top:14px">
 <li>Not measured: code quality, tests, bundle size or commit history. Those are development checks (<span class="mono">npm run lint</span>, <span class="mono">npm test</span>, <span class="mono">npm run build</span>, <span class="mono">tools/qa/acceptance.py</span>) and do not change this score.</li>
 <li>Agents are scripted fixtures; no model, partner data or network call is involved.</li>
