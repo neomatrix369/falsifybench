@@ -91,6 +91,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
             onToggleAutoplay={actions.toggleAutoplay}
             onReset={reset}
           />
+          <RunLog entries={buildRunLog({ state, scenario, evaluation, receipt, unseal })} />
           <ComingNextCards activeId={scenario.id} onReturnToActive={() => activeScenarioHeading.current?.focus()} />
           <UnavailableModesNote />
         </div>
@@ -109,7 +110,6 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
                 onSelectTab={actions.select}
               />
             )}
-            <RunLog entries={buildRunLog({ state, scenario, evaluation, receipt, unseal })} />
             <ReceiptSummary receipt={receipt} onOpen={openReceipt} />
           </WalkthroughErrorBoundary>
         </div>
