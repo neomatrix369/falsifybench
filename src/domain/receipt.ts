@@ -35,6 +35,7 @@ export interface BenchmarkReceipt {
     delta: number
   }
   unsafeApprovalPrevented: boolean
+  guardedNextAction: string
 }
 
 export class IncompleteRunError extends Error {
@@ -94,6 +95,7 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
       guarded: { ...guarded, total: comparison.guardedTotal },
       delta: comparison.delta,
     },
+    guardedNextAction: evaluation.guarded.nextAction,
     unsafeApprovalPrevented:
       scenario.baseline.verdict === 'proceed' &&
       evaluation.expectedSafeVerdict !== 'proceed' &&

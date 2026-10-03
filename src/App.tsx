@@ -35,6 +35,11 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
     [actions],
   )
 
+  const run = useCallback(() => {
+    actions.run()
+    setFocusRequest((n) => n + 1)
+  }, [actions])
+
   const openReceipt = useCallback(() => {
     if (state.reached === LAST_STAGE_INDEX) select(LAST_STAGE_INDEX)
   }, [select, state.reached])
@@ -44,7 +49,7 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
       <Header onReceiptAnchor={openReceipt} />
       <main className="mx-auto grid max-w-[1440px] grid-cols-[minmax(360px,35fr)_65fr] items-start gap-6 px-6 py-6">
         <div className="space-y-4">
-          <ScenarioCard ref={activeScenarioHeading} scenario={scenario} canRun={controls.canRun} onRun={actions.run} />
+          <ScenarioCard ref={activeScenarioHeading} scenario={scenario} canRun={controls.canRun} onRun={run} />
           <StageTrace
             state={state}
             controls={controls}
@@ -69,6 +74,7 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
                 evaluation={evaluation}
                 receipt={receipt}
                 onSelect={select}
+                onSelectTab={actions.select}
               />
             )}
             <ReceiptSummary receipt={receipt} onOpen={openReceipt} />

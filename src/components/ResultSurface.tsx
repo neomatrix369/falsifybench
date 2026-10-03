@@ -1,11 +1,12 @@
 import { Info, LoaderCircle, ScanSearch } from 'lucide-react'
-import { forwardRef, type ReactNode } from 'react'
+import { forwardRef, useRef, type ReactNode } from 'react'
 import { BRAND } from '../config/branding'
 import { SYNTHETIC_LABEL } from '../domain/provenance'
+import { compareScores, formatDelta } from '../domain/scoring'
 import { STAGES, STAGE_LABELS } from '../domain/stages'
 import type { BenchmarkReceipt } from '../domain/receipt'
 import type { WalkthroughState } from '../domain/walkthrough'
-import type { Scenario, ScenarioEvaluation, WalkthroughStage } from '../domain/types'
+import type { Scenario, ScenarioEvaluation, Verdict, WalkthroughStage } from '../domain/types'
 import { AgentResponseCard } from './AgentResponseCard'
 import { BracketSchematic } from './BracketSchematic'
 import { Disclosure } from './Disclosure'
@@ -39,6 +40,24 @@ function Loading() {
   )
 }
 
+const VERDICT_WORD: Record<Verdict, string> = { proceed: 'Proceed', investigate: 'Investigate', abstain: 'Abstain' }
+
+function OutcomeStrip({ scenario, evaluation }: { scenario: Scenario; evaluation: ScenarioEvaluation }) {
+  const { baselineTotal, guardedTotal, delta } = compareScores(evaluation.scoring.baseline, evaluation.scoring.guarded)
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 text-sm text-slate-800">
+      <span>
+        Baseline <strong className="text-red-700">{VERDICT_WORD[scenario.baseline.verdict]} (unsafe)</strong> → Guarded{' '}
+        <strong className="text-amber-800">{VERDICT_WORD[evaluation.guarded.verdict]}</strong>
+      </span>
+      <span aria-hidden className="text-slate-300">|</span>
+      <span>
+        Score {baselineTotal} → {guardedTotal} <strong className="text-emerald-700">({formatDelta(delta)})</strong>
+      </span>
+    </p>
+  )
+}
+
 interface PanelProps {
   scenario: Scenario
   evaluation: ScenarioEvaluation | null
@@ -55,12 +74,14 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
           coverage map. At a glance, the bracket looks healthy.
         </p>
         <table className="w-full text-sm">
-          <caption className="sr-only">Visible evidence, {SYNTHETIC_LABEL}</caption>
+          <caption className="caption-top pb-1 text-left">
+            <span className="sr-only">Visible evidence, </span>
+            <StatusPill tone="green">{SYNTHETIC_LABEL}</StatusPill>
+          </caption>
           <thead>
             <tr className="text-left text-xs text-slate-500">
               <th scope="col" className="py-1.5 font-medium">Evidence</th>
               <th scope="col" className="py-1.5 font-medium">Visible finding</th>
-              <th scope="col" className="py-1.5 font-medium"><span className="sr-only">Provenance</span></th>
             </tr>
           </thead>
           <tbody>
@@ -71,7 +92,6 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
                   <span className="font-medium text-slate-800">{item.title}</span>
                 </th>
                 <td className="py-2 pr-3 text-slate-700">{item.finding}</td>
-                <td className="py-2"><StatusPill tone="green">{SYNTHETIC_LABEL}</StatusPill></td>
               </tr>
             ))}
           </tbody>
@@ -148,6 +168,7 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
             With the evidence guardrail, the agent declines the release and asks for the one test that could falsify the
             approval: targeted ultrasonic inspection of R4.
           </p>
+          <OutcomeStrip scenario={scenario} evaluation={evaluation} />
           <div className="grid grid-cols-2 gap-3">
             <AgentResponseCard response={scenario.baseline} unsafe />
             <AgentResponseCard response={evaluation.guarded} emphasis />
@@ -180,12 +201,15 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
 interface Props extends PanelProps {
   state: WalkthroughState
   onSelect: (index: number) => void
+  /** Select a final-state tab without moving focus away from the tab list. */
+  onSelectTab: (index: number) => void
 }
 
 export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function ResultSurface(
-  { state, scenario, evaluation, receipt, onSelect },
+  { state, scenario, evaluation, receipt, onSelect, onSelectTab },
   headingRef,
 ) {
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   if (state.status === 'idle') {
     return (
       <section aria-labelledby="result-heading" className="card p-8">
@@ -217,8 +241,21 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
   return (
     <section aria-labelledby="result-heading" className="card">
       {state.status === 'complete' && (
-        <div role="tablist" aria-label="Final results" className="flex gap-1 border-b border-slate-200 px-4 pt-3">
-          {FINAL_TABS.map((tab) => {
+        <div
+          role="tablist"
+          aria-label="Final results"
+          className="flex gap-1 border-b border-slate-200 px-4 pt-3"
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+            e.preventDefault()
+            const current = FINAL_TABS.findIndex((t) => STAGES.indexOf(t.stage) === state.cursor)
+            const step = e.key === 'ArrowRight' ? 1 : -1
+            const nextTab = (Math.max(current, 0) + step + FINAL_TABS.length) % FINAL_TABS.length
+            onSelectTab(STAGES.indexOf(FINAL_TABS[nextTab].stage))
+            tabRefs.current[nextTab]?.focus()
+          }}
+        >
+          {FINAL_TABS.map((tab, tabIndex) => {
             const index = STAGES.indexOf(tab.stage)
             const selected = state.cursor === index
             return (
@@ -226,6 +263,10 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
                 key={tab.stage}
                 type="button"
                 role="tab"
+                ref={(el) => {
+                  tabRefs.current[tabIndex] = el
+                }}
+                tabIndex={selected ? 0 : -1}
                 aria-selected={selected}
                 onClick={() => onSelect(index)}
                 className={`-mb-px rounded-t-md border-b-2 px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${

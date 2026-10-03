@@ -124,3 +124,21 @@ describe('FalsifyBench guards', () => {
     expect(screen.queryByRole('button', { name: /run benchmark/i })).not.toBeInTheDocument()
   })
 })
+
+describe('FalsifyBench keyboard flow', () => {
+  it('moves focus to the stage heading after Run benchmark and supports arrow keys between final tabs', async () => {
+    const user = await setup()
+    await user.click(btn(/run benchmark/i))
+    expect(screen.getByRole('heading', { name: /five evidence records/i })).toHaveFocus()
+    for (let i = 0; i < 4; i++) await user.click(await screen.findByRole('button', { name: /next step/i }))
+    await screen.findByRole('heading', { name: /benchmark receipt recorded/i })
+    const receiptTab = screen.getByRole('tab', { name: /benchmark receipt/i })
+    expect(receiptTab).toHaveAttribute('tabindex', '0')
+    expect(within(screen.getByRole('region', { name: /^decision$/i })).getByText(/next action:/i)).toBeInTheDocument()
+    receiptTab.focus()
+    await user.keyboard('{ArrowLeft}')
+    const auditTab = screen.getByRole('tab', { name: /evidence audit/i })
+    expect(auditTab).toHaveAttribute('aria-selected', 'true')
+    expect(auditTab).toHaveFocus()
+  })
+})

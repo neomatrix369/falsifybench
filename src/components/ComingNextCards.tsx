@@ -1,11 +1,15 @@
 import { ArrowRight, Lock } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { comingNextPreviews } from '../data/previews'
 import { StatusPill } from './StatusPill'
 
 export function ComingNextCards({ onReturnToActive }: { onReturnToActive: () => void }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const open = comingNextPreviews.find((p) => p.id === openId)
+  const titleRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (openId) titleRef.current?.focus()
+  }, [openId])
 
   return (
     <section id="scenario-previews" aria-labelledby="previews-title" className="scroll-mt-20">
@@ -32,7 +36,7 @@ export function ComingNextCards({ onReturnToActive }: { onReturnToActive: () => 
       </div>
       {open && (
         <div id="preview-description" role="region" aria-label={`${open.track} preview`} className="card mt-3 p-4 text-sm">
-          <p className="font-semibold text-slate-800">
+          <p ref={titleRef} tabIndex={-1} className="font-semibold text-slate-800 focus:outline-none">
             {open.track}: {open.title}
           </p>
           <p className="mt-1 text-slate-600">{open.description}</p>

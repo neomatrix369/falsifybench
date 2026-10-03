@@ -39,6 +39,16 @@ export function ReceiptView({ receipt }: { receipt: BenchmarkReceipt }) {
 
   return (
     <div className="space-y-4">
+      <section aria-label="Decision" className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+        <p>
+          <span className="text-slate-500">Decision:</span> baseline <strong>{receipt.verdicts.baseline}</strong> → guarded{' '}
+          <strong>{receipt.verdicts.guarded}</strong>
+          {receipt.unsafeApprovalPrevented ? ' · unsafe approval prevented' : ''}
+        </p>
+        <p className="mt-0.5">
+          <span className="text-slate-500">Next action:</span> {receipt.guardedNextAction}
+        </p>
+      </section>
       <div className="grid grid-cols-2 gap-4">
         <section aria-label="Run metadata" className="rounded-lg border border-slate-200 p-4">
           <h3 className="eyebrow mb-2">Run metadata</h3>

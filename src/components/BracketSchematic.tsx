@@ -42,7 +42,7 @@ export function BracketSchematic({ regions, gapRegionId }: Props) {
 
   return (
     <figure className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <svg viewBox="0 0 520 220" role="img" aria-label={description} className="h-auto w-full">
+      <svg viewBox="0 0 520 220" role="img" aria-label={description} className="mx-auto h-auto max-h-[240px] w-full">
         <defs>
           <pattern id="gap-stripes" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <rect width="10" height="10" fill="#fef3c7" />
@@ -77,7 +77,6 @@ export function BracketSchematic({ regions, gapRegionId }: Props) {
             </g>
           )
         })}
-        {SHAPES.R5 && <circle cx={480} cy={50} r={8} fill="#f1f5f9" stroke="#94a3b8" strokeWidth={1.5} />}
         {revealed &&
           READING_POINTS.map(([x, y], i) => <circle key={i} cx={x} cy={y} r={4} fill="#4f46e5" stroke="#fff" strokeWidth={1.5} />)}
         {revealed && gapRegionId && SHAPES[gapRegionId]?.rect && (
@@ -101,8 +100,8 @@ export function BracketSchematic({ regions, gapRegionId }: Props) {
           </g>
         )}
         {!revealed && (
-          <text x={315} y={100} textAnchor="middle" className="fill-slate-500 text-[11px]">
-            R4 · restricted access
+          <text x={315} y={71} textAnchor="middle" className="fill-slate-500 text-[10px]">
+            restricted access
           </text>
         )}
       </svg>

@@ -39,6 +39,31 @@ export function StageTrace({ state, controls, onSelect, onBack, onNext, onToggle
             : `Stage ${state.cursor + 1} of ${STAGES.length}${state.autoplay ? ' · auto-playing' : ''}${state.status === 'complete' ? ' · run complete' : ''}`}
         </span>
       </div>
+      <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Walkthrough controls">
+        <button type="button" className="btn-secondary" onClick={onBack} disabled={!controls.canBack}>
+          <ChevronLeft aria-hidden className="h-4 w-4" />
+          Back
+        </button>
+        <button type="button" className="btn-secondary" onClick={onNext} disabled={!controls.canNext}>
+          Next step
+          <ChevronRight aria-hidden className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={onToggleAutoplay}
+          disabled={!controls.canAutoplay}
+          aria-pressed={state.autoplay}
+        >
+          {state.autoplay ? <Pause aria-hidden className="h-4 w-4" /> : <Play aria-hidden className="h-4 w-4" />}
+          {state.autoplay ? 'Pause auto-play' : 'Auto-play'}
+        </button>
+        <button type="button" className="btn-secondary" onClick={onReset} disabled={!controls.canReset}>
+          <RotateCcw aria-hidden className="h-4 w-4" />
+          Reset
+        </button>
+      </div>
+      <p className="mt-2 text-[11px] text-slate-500">Auto-play advances every 3 s using the same steps as Next step. Any manual control pauses it.</p>
       <ol className="mt-3 space-y-1.5">
         {STAGES.map((stage, index) => {
           const visual = stageVisualState(state, index)
@@ -62,31 +87,6 @@ export function StageTrace({ state, controls, onSelect, onBack, onNext, onToggle
           )
         })}
       </ol>
-      <div className="mt-4 grid grid-cols-2 gap-2" role="group" aria-label="Walkthrough controls">
-        <button type="button" className="btn-secondary" onClick={onBack} disabled={!controls.canBack}>
-          <ChevronLeft aria-hidden className="h-4 w-4" />
-          Back
-        </button>
-        <button type="button" className="btn-secondary" onClick={onNext} disabled={!controls.canNext}>
-          Next step
-          <ChevronRight aria-hidden className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={onToggleAutoplay}
-          disabled={!controls.canAutoplay}
-          aria-pressed={state.autoplay}
-        >
-          {state.autoplay ? <Pause aria-hidden className="h-4 w-4" /> : <Play aria-hidden className="h-4 w-4" />}
-          Auto-play
-        </button>
-        <button type="button" className="btn-secondary" onClick={onReset} disabled={!controls.canReset}>
-          <RotateCcw aria-hidden className="h-4 w-4" />
-          Reset
-        </button>
-      </div>
-      <p className="mt-2 text-[11px] text-slate-500">Auto-play advances every 3 s using the same steps as Next step. Any manual control pauses it.</p>
     </section>
   )
 }
