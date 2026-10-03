@@ -18,7 +18,7 @@ The first runnable case is a materials-reliability release decision. The app mus
 - If there is no usable application foundation, create a Vite + React + TypeScript + Tailwind app.
 - Deploy a shareable preview using the provider already configured or authorised for the repository. Do not invent credentials or silently switch providers. If deployment cannot be authorised, complete the local build and report the exact deploy blocker.
 - Commit coherent checkpoints, push the branch, open a PR, and include the preview URL, tested commands, screenshots, and remaining gaps in the PR description.
-- Use Node 20 (`.nvmrc`); `npm run dev` first checks that `node_modules` is complete and fails fast with an install hint. Browser checks drive the existing Chrome over CDP; the repo has no CI, so run every check locally.
+- Use Node 20 (`.nvmrc`). Browser checks drive the existing Chrome over CDP; the repo has no CI, so run every check locally.
 - After each QA/release pass, update `docs/QA.md` with the revision, targets, per-item results and open failures.
 - Do not commit API keys, credentials, partner data, or invented partner claims.
 
@@ -29,6 +29,8 @@ The first runnable case is a materials-reliability release decision. The app mus
 **User:** an AI research team benchmarking an agent before deployment.
 
 **One-sentence claim:** FalsifyBench exposes when a confident scientific or engineering agent lacks sufficient evidence, then shows whether a guarded evaluation path produces a safer, falsifiable next action.
+
+The idle screen does not reuse this product claim. Each benchmark gives its own `idleClaim` under its idle question, naming the failure it exposes. MAT-001 approves a part without sufficient evidence; EI-001 obeys a prompt injected into one of its sources.
 
 **Primary demo domain:** materials and infrastructure reliability. The product model remains domain-agnostic.
 
@@ -68,7 +70,7 @@ At desktop presentation width (optimise for 1280–1440px), use a sticky header 
 Header: FalsifyBench | Scenario previews anchor | Current receipt anchor | Data mode selector | Synthetic status
 
 Left: stable controls and visual run trace
-  - active MAT-001 scenario and two compact Coming next preview cards
+  - Runnable benchmarks picker (MAT-001, EI-001), the active scenario card, and a compact Coming next preview card
   - `Baseline agent (simulated)` and `Evidence guardrail (simulated)` labels
   - provenance badge
   - Run benchmark primary action
@@ -89,9 +91,9 @@ The PoC is read-only. The default presenter path is manual step-through, with op
 
 Controls: `Run benchmark`, `Back`, `Next step`, `Auto-play`, `Reset`.
 
-Manual interaction pauses auto-play. Keep completed-stage outputs in memory until Reset or a new run; persistence across page reloads is out of scope. Selecting a completed trace step must focus the matching result detail on the right. Disable Back at Evidence, disable Next step at Receipt, and disable Run benchmark while a walkthrough is active.
+Manual interaction pauses auto-play. Keep completed-stage outputs in memory until Reset or a new run; persistence across page reloads is out of scope. Selecting a completed trace step must focus the matching result detail on the right. Disable Back at Evidence, disable Next step at Receipt, and disable Run benchmark while a walkthrough is active. While the sealed evaluation unseals at Audit, Next step is held with `aria-disabled` (not `disabled`), so keyboard focus stays on it. Pressing it while held pauses auto-play. Focus moves to the stage heading only when Back or Next step truly disables, and never falls to `<body>`. Display verdicts in title case (`Proceed`, `Investigate`, `Abstain`) everywhere in the UI, including the receipt. Raw values stay lowercase in data and exported JSON.
 
-Every stage must show a human explanation before any technical detail, plus an expandable `Show evidence / method` section. No raw JSON belongs in the primary walkthrough. All controls must be keyboard operable. Auto-play starts off, respects `prefers-reduced-motion`, advances one stage every 3 seconds, stops after Receipt, and stops immediately when a presenter navigates manually. Keyboard focus never drops to the page: while the sealed evaluation loads at Audit, `Next step` stays focused and announces that it is waiting (pressing it again pauses auto-play rather than skipping ahead); if a control becomes disabled under focus, focus moves to the current stage heading.
+Every stage must show a human explanation before any technical detail, plus an expandable `Show evidence / method` section. No raw JSON belongs in the primary walkthrough. All controls must be keyboard operable. Auto-play starts off, respects `prefers-reduced-motion`, advances one stage every 3 seconds, stops after Receipt, and stops immediately when a presenter navigates manually.
 
 **Run log (transparency).** Under the Run trace, show a collapsible, timestamped Run log of what happens behind each stage so an observer, researcher or engineer can see the machinery without leaving the walkthrough: run ID and start (scenario ID/version, `synthetic` mode, no network or model calls); evidence IDs loaded from the public fixture; the scripted baseline response; the sealed evaluation being requested and unsealed at Audit with its load time; the score formula with its inputs (e.g. `round(mean(…))`); the guarded verdict; and receipt assembly. Each entry also shows what triggered it (Run benchmark, Next step or an auto-play tick) and its time since run start, and expands to its steps: inputs, what ran and output. Those steps cover the evidence kinds, the scripted baseline response, the sealed-module request and why it is sealed, each audit finding with the evidence it cites, per-metric baseline → guarded scores and the delta, and the receipt checks (mode, 5 of 5 events, order) with each clause of the `unsafe approval prevented` rule checked against the actual verdicts, never a hardcoded value. The newest entry's steps open automatically, and Expand all / Collapse all is available. A live `Now` line says what is happening or what comes next: waiting for Next step, the auto-play countdown, unsealing, reviewing a recorded stage, run complete or stopped. Entries for the stage on screen are highlighted. Before Audit the log, including expanded steps, names steps, triggers, public inputs and timings only, never sealed content. Every fact describes what actually ran. On a re-run after Reset, Audit says it is reusing the evaluation already unsealed, makes no new request, and still lists the findings. The loaded or failed result of the unseal says what produced it. A failed load is logged as failed, never left pending, with the error, its effect (the run stops at Audit and no receipt is recorded) and the recovery: reload the page, because browsers cache a rejected dynamic `import()` for the page's lifetime and Reset alone repeats the failure. Reset clears the log.
 
@@ -198,9 +200,7 @@ Rubric version: `MAT-RUBRIC-1.0`. Each metric is an integer from 0–100. Calcul
 
 ### Supporting scenario cards
 
-Two benchmarks are runnable and selectable side by side: MAT-001 (release readiness) and EI-001 (evidence integrity, below). Show the remaining track as a clearly marked `Coming next` preview card. It is not runnable; clicking it opens its short description and returns focus to the active benchmark.
-
-The benchmark picker names the failure under test first and the synthetic case second (MAT-001: `Insufficient evidence` · Turbine support bracket; EI-001: `Prompt-injected source` · Coating qualification). The idle screen states the claim for the selected benchmark, not one generic product claim: MAT-001 exposes when a confident agent approves a part without sufficient evidence; EI-001 exposes when a confident agent obeys a prompt injected into one of its sources, and checks whether the guarded path treats source text as data.
+Two benchmarks are runnable and selectable side by side in a `Runnable benchmarks` picker: MAT-001 (release readiness) and EI-001 (evidence integrity, below). Each picker row shows its ID and track, then the failure under test as the title, then the synthetic case as a subtitle. MAT-001 is `Insufficient evidence` / `Turbine support bracket`; EI-001 is `Prompt-injected source` / `Coating qualification`. Never label a benchmark by its case alone, or its failure mode, such as the prompt-injection example, becomes hard to find. Show the remaining track as a clearly marked `Coming next` preview card. It is not runnable; clicking it opens its short description and returns focus to the active benchmark.
 
 - Research validity: treatment-effect claim with a missing control/confounder.
 
@@ -302,7 +302,7 @@ The future partner adapter must reject an item without source metadata or proven
 
 Each receipt must include mode, provenance, scenario ID/version, rubric version, run ID, timestamp, five ordered stage events, agent labels, all five evidence IDs, baseline score, guarded score, and delta. Inject a clock and run-ID factory into receipt creation; tests use fixed values. Manual and autoplay must produce identical decisions, metrics, stage-event ordering, and receipt shape for a given run. Provide copy-to-clipboard or JSON download only if it fits safely inside the time box.
 
-Keep each scenario's hidden evaluation in its own module, loaded only when the walkthrough enters Audit (`evaluation.unseal()` → dynamic `import()`), so the main bundle, page source and pre-Audit DOM never contain it; the FRS bundle scan enforces this. Verdicts are lowercase in data and exported receipts and display-cased (`Proceed`, `Investigate`, `Abstain`) in the UI through one label map.
+Keep each scenario's hidden evaluation in its own module, loaded only when the walkthrough enters Audit (`evaluation.unseal()` → dynamic `import()`), so the main bundle, page source and pre-Audit DOM never contain it; the FRS bundle scan enforces this.
 
 If an unexpected rendering or state error occurs, show an honest recoverable error card with `Reset walkthrough`. If the scenario fails to load, Reset returns to MAT-001 with the benchmark picker visible. Never fabricate a receipt or mark an incomplete run as complete. If the sealed evaluation fails to load, the card's primary action is `Reload page`, with `Reset walkthrough` as a secondary action, and its copy says why Reset alone won't retry; the Run log's `Now` line says the same.
 
@@ -312,7 +312,7 @@ If an unexpected rendering or state error occurs, show an honest recoverable err
 
 1. Inspect the repository, branch policy, app/tooling, and configured deployment route.
 2. Create a feature branch. Do not disturb unrelated work.
-3. Run the repository's install, build, lint, and test commands where available. Keep each command under five minutes; record pre-existing failures separately.
+3. Run the repository's install, build, lint, and test commands where available. Keep each command under five minutes; record pre-existing failures separately. Install with `npm ci`, not `npm install`; `npm run dev` runs a `predev` check (`tools/check-deps.mjs`) that fails fast when `node_modules` is incomplete — fix it with `rm -rf node_modules && npm ci`.
 4. Decide whether to extend the existing frontend or add the minimal Vite foundation.
 
 ### Minutes 10–25: functional walking skeleton
