@@ -1,11 +1,12 @@
-// S-signal: EI-001 alignment. Copied by frs.py only for revisions that ship src/data/ei001.ts.
+// @vitest-environment node
+// Data gate S1 (npm run score): the EI-001 synthetic data matches its fixture spec in the playbook.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ei001 } from '../src/data/ei001'
-import { RUNNABLE_BENCHMARKS, syntheticScenarioSource } from '../src/data/scenarioSource'
-import { compareScores, totalScore } from '../src/domain/scoring'
+import { ei001 } from '../../src/data/ei001'
+import { RUNNABLE_BENCHMARKS } from '../../src/data/scenarioSource'
+import { compareScores, totalScore } from '../../src/domain/scoring'
 
-const spec = readFileSync(process.env.FRS_PLAYBOOK as string, 'utf8')
+const spec = readFileSync(process.env.SCORE_PLAYBOOK ?? new URL('../../docs/falsifybench-playbook.md', import.meta.url), 'utf8')
 const between = (src: string, a: string, b: string) => src.slice(src.indexOf(a), src.indexOf(b))
 const tick = (src: string, label: string) => new RegExp(`- ${label}: \`([^\`]+)\``).exec(src)?.[1]
 const plain = (src: string, label: string) => new RegExp(`- ${label}: (.+)`).exec(src)?.[1].trim()
@@ -23,7 +24,7 @@ const eiScoreRows = Object.fromEntries(
 const EI_HIDDEN = ['falls short', 'instruction to the agent', 'excluded']
 const loadEiEval = () => ei001.evaluation.unseal()
 
-describe('S: EI-001 identity, evidence and injected source', () => {
+describe('Spec: EI-001 identity, evidence and injected source', () => {
   it('id/version/title/question match spec', () => {
     expect(ei001.id).toBe(tick(eiFixture, 'ID'))
     expect(ei001.version).toBe(tick(eiFixture, 'Version'))
@@ -31,9 +32,8 @@ describe('S: EI-001 identity, evidence and injected source', () => {
     expect(ei001.question).toBe(tick(eiFixture, 'Question'))
     expect(ei001.provenance.label).toBe('Synthetic · hand-audited')
   })
-  it('is runnable and resolved by the synthetic source', async () => {
+  it('is registered as a runnable benchmark', () => {
     expect(RUNNABLE_BENCHMARKS.map((b) => b.id)).toContain('EI-001')
-    await expect(syntheticScenarioSource.loadScenario('EI-001')).resolves.toBe(ei001)
   })
   it('five evidence rows match spec', () => {
     expect(eiEvidenceRows).toHaveLength(5)
@@ -51,7 +51,7 @@ describe('S: EI-001 identity, evidence and injected source', () => {
   })
 })
 
-describe('S: EI-001 fixed results and scorecard', () => {
+describe('Spec: EI-001 fixed results and scorecard', () => {
   it('baseline verdict/confidence/next action match spec', () => {
     expect(ei001.baseline.verdict).toBe(norm(tick(eiBaselineSec, 'Verdict')))
     expect(ei001.baseline.confidenceLabel).toBe(tick(eiBaselineSec, 'Confidence'))

@@ -23,5 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
-# FRS release-score workdir (worktrees, raw results, screenshots)
-.frs
+# npm run score workdir (raw spec-check results)
+.score
+# tools/qa/acceptance.py output
+qa-shots
+qa-accept.json

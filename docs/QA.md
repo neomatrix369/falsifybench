@@ -7,6 +7,7 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 - **Runtime:** Node 20.20.2. Browser checks drove Chrome over CDP with `playwright-core` (DOM, accessibility snapshot, page source, focus, clipboard, downloads, request log, emulated `prefers-reduced-motion`).
 - **Result:** all items pass on both targets; no open failures.
 - **Run-log trace pass (PRs #14–#17):** browser checks on a local Vite build of PR #15 (`e1cc7e4`), then a spot-check of the #16 fixes on `main` @ `3d84f56`, desktop Chrome at 1280 CSS px. `main` @ `c76a92c`: lint, typecheck, 48/48 tests, build, `npm run frs` SHIP 0.9913 (no gate, acceptance or alignment failures). Results are in [Run log trace](#run-log-trace); F6–F7 are below.
+- **After #18 (`npm run frs` replaced by `npm run score`):** `main` @ `97662b7` merged with this branch: lint, typecheck, 84/84 tests, build and `npm run score` pass (G = 1; guarded 94.5, baseline 12.5, mean delta +82).
 
 ## Checklist
 

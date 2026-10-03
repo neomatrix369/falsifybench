@@ -1,7 +1,8 @@
-import { ShieldCheck, TrendingUp } from 'lucide-react'
+import { ArrowUpRight, ShieldCheck, TrendingUp } from 'lucide-react'
 import { METRIC_KEYS, METRIC_LABELS, compareScores, formatDelta } from '../domain/scoring'
 import { SCRIPTED_FIXTURE_LABEL } from '../domain/provenance'
 import type { ScenarioEvaluation } from '../domain/types'
+import { ScoreMath } from './ScoreMath'
 
 function Bar({ value, tone }: { value: number; tone: 'baseline' | 'guarded' }) {
   return (
@@ -67,6 +68,14 @@ export function ScoreCard({ evaluation }: { evaluation: ScenarioEvaluation }) {
         </span>
         <span className="ml-auto text-meta text-ink-3">Total = round(mean of four metrics). Benchmark demonstration, not a validated scientific result.</span>
       </div>
+      <ScoreMath baseline={baseline} guarded={guarded} />
+      <a
+        href="score/index.html"
+        className="inline-flex items-center gap-1 text-body font-medium text-primary underline-offset-4 hover:underline"
+      >
+        See benchmark-wide score
+        <ArrowUpRight aria-hidden className="h-3.5 w-3.5" />
+      </a>
     </section>
   )
 }
