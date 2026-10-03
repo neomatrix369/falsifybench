@@ -30,23 +30,23 @@ thead th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(
 ol,ul{margin:0;padding-left:20px}li{margin:4px 0}.foot{font-size:13px;color:rgb(var(--ink-3))}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
-<header><div class="bar"><div class="brand">FalsifyBench <span>· Release score</span></div><a href="../">Open the MAT-001 walkthrough</a></div></header>
+<header><div class="bar"><div class="brand">FalsifyBench <span>· Release score</span></div><a href="../">Open the walkthrough</a></div></header>
 <main>
 <section class="sheet hero" aria-labelledby="h-score">
- <div><p class="eyebrow">Snapshot · main @ <span class="mono">c1a40da</span> · 2026-10-03</p>
+ <div><p class="eyebrow">Snapshot · main @ <span class="mono">f16b8a6</span> · 2026-10-03</p>
   <h1 id="h-score">FalsifyBench Release Score</h1>
   <div class="score" aria-label="FRS 0.990">0.990</div>
   <span class="verdict tag ok">Ship</span>
-  <p class="det" style="margin-top:12px">All 7 gates pass. 32/32 unit tests, 47/47 playbook browser checks, 22/22 fixture-vs-spec checks.</p></div>
+  <p class="det" style="margin-top:12px">All 7 gates pass. 40/40 unit tests, 60/60 playbook browser checks, 30/30 fixture-vs-spec checks.</p></div>
  <div class="subs">
-  <div class="sub"><div class="subhead"><span class="k">Q</span><span class="lbl">Quality</span><span class="v">0.950</span></div>
-<div class="track" role="img" aria-label="Quality 0.950 of 1"><div class="fill" style="width:95.0%"></div></div><p class="det">Line coverage 95.6%, branch coverage 89.5%, design-token conformance 100.0%.</p></div>
+  <div class="sub"><div class="subhead"><span class="k">Q</span><span class="lbl">Quality</span><span class="v">0.954</span></div>
+<div class="track" role="img" aria-label="Quality 0.954 of 1"><div class="fill" style="width:95.4%"></div></div><p class="det">Line coverage 96.5%, branch coverage 89.6%, design-token conformance 100.0%.</p></div>
   <div class="sub"><div class="subhead"><span class="k">C</span><span class="lbl">Correctness</span><span class="v">1.000</span></div>
-<div class="track" role="img" aria-label="Correctness 1.000 of 1"><div class="fill" style="width:100.0%"></div></div><p class="det">Harmonic mean of unit pass rate (32/32) and playbook acceptance in real Chrome (47/47).</p></div>
+<div class="track" role="img" aria-label="Correctness 1.000 of 1"><div class="fill" style="width:100.0%"></div></div><p class="det">Harmonic mean of unit pass rate (40/40) and playbook acceptance in real Chrome (60/60, MAT-001 + EI-001).</p></div>
   <div class="sub"><div class="subhead"><span class="k">S</span><span class="lbl">Synthetic-data alignment</span><span class="v">1.000</span></div>
-<div class="track" role="img" aria-label="Synthetic-data alignment 1.000 of 1"><div class="fill" style="width:100.0%"></div></div><p class="det">MAT-001 fixture, scorecard, sealed evaluation and receipt wiring checked against the playbook (22/22); manual = auto-play receipt.</p></div>
+<div class="track" role="img" aria-label="Synthetic-data alignment 1.000 of 1"><div class="fill" style="width:100.0%"></div></div><p class="det">MAT-001 and EI-001 fixtures, scorecards, sealed evaluations and receipt wiring checked against the playbook (30/30); manual = auto-play receipt.</p></div>
   <div class="sub"><div class="subhead"><span class="k">P</span><span class="lbl">Performance</span><span class="v">1.000</span></div>
-<div class="track" role="img" aria-label="Performance 1.000 of 1"><div class="fill" style="width:100.0%"></div></div><p class="det">Initial JS+CSS 67.0 kB gzip against an 80 kB budget; evaluation split into a lazy chunk.</p></div>
+<div class="track" role="img" aria-label="Performance 1.000 of 1"><div class="fill" style="width:100.0%"></div></div><p class="det">Initial JS+CSS 69.6 kB gzip against an 80 kB budget; evaluation split into a lazy chunk.</p></div>
  </div>
 </section>
 <section class="sheet" aria-labelledby="h-def"><h2 id="h-def">Definition</h2>
@@ -56,7 +56,7 @@ H   = 1 / ( 0.20/Q + 0.35/C + 0.30/S + 0.15/P )        weighted harmonic mean, �
 G   = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets ∧ fixture-matches-spec   ∈ {0,1}
 
 Q   = ( coverage_lines + coverage_branches + token_conformance ) / 3
-C   = 2·u·a / (u + a)          u = unit tests passed / total,  a = browser acceptance checks passed / 47
+C   = 2·u·a / (u + a)          u = unit tests passed / total,  a = browser acceptance checks passed / 60
 S   = s · d                    s = fixture-vs-playbook checks passed / total,  d = 1 if manual ≡ auto-play receipt else 0.5
 P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy chunk]</div>
 <div class="cols" style="margin-top:16px">
@@ -76,33 +76,36 @@ P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy 
 <td class="note">Raw Tailwind palette in every component (0/16 token-conformant). Keyboard focus lost at Audit.</td></tr><tr><th scope="row"><span class="mono">2219a0f</span><br><span class="muted">Design-system redesign</span></th>
 <td class="mono">1</td><td class="mono">0.949</td><td class="mono">0.989</td><td class="mono">1.000</td><td class="mono">1.000</td>
 <td class="mono">0.986</td><td class="mono strong">0.986</td><td><span class="tag warn">Ship with fix-forward</span></td>
-<td class="note">Tokens fixed (16/16). Keyboard focus still lost at Audit, caught only in real Chrome.</td></tr><tr><th scope="row"><span class="mono">c1a40da</span><br><span class="muted">main · keyboard focus fix</span></th>
-<td class="mono">1</td><td class="mono">0.950</td><td class="mono">1.000</td><td class="mono">1.000</td><td class="mono">1.000</td>
-<td class="mono">0.990</td><td class="mono strong">0.990</td><td><span class="tag ok">Ship</span></td>
-<td class="note">All 47 browser checks pass. Lowest sub-score is branch coverage.</td></tr><tr><th scope="row"><span class="mono">c1a40da*</span><br><span class="muted">Mutation: evaluation bundled eagerly</span></th>
-<td class="mono">0</td><td class="mono">0.950</td><td class="mono">1.000</td><td class="mono">1.000</td><td class="mono">0.700</td>
-<td class="mono">0.945</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
-<td class="note">Sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.</td></tr><tr><th scope="row"><span class="mono">c1a40da*</span><br><span class="muted">Mutation: guarded score drifts from spec</span></th>
-<td class="mono">0</td><td class="mono">0.948</td><td class="mono">0.905</td><td class="mono">0.864</td><td class="mono">1.000</td>
-<td class="mono">0.915</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
+<td class="note">Tokens fixed (16/16). Keyboard focus still lost at Audit, caught only in real Chrome.</td></tr><tr><th scope="row"><span class="mono">f16b8a6</span><br><span class="muted">main · MAT-001 + EI-001</span></th>
+<td class="mono">1</td><td class="mono">0.954</td><td class="mono">1.000</td><td class="mono">1.000</td><td class="mono">1.000</td>
+<td class="mono">0.991</td><td class="mono strong">0.990</td><td><span class="tag ok">Ship</span></td>
+<td class="note">All 60 browser checks pass on both benchmarks, including the EI-001 injected line at every stage. Lowest sub-score is branch coverage.</td></tr><tr><th scope="row"><span class="mono">f16b8a6*</span><br><span class="muted">Mutation: MAT-001 evaluation bundled eagerly</span></th>
+<td class="mono">0</td><td class="mono">0.954</td><td class="mono">1.000</td><td class="mono">1.000</td><td class="mono">1.000</td>
+<td class="mono">0.991</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
+<td class="note">MAT-001 sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.</td></tr><tr><th scope="row"><span class="mono">f16b8a6*</span><br><span class="muted">Mutation: EI-001 evaluation bundled eagerly</span></th>
+<td class="mono">0</td><td class="mono">0.954</td><td class="mono">1.000</td><td class="mono">1.000</td><td class="mono">1.000</td>
+<td class="mono">0.991</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
+<td class="note">EI-001 sealed evaluation imported statically, so its audit truth lands in the main bundle. Gate G = 0.</td></tr><tr><th scope="row"><span class="mono">f16b8a6*</span><br><span class="muted">Mutation: guarded score drifts from spec</span></th>
+<td class="mono">0</td><td class="mono">0.951</td><td class="mono">0.911</td><td class="mono">0.900</td><td class="mono">1.000</td>
+<td class="mono">0.929</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
 <td class="note">Guarded safe-action score 100 → 60, so the shown result contradicts the spec. 3 fixture and 3 browser checks fail; fixture gate G = 0.</td></tr></tbody></table>
-<p class="foot" style="margin-top:10px">* Mutation applied to a throwaway worktree of main; not committed. A linear score would rate it 0.945; the gate blocks it.</p></section>
+<p class="foot" style="margin-top:10px">* Mutation applied to a throwaway worktree of the main revision; not committed. A linear score would still rate these above 0.9; the gate blocks them.</p></section>
 <div class="cols">
 <section class="sheet" aria-labelledby="h-gaps"><h2 id="h-gaps">Gaps and trade-offs</h2><ol>
-<li><strong>Not enforced.</strong> The repo has no CI, so FRS and the 47 browser checks only run when someone runs them.</li>
+<li><strong>Not enforced.</strong> The repo has no CI, so FRS and the 60 browser checks only run when someone runs them.</li>
 <li><strong>jsdom blind spot.</strong> The keyboard focus loss existed from the first commit to 2219a0f with every unit test green; only the real-browser check caught it. C must keep its browser half.</li>
-<li><strong>Branch coverage 89.5%</strong> is the weakest signal; least covered: the unknown-scenario branch in scenarioSource.ts (50%), ErrorCard and ComingNextCards (57%), ReceiptView (62.5%).</li>
-<li><strong>One scenario.</strong> S covers MAT-001 only; the two Coming-next scenarios have no fixtures, so S says nothing about extensibility.</li>
+<li><strong>Branch coverage 89.6%</strong> is the weakest signal; least covered: scenarioSource.ts (50%), ErrorCard.tsx (57.14%), ComingNextCards.tsx (62.5%), ReceiptView.tsx (62.5%).</li>
+<li><strong>Two scenarios.</strong> S and the browser checks cover MAT-001 and EI-001; Research validity is still a preview with no fixture.</li>
 <li><strong>Paraphrased claims.</strong> Agent claim sentences differ in wording from the playbook (for example “operating cycles”); verdicts, confidences, actions and scores match exactly. Claim text is not scored.</li>
-<li><strong>Performance at ceiling.</strong> 67.0 kB of 80 kB; P will not move until the bundle grows ~20%. Self-hosted fonts (woff2) are outside the budget.</li>
+<li><strong>Performance at ceiling.</strong> 69.6 kB of 80 kB; P will not move until the bundle grows ~20%. Self-hosted fonts (woff2) are outside the budget.</li>
 <li><strong>Redesign trade-off.</strong> Token conformance went 0 → 16/16 components and Q 0.61 → 0.95, at +1.3 kB gzip.</li>
 </ol></section>
 <section class="sheet" aria-labelledby="h-rec"><h2 id="h-rec">Recommendation</h2>
 <p style="margin-top:0">Use FRS as the <strong>merge and deploy gate</strong> for this repository: run it on every PR head and before every redeploy of this preview.</p>
 <ul><li>G = 0 or FRS &lt; 0.85: do not merge or deploy.</li>
 <li>0.85–0.95, or any browser check failing: merge only with a linked fix-forward issue.</li>
-<li>≥ 0.95 with 47/47: ship. Current main qualifies at 0.990.</li></ul>
-<p>Next lever: raise branch coverage (Q) and add the second scenario fixture so S measures more than one path.</p>
+<li>≥ 0.95 with 60/60: ship. Current main qualifies at 0.990.</li></ul>
+<p>Next lever: raise branch coverage (Q) and add the research-validity fixture.</p>
 <p class="foot">Measured on Node 20, Chrome via CDP at 1280×800 and 1440×900, against <span class="mono">vite preview</span> of each revision. Synthetic fixture only; no model, partner or sponsor involved.</p></section>
 </div>
 </main></body></html>
