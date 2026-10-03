@@ -75,6 +75,7 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
       run: () => dispatch({ type: 'START', runId: createRunId(), at: now() }),
       next: () => {
         if (!blocked) dispatch({ type: 'NEXT', source: 'manual', at: now() })
+        else if (state.autoplay) dispatch({ type: 'AUTOPLAY_OFF' })
       },
       back: () => dispatch({ type: 'BACK' }),
       select: (index: number) => dispatch({ type: 'SELECT', index }),

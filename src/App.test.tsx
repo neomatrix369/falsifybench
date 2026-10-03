@@ -130,6 +130,32 @@ describe('FalsifyBench guards', () => {
     expect(btn(/next step/i)).toHaveFocus()
   })
 
+  it('pauses auto-play when the held Next step is pressed while the sealed evaluation loads', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { mat001 } = await import('./data/mat001')
+    let release: (value: Awaited<ReturnType<typeof mat001.evaluation.unseal>>) => void = () => {}
+    const pending = { ...mat001, evaluation: { unseal: () => new Promise<Awaited<ReturnType<typeof mat001.evaluation.unseal>>>((r) => (release = r)) } }
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App deps={deps} source={{ loadScenario: async () => pending }} />)
+    await screen.findByRole('button', { name: /run benchmark/i })
+    await user.click(btn(/auto-play/i))
+    for (let i = 0; i < 2; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+    }
+    expect(screen.getByText(/stage 3 of 5/i)).toBeInTheDocument()
+    expect(btn(/next step/i)).toHaveAttribute('aria-disabled', 'true')
+    await user.click(btn(/next step/i))
+    expect(btn(/auto-play/i)).toHaveAttribute('aria-pressed', 'false')
+    await act(async () => {
+      release(await mat001.evaluation.unseal())
+      await vi.advanceTimersByTimeAsync(3000)
+    })
+    expect(screen.getByText(/stage 3 of 5/i)).toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
   it('refuses to run a scenario without synthetic provenance', async () => {
     const { mat001 } = await import('./data/mat001')
     const partner = { ...mat001, provenance: { ...mat001.provenance, status: 'partner_pending_validation' as const } }
