@@ -1,0 +1,86 @@
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from '../domain/stages'
+import { createReceipt, type BenchmarkReceipt, type Clock, type RunIdFactory } from '../domain/receipt'
+import { controlAvailability, initialWalkthroughState, walkthroughReducer } from '../domain/walkthrough'
+import type { Scenario, ScenarioEvaluation } from '../domain/types'
+
+export const AUTOPLAY_INTERVAL_MS = 3000
+
+export interface WalkthroughDeps {
+  clock: Clock
+  createRunId: RunIdFactory
+}
+
+export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
+  const [state, dispatch] = useReducer(walkthroughReducer, initialWalkthroughState)
+  const [evaluation, setEvaluation] = useState<ScenarioEvaluation | null>(null)
+  const [error, setError] = useState<Error | null>(null)
+  const { clock, createRunId } = deps
+  const now = useCallback(() => clock().toISOString(), [clock])
+
+  const needsEvaluation = state.reached >= AUDIT_STAGE_INDEX
+  useEffect(() => {
+    if (!needsEvaluation || evaluation) return
+    let cancelled = false
+    scenario.evaluation
+      .unseal()
+      .then((value) => {
+        if (!cancelled) setEvaluation(value)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err : new Error(String(err)))
+        dispatch({ type: 'AUTOPLAY_OFF' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [needsEvaluation, evaluation, scenario])
+
+  const awaitingEvaluation = state.cursor === state.reached && needsEvaluation && !evaluation
+  const blocked = awaitingEvaluation || error !== null
+
+  useEffect(() => {
+    if (!state.autoplay || blocked) return
+    const timer = window.setTimeout(() => dispatch({ type: 'NEXT', source: 'auto', at: now() }), AUTOPLAY_INTERVAL_MS)
+    return () => window.clearTimeout(timer)
+  }, [state.autoplay, state.cursor, blocked, now])
+
+  const receipt: BenchmarkReceipt | null = useMemo(() => {
+    if (state.reached < LAST_STAGE_INDEX || !evaluation || !state.runId || !state.startedAt) return null
+    return createReceipt({
+      scenario,
+      evaluation,
+      runId: state.runId,
+      startedAt: state.startedAt,
+      events: state.events,
+      mode: 'synthetic',
+      clock,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.reached, state.runId, evaluation, scenario])
+
+  const actions = useMemo(
+    () => ({
+      run: () => dispatch({ type: 'START', runId: createRunId(), at: now() }),
+      next: () => {
+        if (!blocked) dispatch({ type: 'NEXT', source: 'manual', at: now() })
+      },
+      back: () => dispatch({ type: 'BACK' }),
+      select: (index: number) => dispatch({ type: 'SELECT', index }),
+      toggleAutoplay: () =>
+        state.autoplay
+          ? dispatch({ type: 'AUTOPLAY_OFF' })
+          : dispatch({ type: 'AUTOPLAY_ON', runId: createRunId(), at: now() }),
+      reset: () => {
+        setError(null)
+        dispatch({ type: 'RESET' })
+      },
+    }),
+    [createRunId, now, state.autoplay, blocked],
+  )
+
+  const base = controlAvailability(state)
+  const controls = { ...base, canNext: base.canNext && !blocked, canAutoplay: base.canAutoplay && error === null }
+  return { state, evaluation, receipt, error, controls, actions }
+}
