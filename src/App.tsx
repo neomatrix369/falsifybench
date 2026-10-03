@@ -54,8 +54,8 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
     setFocusRequest((n) => n + 1)
   }, [actions])
 
-  // Keep keyboard focus off <body> when the focused control disables itself,
-  // including Next step while the sealed evaluation loads.
+  // Back / Next step keep focus while stepping. Only when the focused control
+  // disables itself (Back at Evidence, Next step at Receipt) does focus move to the stage heading.
   const stepControls = useRef({ canNext: controls.canNext, canBack: controls.canBack })
   useEffect(() => {
     const prev = stepControls.current

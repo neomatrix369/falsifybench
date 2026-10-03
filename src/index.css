@@ -86,7 +86,7 @@
     @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded px-3 py-2 text-body font-medium transition-colors duration-fast ease-out disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-primary text-primary-on hover:bg-primary-hover disabled:bg-sunken disabled:text-ink-3 disabled:ring-1 disabled:ring-inset disabled:ring-rule;
+    @apply btn bg-primary text-primary-on hover:bg-primary-hover disabled:bg-sunken disabled:text-ink-3 disabled:ring-1 disabled:ring-inset disabled:ring-rule aria-disabled:cursor-wait aria-disabled:bg-sunken aria-disabled:text-ink-3 aria-disabled:ring-1 aria-disabled:ring-inset aria-disabled:ring-rule;
   }
   .btn-secondary {
     @apply btn border border-rule-strong bg-surface text-ink hover:bg-sunken disabled:border-rule disabled:bg-transparent disabled:text-ink-3/70 disabled:hover:bg-transparent;

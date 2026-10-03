@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from '../domain/stages'
 import { createReceipt, type BenchmarkReceipt, type Clock, type RunIdFactory } from '../domain/receipt'
 import type { UnsealTiming } from '../domain/runLog'
-import { controlAvailability, initialWalkthroughState, walkthroughReducer } from '../domain/walkthrough'
+import { controlAvailability, initialWalkthroughState, walkthroughReducer, type ControlAvailability } from '../domain/walkthrough'
 import type { Scenario, ScenarioEvaluation } from '../domain/types'
 
 export const AUTOPLAY_INTERVAL_MS = 3000
@@ -11,6 +11,9 @@ export interface WalkthroughDeps {
   clock: Clock
   createRunId: RunIdFactory
 }
+
+/** `nextPending`: Next step is held (not disabled) while the sealed evaluation loads, so it keeps focus. */
+export type WalkthroughControls = ControlAvailability & { nextPending: boolean }
 
 export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
   const [state, dispatch] = useReducer(walkthroughReducer, initialWalkthroughState)
@@ -88,6 +91,11 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
   )
 
   const base = controlAvailability(state)
-  const controls = { ...base, canNext: base.canNext && !blocked, canAutoplay: base.canAutoplay && error === null }
+  const controls: WalkthroughControls = {
+    ...base,
+    canNext: base.canNext && !blocked,
+    canAutoplay: base.canAutoplay && error === null,
+    nextPending: base.canNext && awaitingEvaluation && error === null,
+  }
   return { state, evaluation, receipt, error, controls, actions, unseal }
 }

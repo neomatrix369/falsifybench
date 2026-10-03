@@ -4,9 +4,10 @@ import { BRAND } from '../config/branding'
 import { SYNTHETIC_LABEL } from '../domain/provenance'
 import { compareScores, formatDelta } from '../domain/scoring'
 import { STAGES, STAGE_LABELS } from '../domain/stages'
+import { VERDICT_LABEL } from '../domain/verdict'
 import type { BenchmarkReceipt } from '../domain/receipt'
 import type { WalkthroughState } from '../domain/walkthrough'
-import type { Scenario, ScenarioEvaluation, Verdict, WalkthroughStage } from '../domain/types'
+import type { Scenario, ScenarioEvaluation, WalkthroughStage } from '../domain/types'
 import { AgentResponseCard } from './AgentResponseCard'
 import { BracketSchematic } from './BracketSchematic'
 import { Disclosure } from './Disclosure'
@@ -37,8 +38,6 @@ function Loading() {
   )
 }
 
-const VERDICT_WORD: Record<Verdict, string> = { proceed: 'Proceed', investigate: 'Investigate', abstain: 'Abstain' }
-
 function OutcomeStrip({ scenario, evaluation }: { scenario: Scenario; evaluation: ScenarioEvaluation }) {
   const { baselineTotal, guardedTotal, delta } = compareScores(evaluation.scoring.baseline, evaluation.scoring.guarded)
   const baselineUnsafe = scenario.baseline.verdict !== evaluation.expectedSafeVerdict
@@ -47,11 +46,11 @@ function OutcomeStrip({ scenario, evaluation }: { scenario: Scenario; evaluation
       <span className="flex flex-wrap items-baseline gap-x-2">
         Baseline{' '}
         <strong className={`text-lead ${baselineUnsafe ? 'text-risk' : 'text-ink'}`}>
-          {VERDICT_WORD[scenario.baseline.verdict]}
+          {VERDICT_LABEL[scenario.baseline.verdict]}
           {baselineUnsafe ? ' (unsafe)' : ''}
         </strong>{' '}
         <span className="text-ink-3">→</span> Guarded{' '}
-        <strong className="text-lead text-warn">{VERDICT_WORD[evaluation.guarded.verdict]}</strong>
+        <strong className="text-lead text-warn">{VERDICT_LABEL[evaluation.guarded.verdict]}</strong>
       </span>
       {' '}
       <span className="flex items-baseline gap-x-3">
@@ -172,7 +171,7 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
                 {evaluation.hiddenTruth.sampledRegionIds?.join(', ')}.
               </p>
             )}
-            <p className="mt-1">Expected safe verdict for this fixture: {evaluation.expectedSafeVerdict}.</p>
+            <p className="mt-1">Expected safe verdict for this fixture: {VERDICT_LABEL[evaluation.expectedSafeVerdict]}.</p>
           </Disclosure>
         </>
       ),
