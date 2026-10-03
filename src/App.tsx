@@ -40,6 +40,22 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
     setFocusRequest((n) => n + 1)
   }, [actions])
 
+  // Keep keyboard focus off <body> when the pressed control disables itself.
+  const next = useCallback(() => {
+    actions.next()
+    if (state.cursor === LAST_STAGE_INDEX - 1) setFocusRequest((n) => n + 1)
+  }, [actions, state.cursor])
+
+  const back = useCallback(() => {
+    actions.back()
+    if (state.cursor === 1) setFocusRequest((n) => n + 1)
+  }, [actions, state.cursor])
+
+  const reset = useCallback(() => {
+    actions.reset()
+    setFocusRequest((n) => n + 1)
+  }, [actions])
+
   const openReceipt = useCallback(() => {
     if (state.reached === LAST_STAGE_INDEX) select(LAST_STAGE_INDEX)
   }, [select, state.reached])
@@ -54,10 +70,10 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
             state={state}
             controls={controls}
             onSelect={select}
-            onBack={actions.back}
-            onNext={actions.next}
+            onBack={back}
+            onNext={next}
             onToggleAutoplay={actions.toggleAutoplay}
-            onReset={actions.reset}
+            onReset={reset}
           />
           <ComingNextCards onReturnToActive={() => activeScenarioHeading.current?.focus()} />
           <UnavailableModesNote />

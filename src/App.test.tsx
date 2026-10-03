@@ -96,7 +96,7 @@ describe('FalsifyBench walkthrough', () => {
         await vi.advanceTimersByTimeAsync(3000)
       })
     }
-    await screen.findByRole('heading', { name: /benchmark receipt recorded/i })
+    expect(await screen.findByRole('heading', { name: /benchmark receipt recorded/i })).toBeInTheDocument()
     expect(btn(/auto-play/i)).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByText(/stage 5 of 5/i)).toBeInTheDocument()
   })
@@ -131,7 +131,7 @@ describe('FalsifyBench keyboard flow', () => {
     await user.click(btn(/run benchmark/i))
     expect(screen.getByRole('heading', { name: /five evidence records/i })).toHaveFocus()
     for (let i = 0; i < 4; i++) await user.click(await screen.findByRole('button', { name: /next step/i }))
-    await screen.findByRole('heading', { name: /benchmark receipt recorded/i })
+    expect(await screen.findByRole('heading', { name: /benchmark receipt recorded/i })).toHaveFocus()
     const receiptTab = screen.getByRole('tab', { name: /benchmark receipt/i })
     expect(receiptTab).toHaveAttribute('tabindex', '0')
     expect(within(screen.getByRole('region', { name: /^decision$/i })).getByText(/next action:/i)).toBeInTheDocument()

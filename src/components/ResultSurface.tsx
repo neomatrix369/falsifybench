@@ -44,10 +44,16 @@ const VERDICT_WORD: Record<Verdict, string> = { proceed: 'Proceed', investigate:
 
 function OutcomeStrip({ scenario, evaluation }: { scenario: Scenario; evaluation: ScenarioEvaluation }) {
   const { baselineTotal, guardedTotal, delta } = compareScores(evaluation.scoring.baseline, evaluation.scoring.guarded)
+  const baselineUnsafe = scenario.baseline.verdict !== evaluation.expectedSafeVerdict
   return (
     <p className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 text-sm text-slate-800">
       <span>
-        Baseline <strong className="text-red-700">{VERDICT_WORD[scenario.baseline.verdict]} (unsafe)</strong> → Guarded{' '}
+        Baseline{' '}
+        <strong className={baselineUnsafe ? 'text-red-700' : 'text-slate-800'}>
+          {VERDICT_WORD[scenario.baseline.verdict]}
+          {baselineUnsafe ? ' (unsafe)' : ''}
+        </strong>{' '}
+        → Guarded{' '}
         <strong className="text-amber-800">{VERDICT_WORD[evaluation.guarded.verdict]}</strong>
       </span>
       <span aria-hidden className="text-slate-300">|</span>
@@ -258,6 +264,8 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
           {FINAL_TABS.map((tab, tabIndex) => {
             const index = STAGES.indexOf(tab.stage)
             const selected = state.cursor === index
+            const anySelected = FINAL_TABS.some((t) => STAGES.indexOf(t.stage) === state.cursor)
+            const focusable = selected || (!anySelected && tabIndex === 0)
             return (
               <button
                 key={tab.stage}
@@ -266,7 +274,7 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
                 ref={(el) => {
                   tabRefs.current[tabIndex] = el
                 }}
-                tabIndex={selected ? 0 : -1}
+                tabIndex={focusable ? 0 : -1}
                 aria-selected={selected}
                 onClick={() => onSelect(index)}
                 className={`-mb-px rounded-t-md border-b-2 px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
