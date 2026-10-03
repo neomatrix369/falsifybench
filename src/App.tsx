@@ -63,7 +63,7 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
   return (
     <>
       <Header onReceiptAnchor={openReceipt} />
-      <main className="mx-auto grid max-w-[1440px] grid-cols-[minmax(360px,35fr)_65fr] items-start gap-6 px-6 py-6">
+      <main className="mx-auto grid max-w-page grid-cols-[minmax(360px,35fr)_65fr] items-start gap-6 px-6 py-6">
         <div className="space-y-4">
           <ScenarioCard ref={activeScenarioHeading} scenario={scenario} canRun={controls.canRun} onRun={run} />
           <StageTrace
@@ -137,6 +137,6 @@ export default function App({
       </div>
     )
   }
-  if (!scenario) return <p className="p-10 text-sm text-slate-500">Loading MAT-001…</p>
+  if (!scenario) return <p className="p-10 text-body text-ink-3">Loading MAT-001…</p>
   return <Bench scenario={scenario} deps={deps} />
 }

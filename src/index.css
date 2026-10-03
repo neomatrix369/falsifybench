@@ -1,10 +1,47 @@
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource/red-hat-mono/400.css';
+@import '@fontsource/red-hat-mono/500.css';
+@import '@fontsource/red-hat-mono/600.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens — the only place colour values live. See DESIGN.md. */
+:root {
+  --ground: 236 237 233;
+  --surface: 250 250 247;
+  --sunken: 242 242 238;
+  --ink: 22 25 28;
+  --ink-2: 62 68 74;
+  --ink-3: 92 99 106;
+  --rule: 213 215 209;
+  --rule-strong: 133 138 132;
+  --primary: 36 71 154;
+  --primary-hover: 27 56 120;
+  --primary-tint: 228 233 245;
+  --on-primary: 255 255 255;
+  --focus: 59 111 224;
+  --ok: 36 101 58;
+  --ok-tint: 226 239 228;
+  --ok-line: 63 138 86;
+  --warn: 122 74 0;
+  --warn-tint: 250 237 207;
+  --warn-line: 181 122 16;
+  --risk: 158 42 32;
+  --risk-tint: 247 227 224;
+  --risk-line: 190 74 62;
+  --shell: 28 32 36;
+  --shell-ink: 241 242 238;
+  --shell-muted: 169 176 182;
+  --shell-line: 53 59 65;
+  color-scheme: light;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
+    font-variant-numeric: tabular-nums;
   }
   @media (prefers-reduced-motion: reduce) {
     html {
@@ -18,24 +55,73 @@
     }
   }
   body {
-    @apply bg-slate-100 text-slate-800 antialiased;
+    @apply bg-ground font-sans text-body text-ink antialiased;
+    font-stretch: 100%;
+  }
+  ::selection {
+    background: rgb(var(--primary) / 0.18);
+    color: rgb(var(--ink));
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  * {
+    scrollbar-color: rgb(var(--rule-strong)) transparent;
+  }
+  pre {
+    scrollbar-color: rgb(var(--shell-muted)) rgb(var(--shell));
   }
 }
 
 @layer components {
-  .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  /* A sheet is the one container: a ruled paper surface on the ground. */
+  .sheet {
+    @apply rounded-md border border-rule bg-surface shadow-sheet;
   }
   .btn {
-    @apply inline-flex items-center whitespace-nowrap justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45;
+    @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded px-3 py-2 text-body font-medium transition-colors duration-fast ease-out disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 disabled:hover:bg-indigo-600;
+    @apply btn bg-primary text-primary-on hover:bg-primary-hover disabled:bg-sunken disabled:text-ink-3 disabled:ring-1 disabled:ring-inset disabled:ring-rule;
   }
   .btn-secondary {
-    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:hover:bg-white;
+    @apply btn border border-rule-strong bg-surface text-ink hover:bg-sunken disabled:border-rule disabled:bg-transparent disabled:text-ink-3/70 disabled:hover:bg-transparent;
   }
-  .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+  .label {
+    @apply text-meta font-medium text-ink-3;
+  }
+  .ref {
+    @apply font-mono text-meta text-ink-3;
+  }
+  .wordmark {
+    font-stretch: 118%;
+  }
+  .wide {
+    font-stretch: 108%;
+  }
+  .hatch-warn {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(var(--warn-line)) 0 2px,
+      rgb(var(--warn-tint)) 2px 6px
+    );
+  }
+}
+
+@layer utilities {
+  @keyframes reveal-sweep {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+  .animate-reveal {
+    animation: reveal-sweep 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 }

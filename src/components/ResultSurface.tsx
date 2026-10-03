@@ -1,4 +1,4 @@
-import { Info, LoaderCircle, ScanSearch } from 'lucide-react'
+import { LoaderCircle, ScanSearch, ShieldCheck } from 'lucide-react'
 import { forwardRef, useRef, type ReactNode } from 'react'
 import { BRAND } from '../config/branding'
 import { SYNTHETIC_LABEL } from '../domain/provenance'
@@ -12,7 +12,6 @@ import { BracketSchematic } from './BracketSchematic'
 import { Disclosure } from './Disclosure'
 import { ReceiptView } from './ReceiptView'
 import { ScoreCard } from './ScoreCard'
-import { StatusPill } from './StatusPill'
 
 const FINAL_TABS: { label: string; stage: WalkthroughStage }[] = [
   { label: 'Verdict', stage: 'guarded' },
@@ -22,19 +21,16 @@ const FINAL_TABS: { label: string; stage: WalkthroughStage }[] = [
 
 function Why({ children }: { children: ReactNode }) {
   return (
-    <div className="flex gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
-      <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
-      <p>
-        <span className="font-semibold text-slate-800">Why this happened: </span>
-        {children}
-      </p>
-    </div>
+    <p className="border-t border-rule pt-3 text-body text-ink-2">
+      <span className="font-semibold text-ink">Why this happened: </span>
+      {children}
+    </p>
   )
 }
 
 function Loading() {
   return (
-    <p role="status" className="flex items-center gap-2 text-sm text-slate-500">
+    <p role="status" className="flex items-center gap-2 text-body text-ink-3">
       <LoaderCircle aria-hidden className="h-4 w-4 animate-spin" /> Unsealing audit fixture…
     </p>
   )
@@ -46,19 +42,23 @@ function OutcomeStrip({ scenario, evaluation }: { scenario: Scenario; evaluation
   const { baselineTotal, guardedTotal, delta } = compareScores(evaluation.scoring.baseline, evaluation.scoring.guarded)
   const baselineUnsafe = scenario.baseline.verdict !== evaluation.expectedSafeVerdict
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 text-sm text-slate-800">
-      <span>
+    <p className="flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-y-2 border-ink py-3 text-body text-ink-2">
+      <span className="flex flex-wrap items-baseline gap-x-2">
         Baseline{' '}
-        <strong className={baselineUnsafe ? 'text-red-700' : 'text-slate-800'}>
+        <strong className={`text-lead ${baselineUnsafe ? 'text-risk' : 'text-ink'}`}>
           {VERDICT_WORD[scenario.baseline.verdict]}
           {baselineUnsafe ? ' (unsafe)' : ''}
         </strong>{' '}
-        → Guarded{' '}
-        <strong className="text-amber-800">{VERDICT_WORD[evaluation.guarded.verdict]}</strong>
+        <span className="text-ink-3">→</span> Guarded{' '}
+        <strong className="text-lead text-warn">{VERDICT_WORD[evaluation.guarded.verdict]}</strong>
       </span>
-      <span aria-hidden className="text-slate-300">|</span>
-      <span>
-        Score {baselineTotal} → {guardedTotal} <strong className="text-emerald-700">({formatDelta(delta)})</strong>
+      {' '}
+      <span className="flex items-baseline gap-x-3">
+        <span className="label">Score</span>{' '}
+        <span className="font-mono text-reading text-ink-3">{baselineTotal}</span>{' '}
+        <span className="text-title text-ink-3">→</span>{' '}
+        <span className="font-mono text-reading font-semibold text-ink">{guardedTotal}</span>{' '}
+        <strong className="font-mono text-title text-ok">({formatDelta(delta)})</strong>
       </span>
     </p>
   )
@@ -75,29 +75,32 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
     headline: () => 'Five evidence records loaded for bracket B-17',
     body: ({ scenario }) => (
       <>
-        <p className="text-sm text-slate-700">
+        <p className="max-w-[72ch] text-body text-ink-2">
           This is everything the agents get to see: inspection readings, imaging, the alloy limit, maintenance history and a
           coverage map. At a glance, the bracket looks healthy.
         </p>
-        <table className="w-full text-sm">
+        <table className="w-full text-body">
           <caption className="caption-top pb-1 text-left">
             <span className="sr-only">Visible evidence, </span>
-            <StatusPill tone="green">{SYNTHETIC_LABEL}</StatusPill>
+            <span className="inline-flex items-center gap-1 text-meta font-medium text-ink-2">
+              <ShieldCheck aria-hidden className="h-3.5 w-3.5 text-ok" />
+              {SYNTHETIC_LABEL}
+            </span>
           </caption>
           <thead>
-            <tr className="text-left text-xs text-slate-500">
+            <tr className="border-y border-rule text-left text-meta text-ink-3">
               <th scope="col" className="py-1.5 font-medium">Evidence</th>
               <th scope="col" className="py-1.5 font-medium">Visible finding</th>
             </tr>
           </thead>
           <tbody>
             {scenario.evidence.map((item) => (
-              <tr key={item.id} className="border-t border-slate-100 align-top">
+              <tr key={item.id} className="border-b border-rule align-top">
                 <th scope="row" className="py-2 pr-3 text-left font-normal">
-                  <span className="block font-mono text-xs text-slate-500">{item.id}</span>
-                  <span className="font-medium text-slate-800">{item.title}</span>
+                  <span className="block font-mono text-meta text-ink-3">{item.id}</span>
+                  <span className="font-medium text-ink">{item.title}</span>
                 </th>
-                <td className="py-2 pr-3 text-slate-700">{item.finding}</td>
+                <td className="py-2 pr-3 text-ink-2">{item.finding}</td>
               </tr>
             ))}
           </tbody>
@@ -115,7 +118,7 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
     headline: () => 'Baseline agent recommends approval with 92% confidence',
     body: ({ scenario }) => (
       <>
-        <p className="text-sm text-slate-700">
+        <p className="max-w-[72ch] text-body text-ink-2">
           The baseline agent reads the same evidence and says the bracket can run another 2,000 cycles. Its reasoning sounds
           sensible — but confidence is not the same as sufficient evidence.
         </p>
@@ -135,17 +138,17 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
         <Loading />
       ) : (
         <>
-          <p className="text-sm text-slate-700">
+          <p className="max-w-[72ch] text-body text-ink-2">
             The falsification check asks: <em>what evidence would prove the baseline wrong, and was it collected?</em> The
             answer is no.
           </p>
           <ul className="space-y-2">
             {evaluation.findings.map((finding) => (
-              <li key={finding.id} className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm">
-                <ScanSearch aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+              <li key={finding.id} className="flex gap-3 rounded-sm border border-warn-line/50 bg-warn-tint/60 px-3 py-2 text-body">
+                <ScanSearch aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warn" />
                 <div>
-                  <p className="font-medium text-slate-800">{finding.statement}</p>
-                  <p className="mt-0.5 font-mono text-[11px] text-slate-500">{finding.evidenceIds.join(' · ')}</p>
+                  <p className="font-medium text-ink">{finding.statement}</p>
+                  <p className="mt-0.5 font-mono text-meta text-ink-2">{finding.evidenceIds.join(' · ')}</p>
                 </div>
               </li>
             ))}
@@ -170,12 +173,12 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
         <Loading />
       ) : (
         <>
-          <p className="text-sm text-slate-700">
+          <p className="max-w-[72ch] text-body text-ink-2">
             With the evidence guardrail, the agent declines the release and asks for the one test that could falsify the
             approval: targeted ultrasonic inspection of R4.
           </p>
           <OutcomeStrip scenario={scenario} evaluation={evaluation} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-6">
             <AgentResponseCard response={scenario.baseline} unsafe />
             <AgentResponseCard response={evaluation.guarded} emphasis />
           </div>
@@ -195,7 +198,7 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
         <Loading />
       ) : (
         <>
-          <p className="text-sm text-slate-700">
+          <p className="max-w-[72ch] text-body text-ink-2">
             A reproducible record of this run: what was shown, in which order, and how each path scored.
           </p>
           <ReceiptView receipt={receipt} />
@@ -218,24 +221,28 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   if (state.status === 'idle') {
     return (
-      <section aria-labelledby="result-heading" className="card p-8">
-        <p className="eyebrow">Ready</p>
-        <h2 id="result-heading" ref={headingRef} tabIndex={-1} className="mt-1 text-2xl font-semibold text-slate-900 focus:outline-none">
+      <section aria-labelledby="result-heading" className="sheet">
+        <div className="border-b border-rule px-6 py-2">
+          <p className="label">Ready</p>
+        </div>
+        <div className="px-6 pb-7 pt-5">
+        <h2 id="result-heading" ref={headingRef} tabIndex={-1} className="wide max-w-[30ch] text-display font-semibold text-ink focus:outline-none">
           Is this agent safe to release into a reliability workflow?
         </h2>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">{BRAND.claim}</p>
-        <ol className="mt-6 grid grid-cols-5 gap-2 text-xs">
+        <p className="mt-3 max-w-[68ch] text-lead text-ink-2">{BRAND.claim}</p>
+        <ol className="mt-7 grid grid-cols-5 border-t-2 border-ink text-body">
           {STAGES.map((stage, i) => (
-            <li key={stage} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-              <span className="font-mono text-slate-400">{i + 1}</span>
-              <p className="font-medium text-slate-700">{STAGE_LABELS[stage]}</p>
+            <li key={stage} className="border-l border-rule px-3 pb-1 pt-2 first:border-l-0 first:pl-0">
+              <span className="font-mono text-meta text-ink-3">{i + 1}</span>
+              <p className="font-medium text-ink">{STAGE_LABELS[stage]}</p>
             </li>
           ))}
         </ol>
-        <p className="mt-6 text-sm text-slate-600">
-          Press <span className="font-semibold text-indigo-700">Run benchmark</span> to step through MAT-001. All data is{' '}
+        <p className="mt-7 text-body text-ink-2">
+          Press <span className="font-semibold text-primary">Run benchmark</span> to step through MAT-001. All data is{' '}
           <span className="font-medium">{SYNTHETIC_LABEL}</span>.
         </p>
+        </div>
       </section>
     )
   }
@@ -245,12 +252,12 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
   const props = { scenario, evaluation, receipt }
 
   return (
-    <section aria-labelledby="result-heading" className="card">
+    <section aria-labelledby="result-heading" className="sheet">
       {state.status === 'complete' && (
         <div
           role="tablist"
           aria-label="Final results"
-          className="flex gap-1 border-b border-slate-200 px-4 pt-3"
+          className="flex gap-1 border-b border-rule px-4 pt-2"
           onKeyDown={(e) => {
             if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
             e.preventDefault()
@@ -277,8 +284,8 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
                 tabIndex={focusable ? 0 : -1}
                 aria-selected={selected}
                 onClick={() => onSelect(index)}
-                className={`-mb-px rounded-t-md border-b-2 px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                  selected ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                className={`-mb-px border-b-2 px-3 py-2 text-body font-medium transition-colors duration-fast ${
+                  selected ? 'border-primary text-ink' : 'border-transparent text-ink-3 hover:border-rule-strong hover:text-ink'
                 }`}
               >
                 {tab.label}
@@ -287,12 +294,12 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
           })}
         </div>
       )}
-      <div className="space-y-4 p-6" role={state.status === 'complete' ? 'tabpanel' : undefined}>
+      <div className="space-y-5 px-6 pb-6 pt-4" role={state.status === 'complete' ? 'tabpanel' : undefined}>
         <div>
-          <p className="eyebrow">
+          <p className="ref">
             Stage {state.cursor + 1} · {STAGE_LABELS[stage]}
           </p>
-          <h2 id="result-heading" ref={headingRef} tabIndex={-1} className="mt-1 text-xl font-semibold text-slate-900 focus:outline-none">
+          <h2 id="result-heading" ref={headingRef} tabIndex={-1} className="wide mt-1 text-display font-semibold text-ink focus:outline-none">
             {panel.headline(props)}
           </h2>
         </div>

@@ -1,42 +1,36 @@
-import { FlaskConical, ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import { BRAND } from '../config/branding'
 import { SYNTHETIC_LABEL } from '../domain/provenance'
 import { DataModeSelector } from './DataModeSelector'
-import { StatusPill } from './StatusPill'
+
+const NAV_LINK =
+  'whitespace-nowrap rounded-sm px-2 py-1 text-shell-muted underline-offset-4 transition-colors duration-fast hover:text-shell-ink hover:underline'
 
 export function Header({ onReceiptAnchor }: { onReceiptAnchor: () => void }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-[1440px] items-center gap-6 px-6 py-3">
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
-            <FlaskConical aria-hidden className="h-4 w-4" />
-          </span>
-          <div className="leading-tight">
-            <p className="text-base font-semibold text-slate-900">{BRAND.name}</p>
-            <p className="text-[11px] text-slate-500">{BRAND.tagline}</p>
+    <header className="sticky top-0 z-20">
+      <div className="bg-shell text-shell-ink">
+        <div className="mx-auto flex h-12 max-w-page items-center gap-8 px-6">
+          <div className="flex items-baseline gap-3">
+            <p className="wordmark text-title font-semibold tracking-tight">{BRAND.name}</p>
+            <p className="text-meta text-shell-muted">{BRAND.tagline}</p>
           </div>
-        </div>
-        <nav aria-label="Page sections" className="flex items-center gap-1 text-sm">
-          <a href="#scenario-previews" className="whitespace-nowrap rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100 hover:text-slate-900">
-            Scenario previews
-          </a>
-          <a
-            href="#current-receipt"
-            onClick={onReceiptAnchor}
-            className="whitespace-nowrap rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          >
-            Current receipt
-          </a>
-        </nav>
-        <div className="ml-auto flex items-center">
-          <StatusPill tone="green" icon={<ShieldCheck aria-hidden className="h-3 w-3" />}>
+          <nav aria-label="Page sections" className="flex items-center gap-1 text-body">
+            <a href="#scenario-previews" className={NAV_LINK}>
+              Scenario previews
+            </a>
+            <a href="#current-receipt" onClick={onReceiptAnchor} className={NAV_LINK}>
+              Current receipt
+            </a>
+          </nav>
+          <p className="ml-auto inline-flex items-center gap-1.5 rounded-sm border border-shell-line px-2 py-0.5 text-meta font-medium text-shell-ink">
+            <ShieldCheck aria-hidden className="h-3.5 w-3.5 text-ok-line" />
             {SYNTHETIC_LABEL}
-          </StatusPill>
+          </p>
         </div>
       </div>
-      <div className="border-t border-slate-100 bg-slate-50/80">
-        <div className="mx-auto flex max-w-[1440px] items-center px-6 py-1.5">
+      <div className="border-b border-rule bg-sunken">
+        <div className="mx-auto flex max-w-page items-center px-6 py-1.5">
           <DataModeSelector />
         </div>
       </div>

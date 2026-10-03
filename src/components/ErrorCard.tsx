@@ -3,15 +3,15 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 
 export function ErrorCard({ message, onReset }: { message: string; onReset: () => void }) {
   return (
-    <div role="alert" className="card border-red-200 p-6">
-      <div className="flex items-center gap-2 text-red-800">
+    <div role="alert" className="sheet border-t-4 border-t-risk-line p-6">
+      <div className="flex items-center gap-2 text-risk">
         <TriangleAlert aria-hidden className="h-5 w-5" />
-        <h2 className="text-base font-semibold">The walkthrough hit an unexpected error</h2>
+        <h2 className="text-title font-semibold">The walkthrough hit an unexpected error</h2>
       </div>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-2 text-body text-ink-2">
         No receipt was recorded and this run is not marked complete. Reset to start a fresh, deterministic run.
       </p>
-      <p className="mt-2 font-mono text-xs text-slate-500">{message}</p>
+      <p className="mt-2 font-mono text-meta text-ink-3">{message}</p>
       <button type="button" className="btn-primary mt-4" onClick={onReset}>
         <RotateCcw aria-hidden className="h-4 w-4" /> Reset walkthrough
       </button>

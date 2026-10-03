@@ -2,12 +2,11 @@ import { ShieldCheck, TrendingUp } from 'lucide-react'
 import { METRIC_KEYS, METRIC_LABELS, compareScores, formatDelta } from '../domain/scoring'
 import { SCRIPTED_FIXTURE_LABEL } from '../domain/provenance'
 import type { ScenarioEvaluation } from '../domain/types'
-import { StatusPill } from './StatusPill'
 
-function Bar({ value, tone }: { value: number; tone: 'slate' | 'indigo' }) {
+function Bar({ value, tone }: { value: number; tone: 'baseline' | 'guarded' }) {
   return (
-    <div className="h-1.5 w-full rounded-full bg-slate-100" aria-hidden>
-      <div className={`h-1.5 rounded-full ${tone === 'indigo' ? 'bg-indigo-500' : 'bg-slate-400'}`} style={{ width: `${value}%` }} />
+    <div className="h-1.5 w-full bg-sunken ring-1 ring-inset ring-rule" aria-hidden>
+      <div className={`h-1.5 ${tone === 'guarded' ? 'bg-primary' : 'bg-rule-strong'}`} style={{ width: `${value}%` }} />
     </div>
   )
 }
@@ -16,56 +15,57 @@ export function ScoreCard({ evaluation }: { evaluation: ScenarioEvaluation }) {
   const { baseline, guarded, rubricVersion } = evaluation.scoring
   const { baselineTotal, guardedTotal, delta } = compareScores(baseline, guarded)
   return (
-    <section aria-labelledby="scorecard-title" className="rounded-lg border border-slate-200">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
-        <h3 id="scorecard-title" className="text-sm font-semibold text-slate-800">
-          Benchmark scorecard <span className="font-normal text-slate-500">· {rubricVersion}</span>
+    <section aria-labelledby="scorecard-title" className="border-t-2 border-ink">
+      <div className="flex items-baseline justify-between py-2">
+        <h3 id="scorecard-title" className="text-body font-semibold text-ink">
+          Benchmark scorecard <span className="font-mono font-normal text-ink-3">· {rubricVersion}</span>
         </h3>
-        <StatusPill>{SCRIPTED_FIXTURE_LABEL}</StatusPill>
+        <p className="label">{SCRIPTED_FIXTURE_LABEL}</p>
       </div>
-      <table className="w-full text-sm">
+      <table className="w-full text-body">
         <caption className="sr-only">Baseline versus guarded scores, 0 to 100</caption>
         <thead>
-          <tr className="text-left text-xs text-slate-500">
-            <th scope="col" className="px-4 py-2 font-medium">Metric</th>
-            <th scope="col" className="w-[30%] px-4 py-2 font-medium">Baseline</th>
-            <th scope="col" className="w-[30%] px-4 py-2 font-medium">Guarded</th>
+          <tr className="border-y border-rule text-left text-meta text-ink-3">
+            <th scope="col" className="py-1.5 pr-4 font-medium">Metric</th>
+            <th scope="col" className="w-[30%] px-4 py-1.5 font-medium">Baseline</th>
+            <th scope="col" className="w-[30%] py-1.5 pl-4 font-medium">Guarded</th>
           </tr>
         </thead>
         <tbody>
           {METRIC_KEYS.map((key) => (
-            <tr key={key} className="border-t border-slate-100">
-              <th scope="row" className="px-4 py-2 text-left font-normal text-slate-700">{METRIC_LABELS[key]}</th>
-              <td className="px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-8 text-right font-mono tabular-nums">{baseline[key]}</span>
-                  <Bar value={baseline[key]} tone="slate" />
+            <tr key={key} className="border-b border-rule">
+              <th scope="row" className="py-1.5 pr-4 text-left font-normal text-ink-2">{METRIC_LABELS[key]}</th>
+              <td className="px-4 py-1.5">
+                <div className="flex items-center gap-3">
+                  <span className="w-7 text-right font-mono">{baseline[key]}</span>
+                  <Bar value={baseline[key]} tone="baseline" />
                 </div>
               </td>
-              <td className="px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-8 text-right font-mono tabular-nums">{guarded[key]}</span>
-                  <Bar value={guarded[key]} tone="indigo" />
+              <td className="py-1.5 pl-4">
+                <div className="flex items-center gap-3">
+                  <span className="w-7 text-right font-mono">{guarded[key]}</span>
+                  <Bar value={guarded[key]} tone="guarded" />
                 </div>
               </td>
             </tr>
           ))}
-          <tr className="border-t-2 border-slate-200 font-semibold">
-            <th scope="row" className="px-4 py-2 text-left">Total</th>
-            <td className="px-4 py-2 font-mono text-lg tabular-nums">{baselineTotal}</td>
-            <td className="px-4 py-2 font-mono text-lg tabular-nums text-indigo-700">{guardedTotal}</td>
+          <tr className="border-b-2 border-ink font-semibold">
+            <th scope="row" className="py-2 pr-4 text-left">Total</th>
+            <td className="px-4 py-2 font-mono text-title">{baselineTotal}</td>
+            <td className="py-2 pl-4 font-mono text-title text-primary">{guardedTotal}</td>
           </tr>
         </tbody>
       </table>
-      <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 bg-emerald-50/50 px-4 py-3">
-        <span className="inline-flex items-center gap-1.5 text-base font-semibold text-emerald-800">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 py-2.5">
+        <span className="inline-flex items-center gap-1.5 text-lead font-semibold text-ok">
           <TrendingUp aria-hidden className="h-4 w-4" />
           {formatDelta(delta)} release-readiness points
         </span>
-        <StatusPill tone="green" icon={<ShieldCheck aria-hidden className="h-3 w-3" />}>
+        <span className="inline-flex items-center gap-1 text-meta font-semibold text-ok">
+          <ShieldCheck aria-hidden className="h-3.5 w-3.5" />
           Unsafe approval prevented
-        </StatusPill>
-        <span className="ml-auto text-[11px] text-slate-500">Total = round(mean of four metrics). Benchmark demonstration, not a validated scientific result.</span>
+        </span>
+        <span className="ml-auto text-meta text-ink-3">Total = round(mean of four metrics). Benchmark demonstration, not a validated scientific result.</span>
       </div>
     </section>
   )
