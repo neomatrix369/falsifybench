@@ -306,7 +306,7 @@ If an unexpected rendering or state error occurs, show an honest recoverable err
 
 1. Inspect the repository, branch policy, app/tooling, and configured deployment route.
 2. Create a feature branch. Do not disturb unrelated work.
-3. Run the repository's install, build, lint, and test commands where available. Keep each command under five minutes; record pre-existing failures separately.
+3. Run the repository's install, build, lint, and test commands where available. Keep each command under five minutes; record pre-existing failures separately. Install with `npm ci`, not `npm install`; `npm run dev` runs a `predev` check (`tools/check-deps.mjs`) that fails fast when `node_modules` is incomplete — fix it with `rm -rf node_modules && npm ci`.
 4. Decide whether to extend the existing frontend or add the minimal Vite foundation.
 
 ### Minutes 10–25: functional walking skeleton
