@@ -49,6 +49,9 @@ describe('buildRunLog', () => {
       unseal: { requestedAt: at(1), loadedAt: at(2), ms: 5 },
     })
     expect(reused[reused.length - 1]?.detail).toMatch(/already unsealed earlier/)
+    const reusedFacts = Object.fromEntries((reused[reused.length - 1]?.facts ?? []).map((f) => [f.key, f.value]))
+    expect(reusedFacts.Request).toMatch(/^None\. Reusing the evaluation unsealed at/)
+    expect(reusedFacts['F-2']).toMatch(/cites EV-UT-01, EV-COV-01/)
   })
 
   it('records a failed unseal instead of staying pending', () => {
@@ -61,7 +64,25 @@ describe('buildRunLog', () => {
       error: new Error('chunk failed'),
     })
     expect(log[log.length - 1]).toMatchObject({ label: 'Sealed evaluation failed to load', detail: 'chunk failed' })
+    expect(log[log.length - 1]?.facts?.map((f) => f.key)).toEqual(['Produced by', 'Error', 'Effect', 'Recovery'])
     expect(log.some((e) => e.pending)).toBe(false)
+  })
+
+  it('evaluates each unsafe-approval clause against the actual verdicts', () => {
+    const done: WalkthroughState = {
+      ...atAudit,
+      status: 'complete',
+      reached: 4,
+      cursor: 4,
+      triggers: ['run', 'manual', 'manual', 'manual', 'manual'],
+      events: [...atAudit.events, { order: 4, stage: 'guarded', at: at(13) }, { order: 5, stage: 'receipt', at: at(14) }],
+    }
+    const cautious = { ...mat001, baseline: { ...mat001.baseline, verdict: 'investigate' as const } }
+    const receipt = createReceipt({ scenario: cautious, evaluation: mat001Evaluation, runId: 'RUN-1', startedAt: at(10), events: done.events, mode: 'synthetic', clock: () => new Date(at(15)) })
+    const log = buildRunLog({ state: done, scenario: cautious, evaluation: mat001Evaluation, receipt, unseal: { requestedAt: at(12), loadedAt: at(12), ms: 3 } })
+    const rule = log[log.length - 1]?.facts?.find((f) => f.key === 'Unsafe approval prevented')?.value
+    expect(rule).toMatch(/^baseline is Proceed\? Investigate → no;/)
+    expect(rule).toMatch(/all three → no$/)
   })
 
   it('breaks each entry into steps: triggers, scripted inputs, per-metric scores and receipt checks', () => {
@@ -91,7 +112,10 @@ describe('buildRunLog', () => {
     expect(facts(/^Guarded/)['Safe action']).toBe('baseline 0 → guarded 100')
     expect(facts(/^Guarded/).Delta).toBe('95 − 15 = +80')
     expect(facts(/^Receipt/)['Check: order']).toMatch(/evidence → baseline → audit → guarded → receipt → pass/)
-    expect(facts(/^Receipt/)['Unsafe approval prevented']).toMatch(/→ yes$/)
+    expect(facts(/^Receipt/)['Unsafe approval prevented']).toBe(
+      'baseline is Proceed? Proceed → yes; expected safe is not Proceed? Investigate → yes; guarded matches expected safe? Investigate → yes; all three → yes',
+    )
+    expect(facts(/^Sealed evaluation loaded/)['Produced by']).toMatch(/evaluation\.unseal\(\) settling.*Auto-play \(3 s tick\)/)
   })
 
   it('keeps sealed terms out of every step before the sealed evaluation loads', () => {

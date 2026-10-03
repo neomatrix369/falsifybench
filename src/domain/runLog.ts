@@ -117,17 +117,35 @@ export function buildRunLog(input: {
           detail: cached
             ? 'Sealed evaluation already unsealed earlier in this session; reusing it'
             : 'Unsealing the sealed evaluation (a separate module fetched only at this stage)',
-          facts: [
-            trigger,
-            { key: 'Request', value: `evaluation.unseal() for ${scenario.id}: dynamic import() of a separately bundled module` },
-            { key: 'Why sealed', value: 'The grading truth is kept out of the page, DOM and accessibility tree until now, so nobody can read it ahead of the baseline' },
-            { key: 'Where to see it', value: 'DevTools › Network shows the module as its own JS chunk' },
-            ...(unseal ? [{ key: 'Requested at', value: unseal.requestedAt }] : []),
-            { key: 'Next step held', value: evaluation || input.error ? 'No' : 'Yes, until the module arrives' },
-          ],
+          facts: cached
+            ? [
+                trigger,
+                { key: 'Request', value: `None. Reusing the evaluation unsealed at ${unseal.loadedAt}; no new import()` },
+                ...(evaluation ? auditFacts(evaluation) : []),
+              ]
+            : [
+                trigger,
+                { key: 'Request', value: `evaluation.unseal() for ${scenario.id}: dynamic import() of a separately bundled module` },
+                { key: 'Why sealed', value: 'The grading truth is kept out of the page, DOM and accessibility tree until now, so nobody can read it ahead of the baseline' },
+                { key: 'Where to see it', value: 'DevTools › Network shows the module as its own JS chunk' },
+                ...(unseal ? [{ key: 'Requested at', value: unseal.requestedAt }] : []),
+                { key: 'Next step held', value: evaluation || input.error ? 'No' : 'Yes, until the module arrives' },
+              ],
         })
+        const producedBy: RunLogFact = { key: 'Produced by', value: `evaluation.unseal() settling, requested by Audit started (${TRIGGER_LABEL[state.triggers[index] ?? 'manual']})` }
         if (!evaluation && input.error) {
-          log.push({ at: null, stage: 'audit', label: 'Sealed evaluation failed to load', detail: input.error.message })
+          log.push({
+            at: null,
+            stage: 'audit',
+            label: 'Sealed evaluation failed to load',
+            detail: input.error.message,
+            facts: [
+              producedBy,
+              { key: 'Error', value: `${input.error.name}: ${input.error.message}` },
+              { key: 'Effect', value: 'Run stopped at Evidence audit; auto-play is off and no receipt is recorded' },
+              { key: 'Recovery', value: 'Reset, then run again to retry the import' },
+            ],
+          })
         } else if (!evaluation) {
           log.push({ at: null, stage: 'audit', label: 'Waiting for sealed evaluation…', detail: '', pending: true })
         } else if (!cached) {
@@ -136,7 +154,7 @@ export function buildRunLog(input: {
             stage: 'audit',
             label: 'Sealed evaluation loaded',
             detail: `${unseal?.ms ?? 0} ms · ${evaluation.findings.length} findings checked against ${new Set(evaluation.findings.flatMap((f) => f.evidenceIds)).size} evidence records`,
-            facts: auditFacts(evaluation),
+            facts: [producedBy, ...auditFacts(evaluation)],
           })
         }
         break
@@ -194,6 +212,7 @@ function auditFacts(evaluation: ScenarioEvaluation): RunLogFact[] {
 function receiptFacts(trigger: RunLogFact, receipt: BenchmarkReceipt): RunLogFact[] {
   const order = receipt.stageEvents.map((e) => e.stage)
   const ordered = order.every((s, i) => s === STAGES[i])
+  const { baseline, guarded, expectedSafe } = receipt.verdicts
   return [
     trigger,
     { key: 'Check: mode', value: `${receipt.mode} → pass (only synthetic runs can be recorded in this PoC)` },
@@ -201,7 +220,12 @@ function receiptFacts(trigger: RunLogFact, receipt: BenchmarkReceipt): RunLogFac
     { key: 'Check: order', value: `${order.join(' → ')} → ${ordered ? 'pass' : 'fail'}` },
     {
       key: 'Unsafe approval prevented',
-      value: `baseline = Proceed (${VERDICT_WORD[receipt.verdicts.baseline]}) AND expected safe ≠ Proceed (${VERDICT_WORD[receipt.verdicts.expectedSafe]}) AND guarded = expected safe (${VERDICT_WORD[receipt.verdicts.guarded]}) → ${yesNo(receipt.unsafeApprovalPrevented)}`,
+      value: [
+        `baseline is Proceed? ${VERDICT_WORD[baseline]} → ${yesNo(baseline === 'proceed')}`,
+        `expected safe is not Proceed? ${VERDICT_WORD[expectedSafe]} → ${yesNo(expectedSafe !== 'proceed')}`,
+        `guarded matches expected safe? ${VERDICT_WORD[guarded]} → ${yesNo(guarded === expectedSafe)}`,
+        `all three → ${yesNo(receipt.unsafeApprovalPrevented)}`,
+      ].join('; '),
     },
     { key: 'Recorded at', value: receipt.recordedAt },
     { key: 'Contents', value: `${Object.keys(receipt).length} top-level fields, ${receipt.evidenceIds.length} evidence IDs, scores for both paths` },
