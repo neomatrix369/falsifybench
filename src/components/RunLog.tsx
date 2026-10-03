@@ -4,6 +4,7 @@ import type { RunLogEntry } from '../domain/runLog'
 import { LAST_STAGE_INDEX, STAGES, STAGE_LABELS } from '../domain/stages'
 import type { WalkthroughState } from '../domain/walkthrough'
 import { AUTOPLAY_INTERVAL_MS } from '../hooks/useWalkthrough'
+import type { UnsealRecovery } from '../domain/evaluationCheck'
 
 type ExpandMode = 'latest' | 'all' | 'none'
 
@@ -37,12 +38,13 @@ interface Props {
   entries: RunLogEntry[]
   state: WalkthroughState
   unsealing: boolean
-  failed: boolean
+  failure: UnsealRecovery | null
 }
 
-function nowLine({ state, unsealing, failed }: Omit<Props, 'entries'>, countdown: number | null): string | null {
+function nowLine({ state, unsealing, failure }: Omit<Props, 'entries'>, countdown: number | null): string | null {
   if (state.status === 'idle') return null
-  if (failed) return 'Stopped: the sealed evaluation failed to load. Reload the page to retry; Reset alone repeats the cached failure.'
+  if (failure === 'fix-data') return 'Stopped: the sealed evaluation failed its data checks and was not used. Reload and Reset load the same data.'
+  if (failure) return 'Stopped: the sealed evaluation failed to load. Reload the page to retry; Reset alone repeats the cached failure.'
   if (unsealing) return 'Unsealing the sealed evaluation… Next step is held until it arrives.'
   if (state.cursor === LAST_STAGE_INDEX) return 'Run complete. The receipt is recorded and nothing else runs.'
   const next = `${state.cursor + 2} ${STAGE_LABELS[STAGES[state.cursor + 1]]}`
@@ -51,13 +53,13 @@ function nowLine({ state, unsealing, failed }: Omit<Props, 'entries'>, countdown
   return `Waiting for you: Next step runs stage ${next}.`
 }
 
-export function RunLog({ entries, state, unsealing, failed }: Props) {
+export function RunLog({ entries, state, unsealing, failure }: Props) {
   const [open, setOpen] = useState(true)
   const [mode, setMode] = useState<ExpandMode>('latest')
   const [overrides, setOverrides] = useState<Record<number, boolean>>({})
-  const countdown = useAutoplayCountdown(state.autoplay && !unsealing && !failed, state.cursor)
+  const countdown = useAutoplayCountdown(state.autoplay && !unsealing && failure === null, state.cursor)
   const viewing = state.status === 'idle' ? null : STAGES[state.cursor]
-  const now = nowLine({ state, unsealing, failed }, countdown)
+  const now = nowLine({ state, unsealing, failure }, countdown)
 
   useEffect(() => {
     setMode('latest')
@@ -103,7 +105,7 @@ export function RunLog({ entries, state, unsealing, failed }: Props) {
           {now && (
             <p className="mb-3 flex items-start gap-2 border-b border-rule pb-2.5 text-body text-ink">
               <span className="shrink-0 font-semibold">Now</span>
-              <span className={failed ? 'text-risk' : 'text-ink-2'}>{now}</span>
+              <span className={failure ? 'text-risk' : 'text-ink-2'}>{now}</span>
             </p>
           )}
           {entries.length === 0 ? (

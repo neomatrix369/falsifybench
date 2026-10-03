@@ -135,6 +135,37 @@ describe('FalsifyBench guards', () => {
     expect(screen.getByText(/reset alone repeats the cached failure/i)).toBeInTheDocument()
   })
 
+  it('shows an error card, not a blank page, when the sealed evaluation fails its data checks', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const good = await mat001.evaluation.unseal()
+    const bad = { ...good, scoring: { ...good.scoring, guarded: { ...good.scoring.guarded, safeAction: 101 } } }
+    const broken = { ...mat001, evaluation: { unseal: async () => bad } }
+    const user = userEvent.setup()
+    render(<App deps={deps} source={{ loadScenario: async () => broken }} />)
+    await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
+    await user.click(btn(/next step/i))
+    await user.click(btn(/next step/i))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/failed its data checks, so it was not used/i)
+    expect(alert).toHaveTextContent(/I6 Rubric metrics are integers 0–100: guarded out of range/)
+    expect(within(alert).queryByRole('button', { name: /reload page/i })).not.toBeInTheDocument()
+    expect(within(alert).getByRole('button', { name: /reset walkthrough/i })).toBeInTheDocument()
+    expect(within(alert).getByRole('heading', { name: /unexpected error/i })).toHaveFocus()
+    expect(screen.getByText('Sealed evaluation failed its data checks')).toBeInTheDocument()
+    expect(screen.getByText(/stopped: the sealed evaluation failed its data checks and was not used/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /turbine support bracket release decision/i })).toBeInTheDocument()
+  })
+
+  it('catches a render error anywhere in the bench instead of blanking the page', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const broken = { ...mat001, evidence: null as unknown as typeof mat001.evidence }
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<App deps={deps} source={{ loadScenario: async () => broken }} />)
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByRole('button', { name: /reset walkthrough/i })).toBeInTheDocument()
+    spy.mockRestore()
+  })
+
   it('keeps keyboard focus on Next step while it waits for the sealed evaluation', async () => {
     const { mat001 } = await import('./data/mat001')
     const pending = { ...mat001, evaluation: { unseal: () => new Promise<never>(() => {}) } }

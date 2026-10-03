@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from '../domain/stages'
 import { createReceipt, type BenchmarkReceipt, type Clock, type RunIdFactory } from '../domain/receipt'
+import { evaluationProblems, InvalidEvaluationError } from '../domain/evaluationCheck'
 import type { UnsealTiming } from '../domain/runLog'
 import { controlAvailability, initialWalkthroughState, walkthroughReducer, type ControlAvailability } from '../domain/walkthrough'
 import type { Scenario, ScenarioEvaluation } from '../domain/types'
@@ -33,6 +34,8 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
       .unseal()
       .then((value) => {
         if (cancelled) return
+        const problems = evaluationProblems(scenario, value)
+        if (problems.length) throw new InvalidEvaluationError(scenario.id, problems)
         const loaded = clock()
         setUnseal({ requestedAt: requested.toISOString(), loadedAt: loaded.toISOString(), ms: loaded.getTime() - requested.getTime() })
         setEvaluation(value)

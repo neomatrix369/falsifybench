@@ -11,6 +11,7 @@ import { ScenarioCard } from './components/ScenarioCard'
 import { StageTrace } from './components/StageTrace'
 import { MAT_001_ID } from './data/mat001'
 import { syntheticScenarioSource } from './data/scenarioSource'
+import { unsealRecovery } from './domain/evaluationCheck'
 import { isRunnableProvenance, PARTNER_UNAVAILABLE_REASON } from './domain/provenance'
 import { randomRunId, systemClock } from './domain/receipt'
 import { buildRunLog } from './domain/runLog'
@@ -98,7 +99,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
             entries={buildRunLog({ state, scenario, evaluation, receipt, unseal, error })}
             state={state}
             unsealing={controls.nextPending}
-            failed={error !== null}
+            failure={error ? unsealRecovery(error) : null}
           />
           <ComingNextCards activeId={scenario.id} onReturnToActive={() => activeScenarioHeading.current?.focus()} />
           <UnavailableModesNote />
@@ -106,7 +107,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
         <div className="space-y-4">
           <WalkthroughErrorBoundary onReset={actions.reset} resetKey={state.runId}>
             {error ? (
-              <ErrorCard message={error.message} onReset={actions.reset} reloadToRetry />
+              <ErrorCard message={error.message} onReset={actions.reset} recovery={unsealRecovery(error)} />
             ) : (
               <ResultSurface
                 ref={resultHeading}
@@ -137,6 +138,7 @@ export default function App({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState(MAT_001_ID)
   const [switched, setSwitched] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const selectBenchmark = useCallback((id: string) => {
     setSwitched(true)
     setActiveId(id)
@@ -176,12 +178,14 @@ export default function App({
   }
   if (!scenario) return <p className="p-10 text-body text-ink-3">Loading {activeId}…</p>
   return (
-    <Bench
-      key={scenario.id}
-      scenario={scenario}
-      deps={deps}
-      onSelectBenchmark={selectBenchmark}
-      focusScenarioOnMount={switched}
-    />
+    <WalkthroughErrorBoundary onReset={() => setAttempt((n) => n + 1)} resetKey={attempt}>
+      <Bench
+        key={`${scenario.id}:${attempt}`}
+        scenario={scenario}
+        deps={deps}
+        onSelectBenchmark={selectBenchmark}
+        focusScenarioOnMount={switched}
+      />
+    </WalkthroughErrorBoundary>
   )
 }

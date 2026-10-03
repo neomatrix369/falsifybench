@@ -26,7 +26,7 @@ flowchart LR
   P1 -- not synthetic --> E1[E1 Not runnable]
   S3 -- import rejects --> E3a[E3a Unseal rejected]
   S3 -- never settles --> E3b[E3b Unseal hangs · G2]
-  S3 -- bad data --> E4[E4 Invalid evaluation · G1]
+  S3 -- bad data --> E4[E4 Invalid evaluation]
   S1 & S2 & S3 & S4 -- Reset / switch --> I2[I2 Run abandoned · G3]
   S5 --> OUT3[OUT-3 Receipt JSON v1.0]
   S1 & S2 & S3 & S4 & S5 --> OUT1[OUT-1 Result surface]
@@ -80,8 +80,8 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 | E1 Not runnable (partner provenance) | P1 | Error card `<id> is not runnable: Awaiting validated partner source.` | Message on screen only | Covered (not reachable from the UI today) |
 | E3a Unseal rejected | S3 | Error card with `Reload page` and `Reset walkthrough`; browsers cache the failed `import()`, so only a reload retries | Run log `Sealed evaluation failed to load` with Error, Effect, Recovery | Covered |
 | E3b Unseal never settles | S3 | `Waiting for sealed evaluation…` with no end | Pending Run log line | **Gap G2** |
-| E4 Invalid evaluation data | S3–S5 | Blank page: `buildRunLog()` / `createReceipt()` throw while `Bench` renders, outside `WalkthroughErrorBoundary` | Nothing (console only) | **Gap G1** |
-| E5 Render error in the result panel | Any | Error card from `WalkthroughErrorBoundary`; clears when `runId` changes | Console | Covered |
+| E4 Invalid evaluation data | S3 | Error card: `evaluationProblems()` runs data gates I3–I8 on the unsealed evaluation and it is not used. `Reset walkthrough` only, since reload and Reset load the same data | Run log `Sealed evaluation failed its data checks` with each failed check, Effect and Recovery | Covered |
+| E5 Render error | Any | Error card from `WalkthroughErrorBoundary`: one around the result panel (clears when `runId` changes) and one around the whole `Bench` in `App`, whose Reset remounts it | Console | Covered |
 | E6 Receipt export fails | S5 | `Clipboard unavailable — use Download.` | Receipt still downloadable | Covered |
 | I2 Reset or switch benchmark mid-run | S1–S4 | Idle `Ready` | Nothing; Reset clears the log and a switch remounts `Bench` | **Gap G3** |
 | I3 Auto-play pauses | Any | Stops on manual navigation, unseal failure or Receipt; pauses while unsealing | — | Covered |
@@ -96,7 +96,7 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 
 ### Run log entry labels
 
-`Run <runId> started` · `Evidence loaded` · `Baseline decided` · `Audit started` · `Waiting for sealed evaluation…` · `Sealed evaluation loaded` · `Sealed evaluation failed to load` · `Guarded verdict: <verdict>` · `Receipt recorded`
+`Run <runId> started` · `Evidence loaded` · `Baseline decided` · `Audit started` · `Waiting for sealed evaluation…` · `Sealed evaluation loaded` · `Sealed evaluation failed to load` · `Sealed evaluation failed its data checks` · `Guarded verdict: <verdict>` · `Receipt recorded`
 
 ## Offline pipelines (not part of a browser run)
 
@@ -109,7 +109,6 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 
 | | Gap | Plan |
 |---|---|---|
-| G1 | Invalid evaluation data blanks the page | Validate the unsealed evaluation before storing it, so bad data takes the E3a error path |
 | G2 | Unseal has no timeout | Reject after 15 s with an error card and Run log entry |
 | G3 | Abandoned runs leave no trace | Keep a one-line `abandoned at <stage>` Run log entry |
 

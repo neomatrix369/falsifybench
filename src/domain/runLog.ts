@@ -1,4 +1,5 @@
 import { compareScores, METRIC_KEYS, METRIC_LABELS } from './scoring'
+import { InvalidEvaluationError } from './evaluationCheck'
 import type { BenchmarkReceipt } from './receipt'
 import { STAGES, STAGE_LABELS } from './stages'
 import type { StageTrigger, WalkthroughState } from './walkthrough'
@@ -133,7 +134,20 @@ export function buildRunLog(input: {
               ],
         })
         const producedBy: RunLogFact = { key: 'Produced by', value: `evaluation.unseal() settling, requested by Audit started (${TRIGGER_LABEL[state.triggers[index] ?? 'manual']})` }
-        if (!evaluation && input.error) {
+        if (!evaluation && input.error instanceof InvalidEvaluationError) {
+          log.push({
+            at: null,
+            stage: 'audit',
+            label: 'Sealed evaluation failed its data checks',
+            detail: input.error.problems.join('; '),
+            facts: [
+              producedBy,
+              ...input.error.problems.map((problem, i) => ({ key: `Failed check ${i + 1}`, value: problem })),
+              { key: 'Effect', value: 'Run stopped at Evidence audit; the evaluation was not used, auto-play is off and no receipt is recorded' },
+              { key: 'Recovery', value: 'Fix the scenario data. Reload and Reset load the same module, so both fail the same checks; npm run score lists every failed gate' },
+            ],
+          })
+        } else if (!evaluation && input.error) {
           log.push({
             at: null,
             stage: 'audit',
