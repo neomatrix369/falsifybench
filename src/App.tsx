@@ -9,6 +9,7 @@ import { ScenarioCard } from './components/ScenarioCard'
 import { StageTrace } from './components/StageTrace'
 import { MAT_001_ID } from './data/mat001'
 import { syntheticScenarioSource } from './data/scenarioSource'
+import { isRunnableProvenance, PARTNER_UNAVAILABLE_REASON } from './domain/provenance'
 import { randomRunId, systemClock } from './domain/receipt'
 import { LAST_STAGE_INDEX } from './domain/stages'
 import type { Scenario, ScenarioSource } from './domain/types'
@@ -89,7 +90,22 @@ export default function App({
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    source.loadScenario(MAT_001_ID).then(setScenario, (err: unknown) => setLoadError(String(err)))
+    let cancelled = false
+    setScenario(null)
+    setLoadError(null)
+    source.loadScenario(MAT_001_ID).then(
+      (loaded) => {
+        if (cancelled) return
+        if (isRunnableProvenance(loaded.provenance)) setScenario(loaded)
+        else setLoadError(`${loaded.id} is not runnable: ${PARTNER_UNAVAILABLE_REASON}`)
+      },
+      (err: unknown) => {
+        if (!cancelled) setLoadError(String(err))
+      },
+    )
+    return () => {
+      cancelled = true
+    }
   }, [source])
 
   if (loadError) {

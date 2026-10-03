@@ -28,18 +28,23 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
         if (!cancelled) setEvaluation(value)
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)))
+        if (cancelled) return
+        setError(err instanceof Error ? err : new Error(String(err)))
+        dispatch({ type: 'AUTOPLAY_OFF' })
       })
     return () => {
       cancelled = true
     }
   }, [needsEvaluation, evaluation, scenario])
 
+  const awaitingEvaluation = state.cursor === state.reached && needsEvaluation && !evaluation
+  const blocked = awaitingEvaluation || error !== null
+
   useEffect(() => {
-    if (!state.autoplay) return
+    if (!state.autoplay || blocked) return
     const timer = window.setTimeout(() => dispatch({ type: 'NEXT', source: 'auto', at: now() }), AUTOPLAY_INTERVAL_MS)
     return () => window.clearTimeout(timer)
-  }, [state.autoplay, state.cursor, now])
+  }, [state.autoplay, state.cursor, blocked, now])
 
   const receipt: BenchmarkReceipt | null = useMemo(() => {
     if (state.reached < LAST_STAGE_INDEX || !evaluation || !state.runId || !state.startedAt) return null
@@ -58,7 +63,9 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
   const actions = useMemo(
     () => ({
       run: () => dispatch({ type: 'START', runId: createRunId(), at: now() }),
-      next: () => dispatch({ type: 'NEXT', source: 'manual', at: now() }),
+      next: () => {
+        if (!blocked) dispatch({ type: 'NEXT', source: 'manual', at: now() })
+      },
       back: () => dispatch({ type: 'BACK' }),
       select: (index: number) => dispatch({ type: 'SELECT', index }),
       toggleAutoplay: () =>
@@ -70,8 +77,10 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
         dispatch({ type: 'RESET' })
       },
     }),
-    [createRunId, now, state.autoplay],
+    [createRunId, now, state.autoplay, blocked],
   )
 
-  return { state, evaluation, receipt, error, controls: controlAvailability(state), actions }
+  const base = controlAvailability(state)
+  const controls = { ...base, canNext: base.canNext && !blocked, canAutoplay: base.canAutoplay && error === null }
+  return { state, evaluation, receipt, error, controls, actions }
 }

@@ -72,6 +72,13 @@ describe('walkthrough state machine', () => {
     expect(s.autoplay).toBe(false)
   })
 
+  it('auto-play resumes from a selected stage of a completed run without restarting it', () => {
+    const done = run([start, next(1), next(2), next(3), next(4)])
+    const resumed = run([{ type: 'SELECT', index: 1 }, { type: 'AUTOPLAY_ON', runId: 'RUN-OTHER', at: AT(9) }], done)
+    expect(resumed).toMatchObject({ runId: done.runId, status: 'complete', cursor: 1, autoplay: true })
+    expect(resumed.events).toEqual(done.events)
+  })
+
   it('Reset returns to the initial state', () => {
     expect(run([start, next(1), { type: 'RESET' }])).toEqual(initialWalkthroughState)
   })
@@ -115,6 +122,12 @@ describe('createReceipt', () => {
     expect(() =>
       createReceipt({ scenario: mat001, evaluation: mat001Evaluation, runId: 'RUN-TEST', startedAt: AT(0), events: partial.events, mode: 'synthetic', clock }),
     ).toThrow(IncompleteRunError)
+  })
+
+  it('does not claim an unsafe approval was prevented when approval was the safe verdict', () => {
+    const safeProceed = { ...mat001Evaluation, expectedSafeVerdict: 'proceed' as const, guarded: { ...mat001Evaluation.guarded, verdict: 'proceed' as const } }
+    const r = createReceipt({ scenario: mat001, evaluation: safeProceed, runId: 'RUN-TEST', startedAt: AT(0), events: complete.events, mode: 'synthetic', clock })
+    expect(r.unsafeApprovalPrevented).toBe(false)
   })
 
   it('refuses partner-mode receipts', () => {

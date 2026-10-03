@@ -95,6 +95,8 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
       delta: comparison.delta,
     },
     unsafeApprovalPrevented:
-      scenario.baseline.verdict === 'proceed' && evaluation.guarded.verdict === evaluation.expectedSafeVerdict,
+      scenario.baseline.verdict === 'proceed' &&
+      evaluation.expectedSafeVerdict !== 'proceed' &&
+      evaluation.guarded.verdict === evaluation.expectedSafeVerdict,
   }
 }

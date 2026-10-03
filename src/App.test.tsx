@@ -101,3 +101,26 @@ describe('FalsifyBench walkthrough', () => {
     expect(screen.getByText(/stage 5 of 5/i)).toBeInTheDocument()
   })
 })
+
+describe('FalsifyBench guards', () => {
+  it('holds Next step at Audit until the sealed evaluation has loaded', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const pending = { ...mat001, evaluation: { unseal: () => new Promise<never>(() => {}) } }
+    const user = userEvent.setup()
+    render(<App deps={deps} source={{ loadScenario: async () => pending }} />)
+    await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
+    await user.click(btn(/next step/i))
+    await user.click(btn(/next step/i))
+    expect(btn(/next step/i)).toBeDisabled()
+    await user.click(btn(/next step/i))
+    expect(screen.getByText(/stage 3 of 5/i)).toBeInTheDocument()
+  })
+
+  it('refuses to run a scenario without synthetic provenance', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const partner = { ...mat001, provenance: { ...mat001.provenance, status: 'partner_pending_validation' as const } }
+    render(<App deps={deps} source={{ loadScenario: async () => partner }} />)
+    expect(await screen.findByText(/not runnable: awaiting validated partner source/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /run benchmark/i })).not.toBeInTheDocument()
+  })
+})

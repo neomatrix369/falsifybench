@@ -83,7 +83,8 @@ export function walkthroughReducer(state: WalkthroughState, action: WalkthroughA
       if (state.status === 'idle' || action.index < 0 || action.index > state.reached) return state
       return { ...state, cursor: action.index, autoplay: false }
     case 'AUTOPLAY_ON':
-      if (state.status === 'idle' || state.status === 'complete') return start(action.runId, action.at, true)
+      if (state.status === 'idle' || (state.status === 'complete' && state.cursor >= LAST_STAGE_INDEX))
+        return start(action.runId, action.at, true)
       if (state.cursor >= LAST_STAGE_INDEX) return state
       return { ...state, autoplay: true }
     case 'AUTOPLAY_OFF':
