@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from '../domain/stages'
 import { createReceipt, type BenchmarkReceipt, type Clock, type RunIdFactory } from '../domain/receipt'
+import type { UnsealTiming } from '../domain/runLog'
 import { controlAvailability, initialWalkthroughState, walkthroughReducer } from '../domain/walkthrough'
 import type { Scenario, ScenarioEvaluation } from '../domain/types'
 
@@ -15,6 +16,7 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
   const [state, dispatch] = useReducer(walkthroughReducer, initialWalkthroughState)
   const [evaluation, setEvaluation] = useState<ScenarioEvaluation | null>(null)
   const [error, setError] = useState<Error | null>(null)
+  const [unseal, setUnseal] = useState<UnsealTiming | null>(null)
   const { clock, createRunId } = deps
   const now = useCallback(() => clock().toISOString(), [clock])
 
@@ -22,10 +24,15 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
   useEffect(() => {
     if (!needsEvaluation || evaluation) return
     let cancelled = false
+    const requested = clock()
+    setUnseal({ requestedAt: requested.toISOString() })
     scenario.evaluation
       .unseal()
       .then((value) => {
-        if (!cancelled) setEvaluation(value)
+        if (cancelled) return
+        const loaded = clock()
+        setUnseal({ requestedAt: requested.toISOString(), loadedAt: loaded.toISOString(), ms: loaded.getTime() - requested.getTime() })
+        setEvaluation(value)
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -35,7 +42,7 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
     return () => {
       cancelled = true
     }
-  }, [needsEvaluation, evaluation, scenario])
+  }, [needsEvaluation, evaluation, scenario, clock])
 
   const awaitingEvaluation = state.cursor === state.reached && needsEvaluation && !evaluation
   const blocked = awaitingEvaluation || error !== null
@@ -82,5 +89,5 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
 
   const base = controlAvailability(state)
   const controls = { ...base, canNext: base.canNext && !blocked, canAutoplay: base.canAutoplay && error === null }
-  return { state, evaluation, receipt, error, controls, actions }
+  return { state, evaluation, receipt, error, controls, actions, unseal }
 }

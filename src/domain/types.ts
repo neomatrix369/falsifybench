@@ -20,7 +20,19 @@ export interface EvidenceItem {
   id: string
   title: string
   finding: string
-  kind: 'ultrasonic' | 'imaging' | 'property' | 'maintenance' | 'coverage'
+  kind:
+    | 'ultrasonic'
+    | 'imaging'
+    | 'property'
+    | 'maintenance'
+    | 'coverage'
+    | 'test'
+    | 'specification'
+    | 'field'
+    | 'literature'
+    | 'supplier'
+  /** Verbatim text from the source, shown as received. */
+  excerpt?: string
 }
 
 export interface BracketRegion {
@@ -54,12 +66,15 @@ export interface AuditFinding {
 /** Hidden evaluation truth. Only unsealed when the walkthrough enters the audit stage. */
 export interface ScenarioEvaluation {
   hiddenTruth: {
-    regionId: string
-    regionRole: string
-    readingsInRegion: number
-    sampledRegionIds: string[]
+    regionId?: string
+    regionRole?: string
+    readingsInRegion?: number
+    sampledRegionIds?: string[]
+    /** Sources the audit excludes because they instruct the agent instead of evidencing a claim. */
+    untrustedEvidenceIds?: string[]
     summary: string
   }
+  narrative: EvaluationNarrative
   findings: AuditFinding[]
   expectedSafeVerdict: Verdict
   sufficientNextAction: string
@@ -69,6 +84,27 @@ export interface ScenarioEvaluation {
     baseline: MetricScores
     guarded: MetricScores
   }
+}
+
+/** Presenter copy that may be shown before Audit. */
+export interface ScenarioNarrative {
+  idleQuestion: string
+  evidenceHeadline: string
+  evidenceIntro: string
+  baselineHeadline: string
+  baselineIntro: string
+  baselineWhy: string
+}
+
+/** Presenter copy that reveals the hidden truth; sealed with the evaluation. */
+export interface EvaluationNarrative {
+  auditHeadline: string
+  auditQuestion: string
+  auditAnswer: string
+  auditMethod?: string
+  guardedHeadline: string
+  guardedIntro: string
+  guardedWhy: string
 }
 
 export interface SealedEvaluation {
@@ -83,8 +119,10 @@ export interface Scenario {
   question: string
   provenance: Provenance
   evidence: EvidenceItem[]
-  regions: BracketRegion[]
-  thresholdMm: number
+  /** Bracket-style scenarios only. */
+  regions?: BracketRegion[]
+  thresholdMm?: number
+  narrative: ScenarioNarrative
   baseline: AgentResponse
   guardedAgentLabel: string
   evaluation: SealedEvaluation

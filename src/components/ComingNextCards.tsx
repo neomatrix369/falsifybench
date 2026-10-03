@@ -1,8 +1,11 @@
 import { ArrowRight, Lock } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { comingNextPreviews } from '../data/previews'
+import { RUNNABLE_BENCHMARKS } from '../data/scenarioSource'
 
-export function ComingNextCards({ onReturnToActive }: { onReturnToActive: () => void }) {
+const RUNNABLE_IDS = RUNNABLE_BENCHMARKS.map((b) => b.id).join(' and ')
+
+export function ComingNextCards({ activeId, onReturnToActive }: { activeId: string; onReturnToActive: () => void }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const open = comingNextPreviews.find((p) => p.id === openId)
   const titleRef = useRef<HTMLParagraphElement>(null)
@@ -48,7 +51,7 @@ export function ComingNextCards({ onReturnToActive }: { onReturnToActive: () => 
             {open.track}: {open.title}
           </p>
           <p className="mt-1 text-ink-2">{open.description}</p>
-          <p className="mt-2 text-meta text-ink-3">Preview only. Only MAT-001 is runnable in this proof of concept.</p>
+          <p className="mt-2 text-meta text-ink-3">Preview only. Only {RUNNABLE_IDS} are runnable in this proof of concept.</p>
           <button
             type="button"
             className="btn-secondary mt-3"
@@ -57,7 +60,7 @@ export function ComingNextCards({ onReturnToActive }: { onReturnToActive: () => 
               onReturnToActive()
             }}
           >
-            Return to MAT-001
+            Return to {activeId}
             <ArrowRight aria-hidden className="h-4 w-4" />
           </button>
         </div>

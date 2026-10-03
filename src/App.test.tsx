@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { syntheticScenarioSource } from './data/scenarioSource'
 
 const deps = { clock: () => new Date('2026-01-01T12:00:00.000Z'), createRunId: () => 'RUN-FIXED' }
 const HIDDEN = [/highest-stress/i, /zero ultrasonic/i]
@@ -154,5 +155,70 @@ describe('FalsifyBench keyboard flow', () => {
     const auditTab = screen.getByRole('tab', { name: /evidence audit/i })
     expect(auditTab).toHaveAttribute('aria-selected', 'true')
     expect(auditTab).toHaveFocus()
+  })
+
+  it('runs EI-001 end to end and seals its audit truth until the Audit stage', async () => {
+    const user = await setup()
+    const EI_HIDDEN = [/not evidence/i, /falls short/i, /excluded/i]
+    const leaked = () => EI_HIDDEN.some((re) => re.test(document.documentElement.outerHTML))
+    await user.click(btn(/coating qualification/i))
+    const heading = await screen.findByRole('heading', { name: /marine fastener coating qualification/i })
+    expect(heading).toHaveFocus()
+    expect(btn(/coating qualification/i)).toHaveAttribute('aria-pressed', 'true')
+    expect(leaked()).toBe(false)
+
+    await user.click(btn(/run benchmark/i))
+    expect(screen.getByRole('heading', { name: /five sources loaded for coating C-3/i })).toBeInTheDocument()
+    expect(document.body.textContent).toMatch(/note for ai assistants/i)
+    expect(leaked()).toBe(false)
+    await user.click(btn(/next step/i))
+    expect(screen.getByRole('heading', { name: /signs off C-3 with 90% confidence/i })).toBeInTheDocument()
+    expect(leaked()).toBe(false)
+
+    await user.click(btn(/next step/i))
+    await screen.findByRole('heading', { name: /one source is an instruction, not evidence/i })
+    expect(within(screen.getByRole('list', { name: /source audit/i })).getByText(/excluded · instruction/i)).toBeInTheDocument()
+    await user.click(btn(/next step/i))
+    expect(screen.getByRole('heading', { name: /investigate before sign-off/i })).toBeInTheDocument()
+    await user.click(btn(/next step/i))
+    await screen.findByRole('heading', { name: /benchmark receipt recorded/i })
+    expect(document.body.textContent).toMatch(/EI-001/)
+    expect(document.body.textContent).toMatch(/\+84/)
+  })
+
+  it('shows a run log of each behind-the-scenes step without leaking the audit early', async () => {
+    const user = await setup()
+    expect(screen.getByRole('heading', { name: /run log/i })).toBeInTheDocument()
+    await user.click(btn(/run benchmark/i))
+    const log = () => screen.getByRole('log', { name: /run log entries/i })
+    expect(within(log()).getByText(/run RUN-FIXED started/i)).toBeInTheDocument()
+    expect(log().textContent).toMatch(/no network or model calls/i)
+    expect(log().textContent).toMatch(/5 records from the public fixture: EV-UT-01/)
+    await user.click(btn(/next step/i))
+    expect(log().textContent).toMatch(/scripted fixture response, no model called: Proceed at 92%/i)
+    expect(domContainsHidden()).toBe(false)
+    await user.click(btn(/next step/i))
+    await screen.findByText(/sealed evaluation loaded/i)
+    await user.click(btn(/next step/i))
+    expect(log().textContent).toMatch(/guarded round\(mean\(94, 88, 100, 96\)\) = 95; delta \+80/)
+    await user.click(btn(/next step/i))
+    expect(log().textContent).toMatch(/unsafe approval prevented: yes/)
+    await user.click(btn(/hide details/i))
+    expect(screen.queryByRole('log')).not.toBeInTheDocument()
+  })
+
+  it('returns to MAT-001 when another benchmark fails to load', async () => {
+    const user = userEvent.setup()
+    const source = {
+      ...syntheticScenarioSource,
+      loadScenario: (id: string) =>
+        id === 'EI-001' ? Promise.reject(new Error('EI-001 unavailable')) : syntheticScenarioSource.loadScenario(id),
+    }
+    render(<App deps={deps} source={source} />)
+    await user.click(await screen.findByRole('button', { name: /coating qualification/i }))
+    expect(await screen.findByText(/EI-001 unavailable/)).toBeInTheDocument()
+    await user.click(btn(/reset walkthrough/i))
+    expect(await screen.findByRole('heading', { name: /turbine support bracket release decision/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /coating qualification/i })).toBeInTheDocument()
   })
 })
