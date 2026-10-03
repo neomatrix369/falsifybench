@@ -112,12 +112,12 @@ describe('FalsifyBench guards', () => {
     await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
     await user.click(btn(/next step/i))
     await user.click(btn(/next step/i))
-    expect(btn(/next step/i)).toBeDisabled()
+    expect(btn(/next step/i)).toHaveAttribute('aria-disabled', 'true')
     await user.click(btn(/next step/i))
     expect(screen.getByText(/stage 3 of 5/i)).toBeInTheDocument()
   })
 
-  it('keeps keyboard focus off <body> while Next step waits for the sealed evaluation', async () => {
+  it('keeps keyboard focus on Next step while it waits for the sealed evaluation', async () => {
     const { mat001 } = await import('./data/mat001')
     const pending = { ...mat001, evaluation: { unseal: () => new Promise<never>(() => {}) } }
     const user = userEvent.setup()
@@ -126,9 +126,34 @@ describe('FalsifyBench guards', () => {
     btn(/next step/i).focus()
     await user.keyboard('{Enter}')
     await user.keyboard('{Enter}')
-    expect(btn(/next step/i)).toBeDisabled()
-    expect(document.activeElement).not.toBe(document.body)
-    expect(document.activeElement?.tagName).toBe('H2')
+    expect(btn(/next step/i)).toHaveAttribute('aria-disabled', 'true')
+    expect(btn(/next step/i)).toHaveFocus()
+  })
+
+  it('pauses auto-play when the held Next step is pressed while the sealed evaluation loads', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { mat001 } = await import('./data/mat001')
+    let release: (value: Awaited<ReturnType<typeof mat001.evaluation.unseal>>) => void = () => {}
+    const pending = { ...mat001, evaluation: { unseal: () => new Promise<Awaited<ReturnType<typeof mat001.evaluation.unseal>>>((r) => (release = r)) } }
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App deps={deps} source={{ loadScenario: async () => pending }} />)
+    await screen.findByRole('button', { name: /run benchmark/i })
+    await user.click(btn(/auto-play/i))
+    for (let i = 0; i < 2; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+    }
+    expect(screen.getByText(/stage 3 of 5/i)).toBeInTheDocument()
+    expect(btn(/next step/i)).toHaveAttribute('aria-disabled', 'true')
+    await user.click(btn(/next step/i))
+    expect(btn(/auto-play/i)).toHaveAttribute('aria-pressed', 'false')
+    await act(async () => {
+      release(await mat001.evaluation.unseal())
+      await vi.advanceTimersByTimeAsync(3000)
+    })
+    expect(screen.getByText(/stage 3 of 5/i)).toBeInTheDocument()
+    vi.useRealTimers()
   })
 
   it('refuses to run a scenario without synthetic provenance', async () => {
@@ -141,6 +166,27 @@ describe('FalsifyBench guards', () => {
 })
 
 describe('FalsifyBench keyboard flow', () => {
+  it('keeps focus on Next step between stages and moves it to the heading only when Next step disables at Receipt', async () => {
+    const user = await setup()
+    await user.click(btn(/run benchmark/i))
+    btn(/next step/i).focus()
+    for (const stage of [2, 3, 4]) {
+      await user.keyboard('{Enter}')
+      await screen.findByText(new RegExp(`stage ${stage} of 5`, 'i'))
+      expect(btn(/next step/i)).toHaveFocus()
+    }
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('heading', { name: /benchmark receipt recorded/i })).toHaveFocus()
+  })
+
+  it('shows display-cased verdicts in the receipt decision', async () => {
+    const user = await setup()
+    await user.click(btn(/run benchmark/i))
+    for (let i = 0; i < 4; i++) await user.click(await screen.findByRole('button', { name: /next step/i }))
+    const decision = await screen.findByRole('region', { name: /^decision$/i })
+    expect(decision).toHaveTextContent(/baseline Proceed → guarded Investigate/)
+  })
+
   it('moves focus to the stage heading after Run benchmark and supports arrow keys between final tabs', async () => {
     const user = await setup()
     await user.click(btn(/run benchmark/i))

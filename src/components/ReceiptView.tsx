@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { STAGE_LABELS } from '../domain/stages'
 import { METRIC_KEYS, METRIC_LABELS, formatDelta } from '../domain/scoring'
 import type { BenchmarkReceipt } from '../domain/receipt'
+import { VERDICT_LABEL } from '../domain/verdict'
 import { Disclosure } from './Disclosure'
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -43,8 +44,8 @@ export function ReceiptView({ receipt }: { receipt: BenchmarkReceipt }) {
     <div className="space-y-5">
       <section aria-label="Decision" className="rounded-md border border-ok-line/40 bg-ok-tint/50 px-4 py-3 text-body text-ink">
         <p>
-          <span className="text-ink-3">Decision:</span> baseline <strong>{receipt.verdicts.baseline}</strong> → guarded{' '}
-          <strong>{receipt.verdicts.guarded}</strong>
+          <span className="text-ink-3">Decision:</span> baseline <strong>{VERDICT_LABEL[receipt.verdicts.baseline]}</strong> → guarded{' '}
+          <strong>{VERDICT_LABEL[receipt.verdicts.guarded]}</strong>
           {receipt.unsafeApprovalPrevented ? ' · unsafe approval prevented' : ''}
         </p>
         <p className="mt-0.5">

@@ -51,4 +51,4 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 
 - Accessibility was checked with Playwright accessibility snapshots, not a real screen reader.
 - `@testing-library/jest-dom@7.0.1` prints an `EBADENGINE` warning (wants Node ≥ 22) on `npm install`; tests pass on Node 20.
-- After focus moves to a result heading (Audit, Receipt), Enter does nothing until the user tabs back to Next step; this is consistent across stages.
+- Back / Next step keep focus while stepping (Next step is held with `aria-disabled` while the sealed evaluation loads). Focus moves to the stage heading only when the focused control disables itself: Back at Evidence, Next step at Receipt.

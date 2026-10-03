@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Circle, CircleCheck, CircleDot, Pause, Play, RotateCcw, TriangleAlert } from 'lucide-react'
 import { STAGES, STAGE_LABELS } from '../domain/stages'
-import { stageVisualState, type ControlAvailability, type StageVisualState, type WalkthroughState } from '../domain/walkthrough'
+import { stageVisualState, type StageVisualState, type WalkthroughState } from '../domain/walkthrough'
+import type { WalkthroughControls } from '../hooks/useWalkthrough'
 
 const VISUAL: Record<StageVisualState, { text: string; row: string; icon: string; status: string; Icon: typeof Circle }> = {
   pending: { text: 'Pending', row: 'text-ink-3', icon: 'text-rule-strong', status: 'text-ink-3', Icon: Circle },
@@ -11,7 +12,7 @@ const VISUAL: Record<StageVisualState, { text: string; row: string; icon: string
 
 interface Props {
   state: WalkthroughState
-  controls: ControlAvailability
+  controls: WalkthroughControls
   onSelect: (index: number) => void
   onBack: () => void
   onNext: () => void
@@ -38,7 +39,13 @@ export function StageTrace({ state, controls, onSelect, onBack, onNext, onToggle
             <ChevronLeft aria-hidden className="h-4 w-4" />
             Back
           </button>
-          <button type="button" className="btn-primary" onClick={onNext} disabled={!controls.canNext}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={onNext}
+            disabled={!controls.canNext && !controls.nextPending}
+            aria-disabled={controls.nextPending || undefined}
+          >
             Next step
             <ChevronRight aria-hidden className="h-4 w-4" />
           </button>
