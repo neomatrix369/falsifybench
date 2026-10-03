@@ -28,6 +28,8 @@ The first runnable case is a materials-reliability release decision. The app mus
 
 **One-sentence claim:** FalsifyBench exposes when a confident scientific or engineering agent lacks sufficient evidence, then shows whether a guarded evaluation path produces a safer, falsifiable next action.
 
+The idle screen does not reuse this product claim. Each benchmark gives its own `idleClaim` under its idle question, naming the failure it exposes. MAT-001 approves a part without sufficient evidence; EI-001 obeys a prompt injected into one of its sources.
+
 **Primary demo domain:** materials and infrastructure reliability. The product model remains domain-agnostic.
 
 ## Product truthfulness rules
@@ -66,7 +68,7 @@ At desktop presentation width (optimise for 1280–1440px), use a sticky header 
 Header: FalsifyBench | Scenario previews anchor | Current receipt anchor | Data mode selector | Synthetic status
 
 Left: stable controls and visual run trace
-  - active MAT-001 scenario and two compact Coming next preview cards
+  - Runnable benchmarks picker (MAT-001, EI-001), the active scenario card, and a compact Coming next preview card
   - `Baseline agent (simulated)` and `Evidence guardrail (simulated)` labels
   - provenance badge
   - Run benchmark primary action
@@ -87,11 +89,11 @@ The PoC is read-only. The default presenter path is manual step-through, with op
 
 Controls: `Run benchmark`, `Back`, `Next step`, `Auto-play`, `Reset`.
 
-Manual interaction pauses auto-play. Keep completed-stage outputs in memory until Reset or a new run; persistence across page reloads is out of scope. Selecting a completed trace step must focus the matching result detail on the right. Disable Back at Evidence, disable Next step at Receipt, and disable Run benchmark while a walkthrough is active.
+Manual interaction pauses auto-play. Keep completed-stage outputs in memory until Reset or a new run; persistence across page reloads is out of scope. Selecting a completed trace step must focus the matching result detail on the right. Disable Back at Evidence, disable Next step at Receipt, and disable Run benchmark while a walkthrough is active. While the sealed evaluation unseals at Audit, Next step is held with `aria-disabled` (not `disabled`), so keyboard focus stays on it. Pressing it while held pauses auto-play. Focus moves to the stage heading only when Back or Next step truly disables, and never falls to `<body>`. Display verdicts in title case (`Proceed`, `Investigate`, `Abstain`) everywhere in the UI, including the receipt. Raw values stay lowercase in data and exported JSON.
 
 Every stage must show a human explanation before any technical detail, plus an expandable `Show evidence / method` section.
 
-**Run log (transparency).** Under the Run trace, show a collapsible, timestamped Run log of what happens behind each stage so an observer, researcher or engineer can see the machinery without leaving the walkthrough: run ID and start (scenario ID/version, `synthetic` mode, no network or model calls); evidence IDs loaded from the public fixture; the scripted baseline response; the sealed evaluation being requested and unsealed at Audit with its load time; the score formula with its inputs (e.g. `round(mean(…))`); the guarded verdict; and receipt assembly. Each entry also shows what triggered it (Run benchmark, Next step or an auto-play tick) and its time since run start, and expands to its steps: inputs, what ran and output. Those steps cover the evidence kinds, the scripted baseline response, the sealed-module request and why it is sealed, each audit finding with the evidence it cites, per-metric baseline → guarded scores and the delta, and the receipt checks (mode, 5 of 5 events, order) with the `unsafe approval prevented` rule evaluated. The newest entry's steps open automatically, and Expand all / Collapse all is available. A live `Now` line says what is happening or what comes next: waiting for Next step, the auto-play countdown, unsealing, reviewing a recorded stage, run complete or stopped. Entries for the stage on screen are highlighted. Before Audit the log, including expanded steps, names steps, triggers, public inputs and timings only, never sealed content. A failed load is logged as failed, never left pending. Reset clears it. No raw JSON belongs in the primary walkthrough. All controls must be keyboard operable. Auto-play starts off, respects `prefers-reduced-motion`, advances one stage every 3 seconds, stops after Receipt, and stops immediately when a presenter navigates manually.
+**Run log (transparency).** Under the Run trace, show a collapsible, timestamped Run log of what happens behind each stage so an observer, researcher or engineer can see the machinery without leaving the walkthrough: run ID and start (scenario ID/version, `synthetic` mode, no network or model calls); evidence IDs loaded from the public fixture; the scripted baseline response; the sealed evaluation being requested and unsealed at Audit with its load time; the score formula with its inputs (e.g. `round(mean(…))`); the guarded verdict; and receipt assembly. Each entry also shows what triggered it (Run benchmark, Next step or an auto-play tick) and its time since run start, and expands to its steps: inputs, what ran and output. Those steps cover the evidence kinds, the scripted baseline response, the sealed-module request and why it is sealed, each audit finding with the evidence it cites, per-metric baseline → guarded scores and the delta, and the receipt checks (mode, 5 of 5 events, order) with the `unsafe approval prevented` rule evaluated. The newest entry's steps open automatically, and Expand all / Collapse all is available. A live `Now` line says what is happening or what comes next: waiting for Next step, the auto-play countdown, unsealing, reviewing a recorded stage, run complete or stopped. Entries for the stage on screen are highlighted. Before Audit the log, including expanded steps, names steps, triggers, public inputs and timings only, never sealed content. A failed load is logged as failed, never left pending. Browsers cache a failed dynamic import for the page, so when the sealed evaluation fails to unseal, the error card offers `Reload page` as the primary action, with `Reset walkthrough` secondary. The `Now` line tells the presenter to reload, not to Reset. Reset clears it. No raw JSON belongs in the primary walkthrough. All controls must be keyboard operable. Auto-play starts off, respects `prefers-reduced-motion`, advances one stage every 3 seconds, stops after Receipt, and stops immediately when a presenter navigates manually.
 
 The exact ordered stages are:
 
@@ -196,7 +198,7 @@ Rubric version: `MAT-RUBRIC-1.0`. Each metric is an integer from 0–100. Calcul
 
 ### Supporting scenario cards
 
-Two benchmarks are runnable and selectable side by side: MAT-001 (release readiness) and EI-001 (evidence integrity, below). Show the remaining track as a clearly marked `Coming next` preview card. It is not runnable; clicking it opens its short description and returns focus to the active benchmark.
+Two benchmarks are runnable and selectable side by side in a `Runnable benchmarks` picker: MAT-001 (release readiness) and EI-001 (evidence integrity, below). Each picker row shows its ID and track, then the failure under test as the title, then the synthetic case as a subtitle. MAT-001 is `Insufficient evidence` / `Turbine support bracket`; EI-001 is `Prompt-injected source` / `Coating qualification`. Never label a benchmark by its case alone, or its failure mode, such as the prompt-injection example, becomes hard to find. Show the remaining track as a clearly marked `Coming next` preview card. It is not runnable; clicking it opens its short description and returns focus to the active benchmark.
 
 - Research validity: treatment-effect claim with a missing control/confounder.
 
