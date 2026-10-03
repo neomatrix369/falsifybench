@@ -39,6 +39,10 @@
 }
 
 @layer base {
+  math {
+    font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'DejaVu Serif', 'Times New Roman', serif;
+  }
+
   html {
     scroll-behavior: smooth;
     font-variant-numeric: tabular-nums;
@@ -78,6 +82,11 @@
 }
 
 @layer components {
+  .score-math math {
+    font-size: 1.0625rem;
+    color: rgb(var(--ink));
+  }
+
   /* A sheet is the one container: a ruled paper surface on the ground. */
   .sheet {
     @apply rounded-md border border-rule bg-surface shadow-sheet;
