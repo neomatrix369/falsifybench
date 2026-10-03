@@ -22,6 +22,9 @@ export function Header({ onReceiptAnchor }: { onReceiptAnchor: () => void }) {
             <a href="#current-receipt" onClick={onReceiptAnchor} className={NAV_LINK}>
               Current receipt
             </a>
+            <a href="score/index.html" className={NAV_LINK}>
+              Benchmark score
+            </a>
           </nav>
           <p className="ml-auto inline-flex items-center gap-1.5 rounded-sm border border-shell-line px-2 py-0.5 text-meta font-medium text-shell-ink">
             <ShieldCheck aria-hidden className="h-3.5 w-3.5 text-ok-line" />
