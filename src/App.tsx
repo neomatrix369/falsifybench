@@ -94,7 +94,12 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
             onToggleAutoplay={actions.toggleAutoplay}
             onReset={reset}
           />
-          <RunLog entries={buildRunLog({ state, scenario, evaluation, receipt, unseal, error })} />
+          <RunLog
+            entries={buildRunLog({ state, scenario, evaluation, receipt, unseal, error })}
+            state={state}
+            unsealing={controls.nextPending}
+            failed={error !== null}
+          />
           <ComingNextCards activeId={scenario.id} onReturnToActive={() => activeScenarioHeading.current?.focus()} />
           <UnavailableModesNote />
         </div>

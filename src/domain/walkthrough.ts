@@ -3,6 +3,9 @@ import type { StageEvent } from './types'
 
 export type WalkthroughStatus = 'idle' | 'active' | 'complete'
 
+/** What caused a stage event: the Run benchmark button, Next step, or auto-play (its start or a 3 s tick). */
+export type StageTrigger = 'run' | 'manual' | 'autoplay-start' | 'autoplay-tick'
+
 export interface WalkthroughState {
   status: WalkthroughStatus
   runId: string | null
@@ -13,6 +16,8 @@ export interface WalkthroughState {
   cursor: number
   autoplay: boolean
   events: StageEvent[]
+  /** Parallel to `events`; kept out of the receipt. */
+  triggers: StageTrigger[]
 }
 
 export type WalkthroughAction =
@@ -32,13 +37,14 @@ export const initialWalkthroughState: WalkthroughState = {
   cursor: -1,
   autoplay: false,
   events: [],
+  triggers: [],
 }
 
 function eventFor(index: number, at: string): StageEvent {
   return { order: index + 1, stage: STAGES[index], at }
 }
 
-function start(runId: string, at: string, autoplay: boolean): WalkthroughState {
+function start(runId: string, at: string, autoplay: boolean, trigger: StageTrigger): WalkthroughState {
   return {
     status: 'active',
     runId,
@@ -47,11 +53,12 @@ function start(runId: string, at: string, autoplay: boolean): WalkthroughState {
     cursor: 0,
     autoplay,
     events: [eventFor(0, at)],
+    triggers: [trigger],
   }
 }
 
 /** Shared forward transition used by both manual Next step and auto-play ticks. */
-function advance(state: WalkthroughState, at: string): WalkthroughState {
+function advance(state: WalkthroughState, at: string, trigger: StageTrigger): WalkthroughState {
   if (state.status === 'idle' || state.cursor >= LAST_STAGE_INDEX) return state
   if (state.cursor < state.reached) {
     return { ...state, cursor: state.cursor + 1 }
@@ -63,6 +70,7 @@ function advance(state: WalkthroughState, at: string): WalkthroughState {
     cursor: reached,
     status: reached === LAST_STAGE_INDEX ? 'complete' : 'active',
     events: [...state.events, eventFor(reached, at)],
+    triggers: [...state.triggers, trigger],
   }
 }
 
@@ -70,9 +78,9 @@ export function walkthroughReducer(state: WalkthroughState, action: WalkthroughA
   switch (action.type) {
     case 'START':
       if (state.status === 'active') return state
-      return start(action.runId, action.at, action.autoplay ?? false)
+      return start(action.runId, action.at, action.autoplay ?? false, action.autoplay ? 'autoplay-start' : 'run')
     case 'NEXT': {
-      const next = advance(state, action.at)
+      const next = advance(state, action.at, action.source === 'auto' ? 'autoplay-tick' : 'manual')
       const autoplay = action.source === 'manual' ? false : next.autoplay && next.cursor < LAST_STAGE_INDEX
       return next === state && autoplay === state.autoplay ? state : { ...next, autoplay }
     }
@@ -84,7 +92,7 @@ export function walkthroughReducer(state: WalkthroughState, action: WalkthroughA
       return { ...state, cursor: action.index, autoplay: false }
     case 'AUTOPLAY_ON':
       if (state.status === 'idle' || (state.status === 'complete' && state.cursor >= LAST_STAGE_INDEX))
-        return start(action.runId, action.at, true)
+        return start(action.runId, action.at, true, 'autoplay-start')
       if (state.cursor >= LAST_STAGE_INDEX) return state
       return { ...state, autoplay: true }
     case 'AUTOPLAY_OFF':
