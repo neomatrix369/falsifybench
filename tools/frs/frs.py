@@ -138,7 +138,8 @@ def main():
             sig['accept_passed'] = sum(1 for v in R.values() if v[0])
             sig['accept_failures'] = [k for k, v in R.items() if not v[0]]
             sig['accept_unreached'] = ACCEPT_TOTAL - len(R)
-            sig['dom_leak'] = any(k in R and not R[k][0] for k in PRE_AUDIT_LEAK_KEYS)
+            # A leak check that never ran is unverified, so it fails the gate rather than passing it.
+            sig['dom_leak'] = any(not R.get(k, [False])[0] for k in PRE_AUDIT_LEAK_KEYS)
             sig['deterministic'] = bool(R.get(DETERMINISM_KEY, [False])[0])
         else:
             sig.update(accept_passed=0, accept_failures=['not run'], accept_unreached=ACCEPT_TOTAL, dom_leak=False,
