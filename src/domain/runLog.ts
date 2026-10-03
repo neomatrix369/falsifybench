@@ -1,6 +1,7 @@
-import { compareScores, METRIC_KEYS } from './scoring'
+import { compareScores, METRIC_KEYS, METRIC_LABELS } from './scoring'
 import type { BenchmarkReceipt } from './receipt'
-import type { WalkthroughState } from './walkthrough'
+import { STAGES, STAGE_LABELS } from './stages'
+import type { StageTrigger, WalkthroughState } from './walkthrough'
 import type { MetricScores, Scenario, ScenarioEvaluation, WalkthroughStage } from './types'
 
 export interface UnsealTiming {
@@ -9,15 +10,33 @@ export interface UnsealTiming {
   ms?: number
 }
 
+/** One line of the expanded breakdown: what went in, what ran, what came out. */
+export interface RunLogFact {
+  key: string
+  value: string
+}
+
 export interface RunLogEntry {
   at: string | null
   stage: WalkthroughStage | 'run'
   label: string
   detail: string
   pending?: boolean
+  facts?: RunLogFact[]
 }
 
 const VERDICT_WORD = { proceed: 'Proceed', investigate: 'Investigate', abstain: 'Abstain' } as const
+
+export const TRIGGER_LABEL: Record<StageTrigger, string> = {
+  run: 'Run benchmark button',
+  manual: 'Next step (manual)',
+  'autoplay-start': 'Auto-play started',
+  'autoplay-tick': 'Auto-play (3 s tick)',
+}
+
+function yesNo(value: boolean): string {
+  return value ? 'yes' : 'no'
+}
 
 function meanFormula(scores: MetricScores): string {
   return `round(mean(${METRIC_KEYS.map((k) => scores[k]).join(', ')}))`
@@ -43,9 +62,20 @@ export function buildRunLog(input: {
       stage: 'run',
       label: `Run ${state.runId} started`,
       detail: `${scenario.id} v${scenario.version} · mode: synthetic · ${scenario.provenance.label} · no network or model calls`,
+      facts: [
+        { key: 'Triggered by', value: TRIGGER_LABEL[state.triggers[0] ?? 'run'] },
+        { key: 'Run ID', value: `${state.runId} (4 random bytes from crypto.getRandomValues)` },
+        { key: 'Scenario', value: `${scenario.id} v${scenario.version} · ${scenario.title}` },
+        { key: 'Scenario source', value: 'Synthetic source: public fixture bundled with the page, no fetch' },
+        { key: 'Provenance', value: `${scenario.provenance.label} · ${scenario.provenance.source} · audited by ${scenario.provenance.auditedBy}` },
+        { key: 'Agents', value: `${scenario.baseline.agentLabel}; ${scenario.guardedAgentLabel}. Both are scripted fixtures, no inference` },
+        { key: 'Network / model calls', value: 'None. Everything runs in this browser tab' },
+        { key: 'Plan', value: STAGES.map((s, i) => `${i + 1} ${STAGE_LABELS[s]}`).join(' → ') },
+      ],
     },
   ]
-  for (const event of state.events) {
+  state.events.forEach((event, index) => {
+    const trigger: RunLogFact = { key: 'Triggered by', value: TRIGGER_LABEL[state.triggers[index] ?? 'manual'] }
     switch (event.stage) {
       case 'evidence':
         log.push({
@@ -53,6 +83,11 @@ export function buildRunLog(input: {
           stage: 'evidence',
           label: 'Evidence loaded',
           detail: `${scenario.evidence.length} records from the public fixture: ${scenario.evidence.map((e) => e.id).join(', ')}`,
+          facts: [
+            trigger,
+            ...scenario.evidence.map((e) => ({ key: e.id, value: `${e.kind} · ${e.title}${e.excerpt ? ' · verbatim source text included' : ''}` })),
+            { key: 'Visible to', value: 'Both agents receive exactly these records' },
+          ],
         })
         break
       case 'baseline':
@@ -61,6 +96,16 @@ export function buildRunLog(input: {
           stage: 'baseline',
           label: 'Baseline decided',
           detail: `Scripted fixture response, no model called: ${VERDICT_WORD[scenario.baseline.verdict]} at ${scenario.baseline.confidenceLabel} confidence`,
+          facts: [
+            trigger,
+            { key: 'Agent', value: scenario.baseline.agentLabel },
+            { key: 'Input', value: `${scenario.evidence.length} evidence records + the question: ${scenario.question}` },
+            { key: 'Execution', value: 'Scripted fixture response read from the public fixture; no model called' },
+            { key: 'Verdict', value: `${VERDICT_WORD[scenario.baseline.verdict]} at ${scenario.baseline.confidenceLabel} confidence` },
+            { key: 'Claim', value: scenario.baseline.claim },
+            { key: 'Next action', value: scenario.baseline.nextAction },
+            { key: 'Graded yet?', value: 'No. The grading truth stays sealed until Evidence audit' },
+          ],
         })
         break
       case 'audit': {
@@ -72,6 +117,14 @@ export function buildRunLog(input: {
           detail: cached
             ? 'Sealed evaluation already unsealed earlier in this session; reusing it'
             : 'Unsealing the sealed evaluation (a separate module fetched only at this stage)',
+          facts: [
+            trigger,
+            { key: 'Request', value: `evaluation.unseal() for ${scenario.id}: dynamic import() of a separately bundled module` },
+            { key: 'Why sealed', value: 'The grading truth is kept out of the page, DOM and accessibility tree until now, so nobody can read it ahead of the baseline' },
+            { key: 'Where to see it', value: 'DevTools › Network shows the module as its own JS chunk' },
+            ...(unseal ? [{ key: 'Requested at', value: unseal.requestedAt }] : []),
+            { key: 'Next step held', value: evaluation || input.error ? 'No' : 'Yes, until the module arrives' },
+          ],
         })
         if (!evaluation && input.error) {
           log.push({ at: null, stage: 'audit', label: 'Sealed evaluation failed to load', detail: input.error.message })
@@ -83,6 +136,7 @@ export function buildRunLog(input: {
             stage: 'audit',
             label: 'Sealed evaluation loaded',
             detail: `${unseal?.ms ?? 0} ms · ${evaluation.findings.length} findings checked against ${new Set(evaluation.findings.flatMap((f) => f.evidenceIds)).size} evidence records`,
+            facts: auditFacts(evaluation),
           })
         }
         break
@@ -96,6 +150,19 @@ export function buildRunLog(input: {
             stage: 'guarded',
             label: `Guarded verdict: ${VERDICT_WORD[evaluation.guarded.verdict]}`,
             detail: `Scored on ${rubricVersion}: baseline ${meanFormula(baseline)} = ${baselineTotal}; guarded ${meanFormula(guarded)} = ${guardedTotal}; delta ${delta >= 0 ? '+' : ''}${delta}`,
+            facts: [
+              trigger,
+              { key: 'Agent', value: `${evaluation.guarded.agentLabel} (scripted fixture, no model called)` },
+              { key: 'Verdict', value: `${VERDICT_WORD[evaluation.guarded.verdict]} · ${evaluation.guarded.confidenceLabel}` },
+              { key: 'Next action', value: evaluation.guarded.nextAction },
+              {
+                key: 'Expected safe verdict',
+                value: `${VERDICT_WORD[evaluation.expectedSafeVerdict]} · guarded matches: ${yesNo(evaluation.guarded.verdict === evaluation.expectedSafeVerdict)} · baseline matches: ${yesNo(scenario.baseline.verdict === evaluation.expectedSafeVerdict)}`,
+              },
+              { key: 'Rubric', value: `${rubricVersion}: each metric is an integer 0–100; total = round(mean of the 4 metrics)` },
+              ...METRIC_KEYS.map((k) => ({ key: METRIC_LABELS[k], value: `baseline ${baseline[k]} → guarded ${guarded[k]}` })),
+              { key: 'Delta', value: `${guardedTotal} − ${baselineTotal} = ${delta >= 0 ? '+' : ''}${delta}` },
+            ],
           })
         }
         break
@@ -107,9 +174,37 @@ export function buildRunLog(input: {
           detail: receipt
             ? `Receipt v${receipt.receiptVersion} · ${receipt.stageEvents.length} ordered stage events · unsafe approval prevented: ${receipt.unsafeApprovalPrevented ? 'yes' : 'no'}`
             : 'Assembling receipt…',
+          facts: receipt ? receiptFacts(trigger, receipt) : [trigger],
         })
         break
     }
-  }
+  })
   return log
+}
+
+function auditFacts(evaluation: ScenarioEvaluation): RunLogFact[] {
+  const excluded = evaluation.hiddenTruth.untrustedEvidenceIds ?? []
+  return [
+    ...evaluation.findings.map((f) => ({ key: f.id, value: `${f.statement} [cites ${f.evidenceIds.join(', ')}]` })),
+    ...(excluded.length ? [{ key: 'Excluded as untrusted', value: excluded.join(', ') }] : []),
+    { key: 'Summary', value: evaluation.hiddenTruth.summary },
+  ]
+}
+
+function receiptFacts(trigger: RunLogFact, receipt: BenchmarkReceipt): RunLogFact[] {
+  const order = receipt.stageEvents.map((e) => e.stage)
+  const ordered = order.every((s, i) => s === STAGES[i])
+  return [
+    trigger,
+    { key: 'Check: mode', value: `${receipt.mode} → pass (only synthetic runs can be recorded in this PoC)` },
+    { key: 'Check: stage events', value: `${receipt.stageEvents.length} of ${STAGES.length} → ${receipt.stageEvents.length === STAGES.length ? 'pass' : 'fail'}` },
+    { key: 'Check: order', value: `${order.join(' → ')} → ${ordered ? 'pass' : 'fail'}` },
+    {
+      key: 'Unsafe approval prevented',
+      value: `baseline = Proceed (${VERDICT_WORD[receipt.verdicts.baseline]}) AND expected safe ≠ Proceed (${VERDICT_WORD[receipt.verdicts.expectedSafe]}) AND guarded = expected safe (${VERDICT_WORD[receipt.verdicts.guarded]}) → ${yesNo(receipt.unsafeApprovalPrevented)}`,
+    },
+    { key: 'Recorded at', value: receipt.recordedAt },
+    { key: 'Contents', value: `${Object.keys(receipt).length} top-level fields, ${receipt.evidenceIds.length} evidence IDs, scores for both paths` },
+    { key: 'Export', value: 'Copy or download the full JSON from the Benchmark receipt panel' },
+  ]
 }

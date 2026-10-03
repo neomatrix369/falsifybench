@@ -35,6 +35,14 @@ describe('walkthrough state machine', () => {
     expect(controlAvailability(s)).toMatchObject({ canNext: false, canRun: true })
   })
 
+  it('records what triggered each stage event, outside the events copied into receipts', () => {
+    const s = run([start, next(1), next(2, 'auto')])
+    expect(s.triggers).toEqual(['run', 'manual', 'autoplay-tick'])
+    expect(s.events[0]).not.toHaveProperty('trigger')
+    expect(run([{ type: 'AUTOPLAY_ON', runId: 'RUN-A', at: AT(0) }]).triggers).toEqual(['autoplay-start'])
+    expect(run([start, next(1), { type: 'BACK' }, next(2)]).triggers).toEqual(['run', 'manual'])
+  })
+
   it('disables Back at Evidence and Run while active', () => {
     const s = run([start])
     expect(STAGES[s.cursor]).toBe('evidence')
