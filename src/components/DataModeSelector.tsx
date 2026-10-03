@@ -20,7 +20,7 @@ function Option({
   return (
     <label
       title={reason}
-      className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs ${
+      className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-xs ${
         checked ? 'bg-white font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500'
       } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
@@ -47,7 +47,7 @@ function Option({
 
 export function DataModeSelector() {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
       <fieldset className="flex items-center gap-1.5">
         <legend className="sr-only">Data mode</legend>
         <Database aria-hidden className="h-4 w-4 text-slate-500" />

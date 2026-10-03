@@ -62,7 +62,7 @@ export function StageTrace({ state, controls, onSelect, onBack, onNext, onToggle
           )
         })}
       </ol>
-      <div className="mt-4 grid grid-cols-4 gap-2" role="group" aria-label="Walkthrough controls">
+      <div className="mt-4 grid grid-cols-2 gap-2" role="group" aria-label="Walkthrough controls">
         <button type="button" className="btn-secondary" onClick={onBack} disabled={!controls.canBack}>
           <ChevronLeft aria-hidden className="h-4 w-4" />
           Back

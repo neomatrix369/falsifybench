@@ -18,22 +18,26 @@ export function Header({ onReceiptAnchor }: { onReceiptAnchor: () => void }) {
           </div>
         </div>
         <nav aria-label="Page sections" className="flex items-center gap-1 text-sm">
-          <a href="#scenario-previews" className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+          <a href="#scenario-previews" className="whitespace-nowrap rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100 hover:text-slate-900">
             Scenario previews
           </a>
           <a
             href="#current-receipt"
             onClick={onReceiptAnchor}
-            className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            className="whitespace-nowrap rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           >
             Current receipt
           </a>
         </nav>
-        <div className="ml-auto flex items-center gap-4">
-          <DataModeSelector />
+        <div className="ml-auto flex items-center">
           <StatusPill tone="green" icon={<ShieldCheck aria-hidden className="h-3 w-3" />}>
             {SYNTHETIC_LABEL}
           </StatusPill>
+        </div>
+      </div>
+      <div className="border-t border-slate-100 bg-slate-50/80">
+        <div className="mx-auto flex max-w-[1440px] items-center px-6 py-1.5">
+          <DataModeSelector />
         </div>
       </div>
     </header>
