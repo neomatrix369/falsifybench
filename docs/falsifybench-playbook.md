@@ -66,7 +66,8 @@ At desktop presentation width (optimise for 1280–1440px), use a sticky header 
 Header: FalsifyBench | Scenario previews anchor | Current receipt anchor | Data mode selector | Synthetic status
 
 Left: stable controls and visual run trace
-  - active MAT-001 scenario and two compact Coming next preview cards
+  - Runnable benchmarks picker (MAT-001, EI-001), then the active benchmark card
+  - one compact Coming next preview card
   - `Baseline agent (simulated)` and `Evidence guardrail (simulated)` labels
   - provenance badge
   - Run benchmark primary action
@@ -88,6 +89,14 @@ The PoC is read-only. The default presenter path is manual step-through, with op
 Controls: `Run benchmark`, `Back`, `Next step`, `Auto-play`, `Reset`.
 
 Manual interaction pauses auto-play. Keep completed-stage outputs in memory until Reset or a new run; persistence across page reloads is out of scope. Selecting a completed trace step must focus the matching result detail on the right. Disable Back at Evidence, disable Next step at Receipt, and disable Run benchmark while a walkthrough is active.
+
+**Focus.** Back and Next step keep keyboard focus while stepping. While the sealed audit unseals, hold Next step with `aria-disabled` rather than `disabled`, so focus never drops to `<body>`; pressing the held button pauses auto-play. Move focus to the stage heading only when the focused control truly disables itself (Back at Evidence, Next step at Receipt). Check this with a keyboard-only run in real Chrome, because jsdom keeps focus on disabled buttons.
+
+**Idle screen.** Before a run, the result surface shows the active benchmark's own question (`narrative.idleQuestion`) and a claim naming the failure it exposes (`narrative.idleClaim`), not the product-level claim. Switching benchmarks must change every line of scenario copy.
+
+**Verdict labels.** Show verdicts display-cased (`Proceed`, `Investigate`, `Abstain`, via `VERDICT_LABEL`) everywhere, including the receipt. Raw values stay lowercase in the fixtures and the exported receipt JSON.
+
+**Failed unseal.** If the sealed evaluation fails to load, show the error card with `Reload page` as the primary action and `Reset walkthrough` as secondary. Browsers cache a failed dynamic import, so Reset alone repeats the failure. The Run log `Now` line says to reload.
 
 Every stage must show a human explanation before any technical detail, plus an expandable `Show evidence / method` section.
 
@@ -196,7 +205,7 @@ Rubric version: `MAT-RUBRIC-1.0`. Each metric is an integer from 0–100. Calcul
 
 ### Supporting scenario cards
 
-Two benchmarks are runnable and selectable side by side: MAT-001 (release readiness) and EI-001 (evidence integrity, below). Show the remaining track as a clearly marked `Coming next` preview card. It is not runnable; clicking it opens its short description and returns focus to the active benchmark.
+Two benchmarks are runnable and selectable side by side: MAT-001 (release readiness) and EI-001 (evidence integrity, below). Each picker entry shows `ID · track`, then the failure under test as its title (MAT-001 `Insufficient evidence`, EI-001 `Prompt-injected source`), then the synthetic case as its subject (`Turbine support bracket`, `Coating qualification`). Label entries by the failure, not only by the case, so a reader can find the prompt-injection benchmark. Show the remaining track as a clearly marked `Coming next` preview card. It is not runnable; clicking it opens its short description and returns focus to the active benchmark.
 
 - Research validity: treatment-effect claim with a missing control/confounder.
 
