@@ -47,6 +47,17 @@ function meanFormula(scores: MetricScores): string {
  * Plain-language trace of what the walkthrough does behind each stage.
  * Before the audit stage it only names steps and timings, so it never reveals the sealed evaluation early.
  */
+/** The one line left behind when Reset or a benchmark switch discards a run before its receipt. */
+export function abandonedEntry(state: WalkthroughState, scenario: Scenario, cause: string, at: string): RunLogEntry | null {
+  if (state.status !== 'active' || !state.runId) return null
+  return {
+    at,
+    stage: 'run',
+    label: `Run ${state.runId} abandoned at stage ${state.reached + 1} ${STAGE_LABELS[STAGES[state.reached]]}`,
+    detail: `${scenario.id} · ${cause} · no receipt recorded`,
+  }
+}
+
 export function buildRunLog(input: {
   state: WalkthroughState
   scenario: Scenario
@@ -54,9 +65,10 @@ export function buildRunLog(input: {
   receipt: BenchmarkReceipt | null
   unseal: UnsealTiming | null
   error?: Error | null
+  abandoned?: RunLogEntry | null
 }): RunLogEntry[] {
   const { state, scenario, evaluation, receipt, unseal } = input
-  if (!state.runId) return []
+  if (!state.runId) return input.abandoned ? [input.abandoned] : []
   const log: RunLogEntry[] = [
     {
       at: state.startedAt,

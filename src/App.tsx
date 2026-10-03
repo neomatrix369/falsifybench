@@ -14,7 +14,7 @@ import { syntheticScenarioSource } from './data/scenarioSource'
 import { unsealRecovery } from './domain/evaluationCheck'
 import { isRunnableProvenance, PARTNER_UNAVAILABLE_REASON } from './domain/provenance'
 import { randomRunId, systemClock } from './domain/receipt'
-import { buildRunLog } from './domain/runLog'
+import { buildRunLog, type RunLogEntry } from './domain/runLog'
 import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from './domain/stages'
 import type { Scenario, ScenarioSource } from './domain/types'
 import { useWalkthrough, type WalkthroughDeps } from './hooks/useWalkthrough'
@@ -24,12 +24,13 @@ const DEFAULT_DEPS: WalkthroughDeps = { clock: systemClock, createRunId: randomR
 interface BenchProps {
   scenario: Scenario
   deps: WalkthroughDeps
-  onSelectBenchmark: (id: string) => void
+  onSelectBenchmark: (id: string, abandoned?: RunLogEntry | null) => void
   focusScenarioOnMount: boolean
+  carried: RunLogEntry | null
 }
 
-function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: BenchProps) {
-  const { state, evaluation, receipt, error, controls, actions, unseal } = useWalkthrough(scenario, deps)
+function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carried }: BenchProps) {
+  const { state, evaluation, receipt, error, controls, actions, unseal, abandoned } = useWalkthrough(scenario, deps, carried)
   const resultHeading = useRef<HTMLHeadingElement>(null)
   const activeScenarioHeading = useRef<HTMLHeadingElement>(null)
   const [focusRequest, setFocusRequest] = useState(0)
@@ -84,7 +85,10 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
       <Header onReceiptAnchor={openReceipt} />
       <main className="mx-auto grid max-w-page grid-cols-[minmax(360px,35fr)_minmax(0,65fr)] items-start gap-6 px-6 py-6">
         <div className="space-y-4">
-          <BenchmarkPicker activeId={scenario.id} onSelect={onSelectBenchmark} />
+          <BenchmarkPicker
+            activeId={scenario.id}
+            onSelect={(id) => onSelectBenchmark(id, id === scenario.id ? null : actions.abandon(`switched to ${id}`))}
+          />
           <ScenarioCard ref={activeScenarioHeading} scenario={scenario} excludedIds={excludedIds} canRun={controls.canRun} onRun={run} />
           <StageTrace
             state={state}
@@ -96,7 +100,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
             onReset={reset}
           />
           <RunLog
-            entries={buildRunLog({ state, scenario, evaluation, receipt, unseal, error })}
+            entries={buildRunLog({ state, scenario, evaluation, receipt, unseal, error, abandoned })}
             state={state}
             unsealing={controls.nextPending}
             failure={error ? unsealRecovery(error) : null}
@@ -139,7 +143,9 @@ export default function App({
   const [activeId, setActiveId] = useState(MAT_001_ID)
   const [switched, setSwitched] = useState(false)
   const [attempt, setAttempt] = useState(0)
-  const selectBenchmark = useCallback((id: string) => {
+  const [carried, setCarried] = useState<RunLogEntry | null>(null)
+  const selectBenchmark = useCallback((id: string, abandoned: RunLogEntry | null = null) => {
+    setCarried(abandoned)
     setSwitched(true)
     setActiveId(id)
   }, [])
@@ -185,6 +191,7 @@ export default function App({
         deps={deps}
         onSelectBenchmark={selectBenchmark}
         focusScenarioOnMount={switched}
+        carried={carried}
       />
     </WalkthroughErrorBoundary>
   )

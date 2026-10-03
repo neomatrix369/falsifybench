@@ -27,7 +27,7 @@ flowchart LR
   S3 -- import rejects --> E3a[E3a Unseal rejected]
   S3 -- no answer in 15 s --> E3b[E3b Unseal times out]
   S3 -- bad data --> E4[E4 Invalid evaluation]
-  S1 & S2 & S3 & S4 -- Reset / switch --> I2[I2 Run abandoned · G3]
+  S1 & S2 & S3 & S4 -- Reset / switch --> I2[I2 Run abandoned]
   S5 --> OUT3[OUT-3 Receipt JSON v1.0]
   S1 & S2 & S3 & S4 & S5 --> OUT1[OUT-1 Result surface]
   S1 & S2 & S3 & S4 & S5 --> OUT2[OUT-2 Run log]
@@ -83,7 +83,7 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 | E4 Invalid evaluation data | S3 | Error card: `evaluationProblems()` runs data gates I3–I8 on the unsealed evaluation and it is not used. `Reset walkthrough` only, since reload and Reset load the same data | Run log `Sealed evaluation failed its data checks` with each failed check, Effect and Recovery | Covered |
 | E5 Render error | Any | Error card from `WalkthroughErrorBoundary`: one around the result panel (clears when `runId` changes) and one around the whole `Bench` in `App`, whose Reset remounts it | Console | Covered |
 | E6 Receipt export fails | S5 | `Clipboard unavailable — use Download.` | Receipt still downloadable | Covered |
-| I2 Reset or switch benchmark mid-run | S1–S4 | Idle `Ready` | Nothing; Reset clears the log and a switch remounts `Bench` | **Gap G3** |
+| I2 Reset or switch benchmark mid-run | S1–S4 | Idle `Ready` (on the other benchmark after a switch) | One Run log line from `abandonedEntry()`: run ID, stage reached, benchmark and cause, no receipt. It stays until the next run starts | Covered |
 | I3 Auto-play pauses | Any | Stops on manual navigation, unseal failure or Receipt; pauses while unsealing | — | Covered |
 
 ## Outputs
@@ -91,12 +91,12 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 | | Output | Where | Notes |
 |---|---|---|---|
 | OUT-1 | Result surface and stage trace | `ResultSurface`, `StageTrace`, `ScenarioCard` | On screen only, nothing persisted. Baseline turns `warning` once Audit is reached. |
-| OUT-2 | Run log | `buildRunLog()` in `src/domain/runLog.ts`, `RunLog` | Per entry: trigger, inputs, steps, output; live `Now` line. Covers START to Receipt plus the unseal pending/failed entries. Not exportable; lost on Reset or a switch. |
+| OUT-2 | Run log | `buildRunLog()` in `src/domain/runLog.ts`, `RunLog` | Per entry: trigger, inputs, steps, output; live `Now` line. Covers START to Receipt plus the unseal pending/failed entries. Not exportable. Reset or a switch mid-run clears it, leaving one line naming the abandoned run and the stage it reached. |
 | OUT-3 | Benchmark receipt JSON v1.0 | `createReceipt()`; Copy / Download `falsifybench-<id>-<runId>.json` | Completed runs only. Triggers, unseal timing and errors stay out on purpose so the v1.0 schema does not change. |
 
 ### Run log entry labels
 
-`Run <runId> started` · `Evidence loaded` · `Baseline decided` · `Audit started` · `Waiting for sealed evaluation…` · `Sealed evaluation loaded` · `Sealed evaluation failed to load` · `Sealed evaluation failed its data checks` · `Guarded verdict: <verdict>` · `Receipt recorded`
+`Run <runId> started` · `Evidence loaded` · `Baseline decided` · `Audit started` · `Waiting for sealed evaluation…` · `Sealed evaluation loaded` · `Sealed evaluation failed to load` · `Sealed evaluation failed its data checks` · `Guarded verdict: <verdict>` · `Receipt recorded` · `Run <runId> abandoned at stage <n> <stage>`
 
 ## Offline pipelines (not part of a browser run)
 
@@ -107,8 +107,6 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 
 ## Known gaps
 
-| | Gap | Plan |
-|---|---|---|
-| G3 | Abandoned runs leave no trace | Keep a one-line `abandoned at <stage>` Run log entry |
+None open.
 
 When a gap is fixed, move its row in "Every way a run ends" to Covered and delete it here.
