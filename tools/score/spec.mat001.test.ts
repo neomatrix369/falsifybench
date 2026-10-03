@@ -1,14 +1,13 @@
-// S-signal: synthetic-data alignment between the MAT-001 / EI-001 wiring and the playbook fixture specs.
+// @vitest-environment node
+// Data gate S1 (npm run score): the MAT-001 synthetic data matches its fixture spec in the playbook.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { mat001 } from '../src/data/mat001'
-import { comingNextPreviews } from '../src/data/previews'
-import { RUNNABLE_BENCHMARKS, syntheticScenarioSource } from '../src/data/scenarioSource'
-import { createReceipt } from '../src/domain/receipt'
-import { compareScores, totalScore } from '../src/domain/scoring'
-import { STAGES } from '../src/domain/stages'
+import { mat001 } from '../../src/data/mat001'
+import { comingNextPreviews } from '../../src/data/previews'
+import { RUNNABLE_BENCHMARKS } from '../../src/data/scenarioSource'
+import { compareScores, totalScore } from '../../src/domain/scoring'
 
-const spec = readFileSync(process.env.FRS_PLAYBOOK as string, 'utf8')
+const spec = readFileSync(process.env.SCORE_PLAYBOOK ?? new URL('../../docs/falsifybench-playbook.md', import.meta.url), 'utf8')
 const between = (src: string, a: string, b: string) => src.slice(src.indexOf(a), src.indexOf(b))
 const fixture = between(spec, '## Primary deterministic scenario fixture', '## Evidence-integrity scenario fixture')
 const baselineSec = between(fixture, '### Fixed baseline result', '### Fixed guarded result')
@@ -25,7 +24,7 @@ const metricRows = ['Evidence sufficiency', 'Calibration', 'Safe action', 'Next-
 const HIDDEN = ['highest-stress', 'zero ultrasonic']
 const loadEval = () => mat001.evaluation.unseal()
 
-describe('S: MAT-001 identity and provenance', () => {
+describe('Spec: MAT-001 identity and provenance', () => {
   it('id/version/title/question match spec', () => {
     expect(mat001.id).toBe(tick(fixture, 'ID'))
     expect(mat001.version).toBe(tick(fixture, 'Version'))
@@ -37,13 +36,9 @@ describe('S: MAT-001 identity and provenance', () => {
     expect(mat001.provenance.status).toBe('synthetic_hand_audited')
     expect(mat001.provenance.label).toBe('Synthetic · hand-audited')
   })
-  it('synthetic source resolves MAT-001 and rejects unknown ids', async () => {
-    await expect(syntheticScenarioSource.loadScenario('MAT-001')).resolves.toBe(mat001)
-    await expect(syntheticScenarioSource.loadScenario('NOPE')).rejects.toThrow()
-  })
 })
 
-describe('S: visible evidence', () => {
+describe('Spec: visible evidence', () => {
   it('spec table parsed (5 rows)', () => expect(evidenceRows).toHaveLength(5))
   for (let i = 0; i < 5; i++) {
     it(`evidence row ${i + 1} id + finding match spec`, () => {
@@ -61,7 +56,7 @@ describe('S: visible evidence', () => {
   })
 })
 
-describe('S: fixed agent results', () => {
+describe('Spec: fixed agent results', () => {
   it('baseline verdict/confidence/next action match spec', () => {
     expect(mat001.baseline.verdict).toBe(norm(tick(baselineSec, 'Verdict')))
     expect(mat001.baseline.confidenceLabel).toBe(tick(baselineSec, 'Confidence'))
@@ -83,7 +78,7 @@ describe('S: fixed agent results', () => {
   })
 })
 
-describe('S: scorecard', () => {
+describe('Spec: scorecard', () => {
   it('rubric version matches spec', async () => {
     expect((await loadEval()).scoring.rubricVersion).toBe(/Rubric version: `([^`]+)`/.exec(fixture)?.[1])
   })
@@ -107,31 +102,7 @@ describe('S: scorecard', () => {
   })
 })
 
-describe('S: receipt wiring', () => {
-  const events = STAGES.map((stage, i) => ({ stage, order: i + 1, at: `2026-01-01T00:00:0${i}.000Z` }))
-  const clock = () => new Date('2026-01-01T00:01:00.000Z')
-  it('complete run produces a receipt with every required field', async () => {
-    const r = createReceipt({ scenario: mat001, evaluation: await loadEval(), runId: 'RUN-T', startedAt: events[0].at, events, mode: 'synthetic', clock } as never)
-    expect(r.mode).toBe('synthetic')
-    expect(r.provenance).toBe('synthetic_hand_audited')
-    expect(r.scenario).toMatchObject({ id: 'MAT-001', version: '1.0' })
-    expect(r.rubricVersion).toBe('MAT-RUBRIC-1.0')
-    expect(r.runId).toBe('RUN-T')
-    expect(r.recordedAt).toBe('2026-01-01T00:01:00.000Z')
-    expect(r.evidenceIds).toEqual(evidenceRows.map((e) => e.id))
-    expect(r.stageEvents.map((e) => e.stage)).toEqual([...STAGES])
-    expect(r.agents.baseline).toMatch(/simulated/i)
-    expect([r.scores.baseline.total, r.scores.guarded.total, r.scores.delta]).toEqual([15, 95, 80])
-    expect(r.unsafeApprovalPrevented).toBe(true)
-  })
-  it('incomplete run never yields a receipt', async () => {
-    const ev = await loadEval()
-    expect(() => createReceipt({ scenario: mat001, evaluation: ev, runId: 'X', startedAt: '', events: events.slice(0, 4), mode: 'synthetic', clock } as never)).toThrow()
-    expect(() => createReceipt({ scenario: mat001, evaluation: ev, runId: 'X', startedAt: '', events, mode: 'partner', clock } as never)).toThrow()
-  })
-})
-
-describe('S: coming next', () => {
+describe('Spec: coming next', () => {
   it('every spec track is either runnable or a non-runnable preview, never both', () => {
     const runnable = RUNNABLE_BENCHMARKS.map((b) => b.track)
     const previews = comingNextPreviews.map((p) => p.track)

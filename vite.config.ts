@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',
-  // public/frs/index.html is a static report; only the app entry needs a dependency scan.
+  // public/score/index.html is a static report; only the app entry needs a dependency scan.
   optimizeDeps: { entries: ['index.html'] },
   test: {
     environment: 'jsdom',
