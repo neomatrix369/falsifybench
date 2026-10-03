@@ -3,6 +3,7 @@
 
 FRS = G * H_w(Q, C, S, P), weighted harmonic mean, w = (0.20, 0.35, 0.30, 0.15).
 """
+import shlex
 import argparse, glob, gzip, json, os, re, shutil, signal, subprocess, sys, time
 
 TOOL = os.path.dirname(os.path.abspath(__file__))
@@ -58,9 +59,12 @@ def main():
     a = ap.parse_args()
     os.makedirs(f'{HERE}/results', exist_ok=True)
     label = a.label or (a.ref + (f'+{a.mutate}' if a.mutate else ''))
+    if not re.fullmatch(r'[\w.+@/-]+', label) or '..' in label:
+        sys.exit(f'Invalid label: {label!r}')
     wt = f'{HERE}/wt/{label}'
-    sh(f'git worktree remove --force {wt} 2>/dev/null; rm -rf {wt}', REPO)
-    rc, out, _ = sh(f'git worktree add --detach {wt} {a.ref}', REPO)
+    qwt = shlex.quote(wt)
+    sh(f'git worktree remove --force {qwt} 2>/dev/null; rm -rf {qwt}', REPO)
+    rc, out, _ = sh(f'git worktree add --detach {qwt} {shlex.quote(a.ref)}', REPO)
     assert rc == 0, out
     sig = {'label': label, 'ref': a.ref, 'sha': sh('git rev-parse --short HEAD', wt)[1].strip(), 'mutation': a.mutate}
     try:
@@ -80,9 +84,11 @@ def main():
         rc, out, sig['test_s'] = sh('npx vitest run --reporter=json --outputFile=tests.json --coverage.enabled '
                                     '--coverage.provider=v8 --coverage.reportOnFailure --coverage.reporter=json-summary --coverage.include="src/**" '
                                     '--coverage.exclude="src/**/*.test.*" --coverage.exclude="src/test/**" --coverage.exclude="src/main.tsx" --coverage.exclude="src/vite-env.d.ts"', wt)
-        t = json.load(open(f'{wt}/tests.json'))
+        t = json.load(open(f'{wt}/tests.json')) if os.path.exists(f'{wt}/tests.json') else {'numPassedTests': 0, 'numTotalTests': 0}
         sig['unit_passed'], sig['unit_total'] = t['numPassedTests'], t['numTotalTests']
-        cov_all = json.load(open(f'{wt}/coverage/coverage-summary.json'))
+        cov_path = f'{wt}/coverage/coverage-summary.json'
+        zero = {'lines': {'pct': 0}, 'branches': {'pct': 0}}
+        cov_all = json.load(open(cov_path)) if os.path.exists(cov_path) else {'total': zero}
         sig['coverage_by_file'] = {os.path.relpath(k, wt): {'lines': v['lines']['pct'], 'branches': v['branches']['pct']}
                                    for k, v in cov_all.items() if k != 'total'}
         cov = cov_all['total']
@@ -97,7 +103,8 @@ def main():
         # Bundle: leak gate + P inputs
         js = glob.glob(f'{wt}/dist/assets/*.js'); css = glob.glob(f'{wt}/dist/assets/*.css')
         main_js = [f for f in js if os.path.basename(f).startswith('index-')]
-        html = open(f'{wt}/dist/index.html').read() if os.path.exists(f'{wt}/dist/index.html') else ''
+        # Every published HTML page (app shell and the FRS report) must be free of sealed terms.
+        html = ''.join(open(f).read() for f in glob.glob(f'{wt}/dist/**/*.html', recursive=True))
         sig['bundle_leak'] = any(h in open(f).read() for f in main_js for h in HIDDEN) or any(h in html for h in HIDDEN)
         sig['lazy_chunk'] = any(h in open(f).read() for f in js if f not in main_js for h in HIDDEN)
         sig['initial_gzip_kb'] = round(sum(len(gzip.compress(open(f, 'rb').read(), 9)) for f in main_js + css) / 1024, 2)
@@ -118,12 +125,14 @@ def main():
                     if subprocess.run(['curl', '-sf', f'http://localhost:{a.port}/'], capture_output=True).returncode == 0: break
                     time.sleep(0.5)
                 out_json = f'{HERE}/results/{label}.accept.json'
+                if os.path.exists(out_json):
+                    os.remove(out_json)
                 t0 = time.time()
                 subprocess.run(['python3', f'{TOOL}/acceptance.py'], capture_output=True, text=True, timeout=600,
                                env={**os.environ, 'FRS_URL': f'http://localhost:{a.port}/', 'FRS_OUT': out_json,
                                     'FRS_SHOTS': f'{HERE}/shots/{label}'})
                 sig['accept_s'] = round(time.time() - t0, 1)
-                R = json.load(open(out_json))
+                R = json.load(open(out_json)) if os.path.exists(out_json) else {}
             finally:
                 os.killpg(prev.pid, signal.SIGTERM)
             sig['accept_passed'] = sum(1 for v in R.values() if v[0])
@@ -135,7 +144,7 @@ def main():
             sig.update(accept_passed=0, accept_failures=['not run'], accept_unreached=ACCEPT_TOTAL, dom_leak=False,
                        deterministic=False)
     finally:
-        sh(f'git worktree remove --force {wt}', REPO)
+        sh(f'git worktree remove --force {qwt}', REPO)
 
     # Score
     gates = {'lint': sig['lint_ok'], 'typecheck': sig['typecheck_ok'], 'build': sig['build_ok'],
@@ -148,7 +157,7 @@ def main():
         'Q': (sig['cov_lines'] + sig['cov_branches'] + sig['token_conformance']) / 3,
         'C': 0.0 if u + acc == 0 else 2 * u * acc / (u + acc),
         'S': (sig['align_passed'] / max(sig['align_total'], 1)) * (1.0 if sig['deterministic'] else 0.5),
-        'P': 0.7 * min(1.0, GZ_BUDGET_KB / sig['initial_gzip_kb']) + 0.3 * (1.0 if sig['lazy_chunk'] else 0.0),
+        'P': (0.0 if sig['initial_gzip_kb'] <= 0 else 0.7 * min(1.0, GZ_BUDGET_KB / sig['initial_gzip_kb'])) + 0.3 * (1.0 if sig['lazy_chunk'] else 0.0),
     }
     H = harmonic(x, W)
     frs = G * H
@@ -161,6 +170,7 @@ def main():
     print(json.dumps({k: res[k] for k in ('G', 'components', 'FRS', 'linear_ungated', 'decision')}),
           '| gates failed:', [k for k, v in gates.items() if not v], '| accept fails:', sig['accept_failures'][:6],
           '| align fails:', sig['align_failures'][:6])
+    return 1 if decision == 'BLOCK' else 0
 
 
 if __name__ == '__main__':

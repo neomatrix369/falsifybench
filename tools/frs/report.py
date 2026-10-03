@@ -13,6 +13,9 @@ NOTES = {'0975cca-initial-poc':'Test runner crashed on Node 20 (jsdom 30), so un
          'main+eager-leak':'Sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.'}
 DEC = {'SHIP':'ok','SHIP-WITH-FIX-FORWARD':'warn','BLOCK':'risk'}
 m = R['main']; s = m['signals']; c = m['components']
+LABEL = {'SHIP':'Ship','SHIP-WITH-FIX-FORWARD':'Ship with fix-forward','BLOCK':'Block'}
+failed = [k for k, v in m['gates'].items() if not v]
+gate_line = f'All {len(m["gates"])} gates pass.' if not failed else 'Failed gates: ' + ', '.join(failed) + '.'
 def pct(x): return f'{x*100:.1f}%'
 def bar(k, v, label, detail):
     return f'''<div class="sub"><div class="subhead"><span class="k">{k}</span><span class="lbl">{label}</span><span class="v">{v:.3f}</span></div>
@@ -62,8 +65,8 @@ ol,ul{{margin:0;padding-left:20px}}li{{margin:4px 0}}.foot{{font-size:13px;color
  <div><p class="eyebrow">Snapshot · main @ <span class="mono">{s["sha"]}</span> · 2026-10-03</p>
   <h1 id="h-score">FalsifyBench Release Score</h1>
   <div class="score" aria-label="FRS {m["FRS"]:.3f}">{m["FRS"]:.3f}</div>
-  <span class="verdict tag ok">Ship</span>
-  <p class="det" style="margin-top:12px">All six gates pass. {s["unit_passed"]}/{s["unit_total"]} unit tests, {s["accept_passed"]}/47 playbook browser checks, {s["align_passed"]}/{s["align_total"]} fixture-vs-spec checks.</p></div>
+  <span class="verdict tag {DEC[m["decision"]]}">{LABEL[m["decision"]]}</span>
+  <p class="det" style="margin-top:12px">{gate_line} {s["unit_passed"]}/{s["unit_total"]} unit tests, {s["accept_passed"]}/47 playbook browser checks, {s["align_passed"]}/{s["align_total"]} fixture-vs-spec checks.</p></div>
  <div class="subs">
   {bar("Q", c["Q"], "Quality", f'Line coverage {pct(s["cov_lines"])}, branch coverage {pct(s["cov_branches"])}, design-token conformance {pct(s["token_conformance"])}.')}
   {bar("C", c["C"], "Correctness", f'Harmonic mean of unit pass rate ({s["unit_passed"]}/{s["unit_total"]}) and playbook acceptance in real Chrome ({s["accept_passed"]}/47).')}

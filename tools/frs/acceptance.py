@@ -49,7 +49,7 @@ with sync_playwright() as p:
     hdr=pg.evaluate("document.querySelector('header').getBoundingClientRect().top")
     rec('A10 Scenario previews anchor scrolls + sticky header', inview and hdr==0, f'inview={inview} headerTop={hdr}')
     pg.evaluate("scrollTo(0,0)"); pg.click('a:has-text("Current receipt")'); pg.wait_for_timeout(800)
-    rec('A11 Current receipt anchor scrolls', pg.evaluate("scrollY")>0 or True, f"scrollY={pg.evaluate('scrollY')}")
+    rec('A11 Current receipt anchor scrolls', pg.evaluate("scrollY")>0, f"scrollY={pg.evaluate('scrollY')}")
     pg.evaluate("scrollTo(0,0)")
 
     # B. manual run
@@ -127,7 +127,7 @@ with sync_playwright() as p:
     ok_ret=False
     if bs:
         pg.get_by_role('button', name=bs[0]).click(); pg.wait_for_timeout(300); ok_ret='Turbine' in active(pg) or 'MAT-001' in active(pg)
-    rec('I Coming next opens description, not runnable, focus returns to MAT-001', 'not runnable' in t.lower() or 'coming next' in t.lower(), f'focus-on-open={a1} return-ok={ok_ret} ({bs})')
+    rec('I Coming next opens description, not runnable, focus returns to MAT-001', ('not runnable' in t.lower() or 'coming next' in t.lower()) and ok_ret, f'focus-on-open={a1} return-ok={ok_ret} ({bs})')
     pg.screenshot(path=SHOTS+'/08-coming-next.png'); pg.close()
     # J. keyboard only
     pg=page(); pg.goto(URL, wait_until='networkidle'); log=[]
@@ -145,7 +145,8 @@ with sync_playwright() as p:
                 pg.keyboard.press('Tab')
                 if active(pg).startswith('BUTTON|Next step'): break
         pg.keyboard.press('Enter'); pg.wait_for_timeout(600); log.append(active(pg))
-    rec('J keyboard-only run, visible focus ring, focus never on BODY', not any(x.startswith('BODY') for x in log) and 'Receipt' in current(pg), f'ring={ring} log={log}')
+    ring_ok=(not ring.startswith('none') and not ring.split()[1].startswith('0')) or 'rgb' in ring
+    rec('J keyboard-only run, visible focus ring, focus never on BODY', ring_ok and not any(x.startswith('BODY') for x in log) and 'Receipt' in current(pg), f'ring={ring} log={log}')
     pg.screenshot(path=SHOTS+'/09-keyboard-receipt.png'); pg.close()
     # K. 1440 overview
     pg=page(1440,900); pg.goto(URL, wait_until='networkidle'); btn(pg,'Run benchmark').click()
