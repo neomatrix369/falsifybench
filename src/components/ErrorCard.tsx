@@ -1,5 +1,5 @@
 import { RefreshCw, RotateCcw, TriangleAlert } from 'lucide-react'
-import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Component, useEffect, useRef, type ErrorInfo, type ReactNode } from 'react'
 import type { UnsealRecovery } from '../domain/evaluationCheck'
 
 const EXPLANATION: Record<'reset' | UnsealRecovery, string> = {
@@ -19,11 +19,16 @@ export function ErrorCard({
   onReset: () => void
   recovery?: 'reset' | UnsealRecovery
 }) {
+  // The control that had focus (e.g. a held Next step) may now be disabled; move focus to the card.
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => heading.current?.focus(), [])
   return (
     <div role="alert" className="sheet border-t-4 border-t-risk-line p-6">
       <div className="flex items-center gap-2 text-risk">
         <TriangleAlert aria-hidden className="h-5 w-5" />
-        <h2 className="text-title font-semibold">The walkthrough hit an unexpected error</h2>
+        <h2 ref={heading} tabIndex={-1} className="text-title font-semibold focus:outline-none">
+          The walkthrough hit an unexpected error
+        </h2>
       </div>
       <p className="mt-2 text-body text-ink-2">{EXPLANATION[recovery]}</p>
       <p className="mt-2 font-mono text-meta text-ink-3">{message}</p>

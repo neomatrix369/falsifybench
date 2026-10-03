@@ -13,8 +13,31 @@ export class InvalidEvaluationError extends Error {
   }
 }
 
+const isText = (v: unknown) => typeof v === 'string' && v.trim() !== ''
+const isTextList = (v: unknown) => Array.isArray(v) && v.length > 0 && v.every(isText)
+
+/** Fields the walkthrough renders after Audit; a missing one would crash a panel mid-run. */
+function shapeProblems(e: ScenarioEvaluation): string[] {
+  const g = (e?.guarded ?? {}) as unknown as Partial<Record<string, unknown>>
+  const n = (e?.narrative ?? {}) as unknown as Partial<Record<string, unknown>>
+  const fields: [string, unknown, (v: unknown) => boolean][] = [
+    ['hiddenTruth.summary', e?.hiddenTruth?.summary, isText],
+    ['sufficientNextAction', e?.sufficientNextAction, isText],
+    ...(['agentLabel', 'verdict', 'confidenceLabel', 'claim', 'nextAction'] as const).map(
+      (k): [string, unknown, (v: unknown) => boolean] => [`guarded.${k}`, g[k], isText],
+    ),
+    ['guarded.rationale', g.rationale, isTextList],
+    ...(['auditHeadline', 'auditQuestion', 'auditAnswer', 'guardedHeadline', 'guardedIntro', 'guardedWhy'] as const).map(
+      (k): [string, unknown, (v: unknown) => boolean] => [`narrative.${k}`, n[k], isText],
+    ),
+  ]
+  return fields.filter(([, value, ok]) => !ok(value)).map(([name]) => `Malformed evaluation: ${name} is missing or empty`)
+}
+
 /** Why an unsealed evaluation can't be used; empty when it passes every runtime gate. */
 export function evaluationProblems(scenario: Scenario, evaluation: ScenarioEvaluation): string[] {
+  const shape = shapeProblems(evaluation)
+  if (shape.length) return shape
   try {
     return integrityChecks({ scenario, evaluation }, [scenario.id])
       .filter((c) => RUNTIME_GATES.includes(c.id) && !c.ok)

@@ -150,6 +150,7 @@ describe('FalsifyBench guards', () => {
     expect(alert).toHaveTextContent(/I6 Rubric metrics are integers 0–100: guarded out of range/)
     expect(within(alert).queryByRole('button', { name: /reload page/i })).not.toBeInTheDocument()
     expect(within(alert).getByRole('button', { name: /reset walkthrough/i })).toBeInTheDocument()
+    expect(within(alert).getByRole('heading', { name: /unexpected error/i })).toHaveFocus()
     expect(screen.getByText('Sealed evaluation failed its data checks')).toBeInTheDocument()
     expect(screen.getByText(/stopped: the sealed evaluation failed its data checks and was not used/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /turbine support bracket release decision/i })).toBeInTheDocument()

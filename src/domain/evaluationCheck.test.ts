@@ -28,7 +28,18 @@ describe('evaluationProblems', () => {
   })
 
   it('reports a malformed shape instead of throwing', () => {
-    expect(evaluationProblems(mat001, {} as ScenarioEvaluation)).toEqual([expect.stringMatching(/^Malformed evaluation: /)])
+    const problems = evaluationProblems(mat001, {} as ScenarioEvaluation)
+    expect(problems.length).toBeGreaterThan(0)
+    for (const p of problems) expect(p).toMatch(/^Malformed evaluation: /)
+  })
+
+  it('flags a guarded response with no rationale, which the Guarded panel needs', async () => {
+    const good = await mat001.evaluation.unseal()
+    const { rationale: _omit, ...guarded } = good.guarded
+    void _omit
+    expect(evaluationProblems(mat001, { ...good, guarded } as ScenarioEvaluation)).toEqual([
+      'Malformed evaluation: guarded.rationale is missing or empty',
+    ])
   })
 })
 
