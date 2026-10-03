@@ -135,6 +135,30 @@ describe('FalsifyBench guards', () => {
     expect(screen.getByText(/reset alone repeats the cached failure/i)).toBeInTheDocument()
   })
 
+  it('stops waiting after 15 s when the sealed evaluation never arrives', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { mat001 } = await import('./data/mat001')
+    const pending = { ...mat001, evaluation: { unseal: () => new Promise<never>(() => {}) } }
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App deps={deps} source={{ loadScenario: async () => pending }} />)
+    await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
+    await user.click(btn(/next step/i))
+    await user.click(btn(/next step/i))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(14_000)
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(btn(/next step/i)).toHaveAttribute('aria-disabled', 'true')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/did not load within 15 s/i)
+    expect(within(alert).getByRole('button', { name: /reload page/i })).toBeInTheDocument()
+    expect(screen.getByText(/UnsealTimeoutError: The sealed evaluation for MAT-001 did not load within 15 s/)).toBeInTheDocument()
+    expect(screen.queryByText(/waiting for sealed evaluation/i)).not.toBeInTheDocument()
+  })
+
   it('shows an error card, not a blank page, when the sealed evaluation fails its data checks', async () => {
     const { mat001 } = await import('./data/mat001')
     const good = await mat001.evaluation.unseal()

@@ -3,6 +3,7 @@ import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from '../domain/stages'
 import { createReceipt, type BenchmarkReceipt, type Clock, type RunIdFactory } from '../domain/receipt'
 import { evaluationProblems, InvalidEvaluationError } from '../domain/evaluationCheck'
 import type { UnsealTiming } from '../domain/runLog'
+import { UNSEAL_TIMEOUT_MS, UnsealTimeoutError, withTimeout } from '../domain/unsealTimeout'
 import { controlAvailability, initialWalkthroughState, walkthroughReducer, type ControlAvailability } from '../domain/walkthrough'
 import type { Scenario, ScenarioEvaluation } from '../domain/types'
 
@@ -30,8 +31,7 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
     let cancelled = false
     const requested = clock()
     setUnseal({ requestedAt: requested.toISOString() })
-    scenario.evaluation
-      .unseal()
+    withTimeout(scenario.evaluation.unseal(), UNSEAL_TIMEOUT_MS, () => new UnsealTimeoutError(scenario.id, UNSEAL_TIMEOUT_MS))
       .then((value) => {
         if (cancelled) return
         const problems = evaluationProblems(scenario, value)

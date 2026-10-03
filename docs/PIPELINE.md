@@ -25,7 +25,7 @@ flowchart LR
   P0 -- rejects --> E0[E0 Load error]
   P1 -- not synthetic --> E1[E1 Not runnable]
   S3 -- import rejects --> E3a[E3a Unseal rejected]
-  S3 -- never settles --> E3b[E3b Unseal hangs · G2]
+  S3 -- no answer in 15 s --> E3b[E3b Unseal times out]
   S3 -- bad data --> E4[E4 Invalid evaluation]
   S1 & S2 & S3 & S4 -- Reset / switch --> I2[I2 Run abandoned · G3]
   S5 --> OUT3[OUT-3 Receipt JSON v1.0]
@@ -65,7 +65,7 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 | P1 | Provenance gate | Load resolved | `provenance.status` | `isRunnableProvenance()`: only `synthetic_hand_audited` passes | `Bench` mounted, idle | E1 | `src/domain/provenance.ts` |
 | S1 | Evidence loaded | Run benchmark, Auto-play | `evidence[]`, clock, run ID | `START` or `AUTOPLAY_ON`: idle → active, event 1 | Evidence cards (EI-001 shows the injected excerpt verbatim); Run log `Run … started`, `Evidence loaded` | I1, I2, I3 | `src/domain/walkthrough.ts` |
 | S2 | Baseline decided | Next step, auto-play tick | `scenario.baseline` (scripted) | `NEXT`: event 2, not graded yet | Baseline card (Proceed for both benchmarks) | I1, I2, I3 | `src/domain/walkthrough.ts` |
-| S3 | Evidence audit | Next step, auto-play tick | Sealed chunk | Event 3, then `scenario.evaluation.unseal()`; Next step held (`aria-disabled`) and auto-play paused while pending; result cached for this `Bench` so a re-run after Reset makes no new request | Findings, excluded sources struck out, schematic or source audit | E3a, E3b, E4 | `src/hooks/useWalkthrough.ts` |
+| S3 | Evidence audit | Next step, auto-play tick | Sealed chunk | Event 3, then `scenario.evaluation.unseal()`; Next step held (`aria-disabled`) and auto-play paused while pending, for at most `UNSEAL_TIMEOUT_MS` (15 s); result cached for this `Bench` so a re-run after Reset makes no new request | Findings, excluded sources struck out, schematic or source audit | E3a, E3b, E4 | `src/hooks/useWalkthrough.ts` |
 | S4 | Guarded verdict | Next step, auto-play tick | `evaluation.guarded`, `evaluation.scoring` | Event 4; `compareScores()` → `totalScore() = round(mean of 4 metrics)`, each an integer 0–100 or `RangeError` | Outcome strip, score card, score equations, Run log formulas | E4 | `src/domain/scoring.ts` |
 | S5 | Receipt recorded | Next step, auto-play tick | Everything above | Event 5; `createReceipt()` checks mode `synthetic`, 5 events, order 1–5 (`IncompleteRunError` otherwise) | `BenchmarkReceipt` v1.0; status `complete` | E6 | `src/domain/receipt.ts` |
 
@@ -79,7 +79,7 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 | E0 Scenario load fails | P0 | Full-page error card; Reset returns to MAT-001 (reloads if already there) | Message on screen only | Covered |
 | E1 Not runnable (partner provenance) | P1 | Error card `<id> is not runnable: Awaiting validated partner source.` | Message on screen only | Covered (not reachable from the UI today) |
 | E3a Unseal rejected | S3 | Error card with `Reload page` and `Reset walkthrough`; browsers cache the failed `import()`, so only a reload retries | Run log `Sealed evaluation failed to load` with Error, Effect, Recovery | Covered |
-| E3b Unseal never settles | S3 | `Waiting for sealed evaluation…` with no end | Pending Run log line | **Gap G2** |
+| E3b Unseal does not settle in 15 s | S3 | After `UNSEAL_TIMEOUT_MS` the E3a error card: `did not load within 15 s`, with `Reload page` and `Reset walkthrough`; auto-play off | Run log `Sealed evaluation failed to load` with `UnsealTimeoutError`, never left pending | Covered |
 | E4 Invalid evaluation data | S3 | Error card: `evaluationProblems()` runs data gates I3–I8 on the unsealed evaluation and it is not used. `Reset walkthrough` only, since reload and Reset load the same data | Run log `Sealed evaluation failed its data checks` with each failed check, Effect and Recovery | Covered |
 | E5 Render error | Any | Error card from `WalkthroughErrorBoundary`: one around the result panel (clears when `runId` changes) and one around the whole `Bench` in `App`, whose Reset remounts it | Console | Covered |
 | E6 Receipt export fails | S5 | `Clipboard unavailable — use Download.` | Receipt still downloadable | Covered |
@@ -109,7 +109,6 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 
 | | Gap | Plan |
 |---|---|---|
-| G2 | Unseal has no timeout | Reject after 15 s with an error card and Run log entry |
 | G3 | Abandoned runs leave no trace | Keep a one-line `abandoned at <stage>` Run log entry |
 
 When a gap is fixed, move its row in "Every way a run ends" to Covered and delete it here.
