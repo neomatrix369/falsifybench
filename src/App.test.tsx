@@ -276,6 +276,23 @@ describe('FalsifyBench keyboard flow', () => {
     expect(auditTab).toHaveFocus()
   })
 
+  it('leaves one Run log line when Reset or a benchmark switch abandons a run', async () => {
+    const user = await setup()
+    const log = () => screen.getByRole('log', { name: /run log entries/i })
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    await user.click(screen.getByRole('button', { name: /^reset/i }))
+    expect(within(log()).getByText('Run RUN-FIXED abandoned at stage 2 Baseline decided')).toBeInTheDocument()
+    expect(within(log()).getByText('MAT-001 · Reset · no receipt recorded')).toBeInTheDocument()
+    expect(within(log()).getAllByRole('listitem')).toHaveLength(1)
+    await user.click(btn(/run benchmark/i))
+    expect(within(log()).queryByText(/abandoned/)).not.toBeInTheDocument()
+    await user.click(btn(/coating qualification/i))
+    await screen.findByRole('heading', { name: /marine fastener coating qualification/i })
+    expect(within(log()).getByText('Run RUN-FIXED abandoned at stage 1 Evidence loaded')).toBeInTheDocument()
+    expect(within(log()).getByText('MAT-001 · switched to EI-001 · no receipt recorded')).toBeInTheDocument()
+  })
+
   it('runs EI-001 end to end and seals its audit truth until the Audit stage', async () => {
     const user = await setup()
     const EI_HIDDEN = [/not evidence/i, /falls short/i, /excluded/i]

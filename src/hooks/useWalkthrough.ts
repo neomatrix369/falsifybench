@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from '../domain/stages'
 import { createReceipt, type BenchmarkReceipt, type Clock, type RunIdFactory } from '../domain/receipt'
 import { evaluationProblems, InvalidEvaluationError } from '../domain/evaluationCheck'
-import type { UnsealTiming } from '../domain/runLog'
+import { abandonedEntry, type RunLogEntry, type UnsealTiming } from '../domain/runLog'
 import { UNSEAL_TIMEOUT_MS, UnsealTimeoutError, withTimeout } from '../domain/unsealTimeout'
 import { controlAvailability, initialWalkthroughState, walkthroughReducer, type ControlAvailability } from '../domain/walkthrough'
 import type { Scenario, ScenarioEvaluation } from '../domain/types'
@@ -17,7 +17,8 @@ export interface WalkthroughDeps {
 /** `nextPending`: Next step is held (not disabled) while the sealed evaluation loads, so it keeps focus. */
 export type WalkthroughControls = ControlAvailability & { nextPending: boolean }
 
-export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
+export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, carried: RunLogEntry | null = null) {
+  const [abandoned, setAbandoned] = useState<RunLogEntry | null>(carried)
   const [state, dispatch] = useReducer(walkthroughReducer, initialWalkthroughState)
   const [evaluation, setEvaluation] = useState<ScenarioEvaluation | null>(null)
   const [error, setError] = useState<Error | null>(null)
@@ -87,11 +88,14 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
           ? dispatch({ type: 'AUTOPLAY_OFF' })
           : dispatch({ type: 'AUTOPLAY_ON', runId: createRunId(), at: now() }),
       reset: () => {
+        setAbandoned(abandonedEntry(state, scenario, 'Reset', now()))
         setError(null)
         dispatch({ type: 'RESET' })
       },
+      /** The Run log line for a run discarded by `cause`, or null if nothing is in progress. */
+      abandon: (cause: string) => abandonedEntry(state, scenario, cause, now()),
     }),
-    [createRunId, now, state.autoplay, blocked],
+    [createRunId, now, state, scenario, blocked],
   )
 
   const base = controlAvailability(state)
@@ -101,5 +105,5 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps) {
     canAutoplay: base.canAutoplay && error === null,
     nextPending: base.canNext && awaitingEvaluation && error === null,
   }
-  return { state, evaluation, receipt, error, controls, actions, unseal }
+  return { state, evaluation, receipt, error, controls, actions, unseal, abandoned }
 }

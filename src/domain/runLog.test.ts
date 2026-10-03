@@ -125,3 +125,32 @@ describe('buildRunLog', () => {
     expect(JSON.stringify(log)).not.toMatch(/highest-stress|zero ultrasonic|F-1|expected safe/i)
   })
 })
+
+describe('abandonedEntry', () => {
+  it('names the run and the stage it reached, only for a run still in progress', async () => {
+    const { mat001 } = await import('../data/mat001')
+    const { walkthroughReducer, initialWalkthroughState } = await import('./walkthrough')
+    const { abandonedEntry, buildRunLog } = await import('./runLog')
+    const at = '2026-01-01T12:00:00.000Z'
+    let s = walkthroughReducer(initialWalkthroughState, { type: 'START', runId: 'RUN-1', at })
+    s = walkthroughReducer(s, { type: 'NEXT', source: 'manual', at })
+    s = walkthroughReducer(s, { type: 'NEXT', source: 'manual', at })
+    const entry = abandonedEntry(s, mat001, 'Reset', at)
+    expect(entry).toMatchObject({ label: 'Run RUN-1 abandoned at stage 3 Evidence audit', detail: 'MAT-001 · Reset · no receipt recorded' })
+    expect(abandonedEntry(initialWalkthroughState, mat001, 'Reset', at)).toBeNull()
+    const idle = { state: initialWalkthroughState, scenario: mat001, evaluation: null, receipt: null, unseal: null }
+    expect(buildRunLog({ ...idle, abandoned: entry })).toEqual([entry])
+    expect(buildRunLog(idle)).toEqual([])
+  })
+
+  it('leaves nothing for a completed run', async () => {
+    const { mat001 } = await import('../data/mat001')
+    const { walkthroughReducer, initialWalkthroughState } = await import('./walkthrough')
+    const { abandonedEntry } = await import('./runLog')
+    const at = '2026-01-01T12:00:00.000Z'
+    let s = walkthroughReducer(initialWalkthroughState, { type: 'START', runId: 'RUN-1', at })
+    for (let i = 0; i < 4; i++) s = walkthroughReducer(s, { type: 'NEXT', source: 'manual', at })
+    expect(s.status).toBe('complete')
+    expect(abandonedEntry(s, mat001, 'Reset', at)).toBeNull()
+  })
+})
