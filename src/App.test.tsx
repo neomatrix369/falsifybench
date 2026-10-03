@@ -120,6 +120,21 @@ describe('FalsifyBench guards', () => {
     expect(screen.getByText(/stage 3 of 5/i)).toBeInTheDocument()
   })
 
+  it('offers a page reload, not just Reset, when the sealed evaluation fails to load', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const failing = { ...mat001, evaluation: { unseal: () => Promise.reject(new Error('chunk failed')) } }
+    const user = userEvent.setup()
+    render(<App deps={deps} source={{ loadScenario: async () => failing }} />)
+    await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
+    await user.click(btn(/next step/i))
+    await user.click(btn(/next step/i))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/reload the page to retry/i)
+    expect(within(alert).getByRole('button', { name: /reload page/i })).toBeInTheDocument()
+    expect(within(alert).getByRole('button', { name: /reset walkthrough/i })).toBeInTheDocument()
+    expect(screen.getByText(/reset alone repeats the cached failure/i)).toBeInTheDocument()
+  })
+
   it('keeps keyboard focus on Next step while it waits for the sealed evaluation', async () => {
     const { mat001 } = await import('./data/mat001')
     const pending = { ...mat001, evaluation: { unseal: () => new Promise<never>(() => {}) } }

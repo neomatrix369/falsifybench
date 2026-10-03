@@ -1,7 +1,15 @@
-import { RotateCcw, TriangleAlert } from 'lucide-react'
+import { RefreshCw, RotateCcw, TriangleAlert } from 'lucide-react'
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 
-export function ErrorCard({ message, onReset }: { message: string; onReset: () => void }) {
+export function ErrorCard({
+  message,
+  onReset,
+  reloadToRetry = false,
+}: {
+  message: string
+  onReset: () => void
+  reloadToRetry?: boolean
+}) {
   return (
     <div role="alert" className="sheet border-t-4 border-t-risk-line p-6">
       <div className="flex items-center gap-2 text-risk">
@@ -9,12 +17,25 @@ export function ErrorCard({ message, onReset }: { message: string; onReset: () =
         <h2 className="text-title font-semibold">The walkthrough hit an unexpected error</h2>
       </div>
       <p className="mt-2 text-body text-ink-2">
-        No receipt was recorded and this run is not marked complete. Reset to start a fresh, deterministic run.
+        {reloadToRetry
+          ? 'No receipt was recorded and this run is not marked complete. The browser caches a failed module import for this page, so reload the page to retry; Reset alone repeats the failure.'
+          : 'No receipt was recorded and this run is not marked complete. Reset to start a fresh, deterministic run.'}
       </p>
       <p className="mt-2 font-mono text-meta text-ink-3">{message}</p>
-      <button type="button" className="btn-primary mt-4" onClick={onReset}>
-        <RotateCcw aria-hidden className="h-4 w-4" /> Reset walkthrough
-      </button>
+      {reloadToRetry ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
+            <RefreshCw aria-hidden className="h-4 w-4" /> Reload page
+          </button>
+          <button type="button" className="btn-secondary" onClick={onReset}>
+            <RotateCcw aria-hidden className="h-4 w-4" /> Reset walkthrough
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="btn-primary mt-4" onClick={onReset}>
+          <RotateCcw aria-hidden className="h-4 w-4" /> Reset walkthrough
+        </button>
+      )}
     </div>
   )
 }

@@ -106,7 +106,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
         <div className="space-y-4">
           <WalkthroughErrorBoundary onReset={actions.reset} resetKey={state.runId}>
             {error ? (
-              <ErrorCard message={error.message} onReset={actions.reset} />
+              <ErrorCard message={error.message} onReset={actions.reset} reloadToRetry />
             ) : (
               <ResultSurface
                 ref={resultHeading}
