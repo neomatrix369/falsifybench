@@ -407,4 +407,4 @@ Return, in this order:
 4. Acceptance-checklist results and screenshots.
 5. FRS score, Q/C/S/P, decision, and mutation results.
 6. Any pre-existing repository issue or deployment blocker.
-6. Explicit coverage gaps and recommended next feedback questions.
+7. Explicit coverage gaps and recommended next feedback questions.
