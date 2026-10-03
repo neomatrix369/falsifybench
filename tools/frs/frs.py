@@ -11,12 +11,13 @@ REPO = os.path.dirname(os.path.dirname(TOOL))
 HERE = os.environ.get('FRS_WORKDIR', os.path.join(REPO, '.frs'))
 PLAYBOOK = os.path.join(REPO, 'docs', 'falsifybench-playbook.md')
 NVM = '[ -s ~/.nvm/nvm.sh ] && source ~/.nvm/nvm.sh >/dev/null 2>&1 && nvm use 20 >/dev/null 2>&1; '
-HIDDEN = ['highest-stress', 'zero ultrasonic']
-ACCEPT_TOTAL = 47
+HIDDEN = ['highest-stress', 'zero ultrasonic', 'falls short', 'instruction to the agent']
+ACCEPT_TOTAL = 60
 W = {'Q': 0.20, 'C': 0.35, 'S': 0.30, 'P': 0.15}
 GZ_BUDGET_KB = 80.0
 PRE_AUDIT_LEAK_KEYS = ('A8 no hidden truth at idle (DOM+a11y)', 'B-evidence no hidden truth (DOM+a11y)',
-                       'B-baseline no hidden truth (DOM+a11y)')
+                       'B-baseline no hidden truth (DOM+a11y)', 'L3 EI no audit truth at idle (DOM+a11y)',
+                       'L-evidence EI no audit truth (DOM+a11y)', 'L-baseline EI no audit truth (DOM+a11y)')
 DETERMINISM_KEY = 'F manual vs autoplay receipt identical (minus run ID/timestamps)'
 RAW_PALETTE = re.compile(r'\b(slate|gray|zinc|neutral|stone|indigo|purple|violet|blue|sky|emerald|red|green|amber)-\d{2,3}\b|#[0-9a-fA-F]{6}\b')
 NETWORK = re.compile(r'\bfetch\(|XMLHttpRequest|WebSocket\(|API_KEY|apiKey|sk-[A-Za-z0-9]{20}')
@@ -29,6 +30,13 @@ MUTATIONS = {
                    ('src/data/mat001.ts',
                     "unseal: () => import('./mat001.evaluation').then((m) => m.mat001Evaluation),",
                     'unseal: () => Promise.resolve(mat001Evaluation),')],
+    # EI-001 sealed evaluation bundled eagerly into the main chunk.
+    'ei-eager-leak': [('src/data/ei001.ts',
+                       "import type { Scenario } from '../domain/types'",
+                       "import type { Scenario } from '../domain/types'\nimport { ei001Evaluation } from './ei001.evaluation'"),
+                      ('src/data/ei001.ts',
+                       "unseal: () => import('./ei001.evaluation').then((m) => m.ei001Evaluation),",
+                       'unseal: () => Promise.resolve(ei001Evaluation),')],
     # Synthetic fixture drifts from the spec scorecard (guarded safeAction 100 -> 60).
     'score-drift': [('src/data/mat001.evaluation.ts',
                      'guarded: { evidenceSufficiency: 94, calibration: 88, safeAction: 100, nextTestQuality: 96 }',

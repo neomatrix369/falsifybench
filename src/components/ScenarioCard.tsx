@@ -4,11 +4,14 @@ import type { Scenario } from '../domain/types'
 
 interface Props {
   scenario: Scenario
+  /** Sources the unsealed audit excluded; empty before the Audit stage. */
+  excludedIds: string[]
   canRun: boolean
   onRun: () => void
 }
 
-export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function ScenarioCard({ scenario, canRun, onRun }, ref) {
+export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function ScenarioCard({ scenario, excludedIds, canRun, onRun }, ref) {
+  const quoted = scenario.evidence.filter((item) => item.excerpt)
   return (
     <section aria-labelledby="active-scenario-title" className="sheet">
       <div className="flex items-center justify-between border-b border-rule px-5 py-2">
@@ -22,6 +25,27 @@ export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function Scena
           {scenario.title}
         </h2>
         <p className="mt-1 text-body text-ink-2">{scenario.question}</p>
+
+        {quoted.map((item) => {
+          const excluded = excludedIds.includes(item.id)
+          return (
+            <figure
+              key={item.id}
+              aria-label={`Verbatim text in ${item.id}`}
+              className={`mt-3 rounded-sm border px-3 py-2 ${excluded ? 'border-risk-line bg-risk-tint/60' : 'border-rule bg-sunken'}`}
+            >
+              <figcaption className="flex items-baseline justify-between gap-2 text-meta">
+                <span>
+                  <span className="font-mono text-ink-3">{item.id}</span>{' '}
+                  <span className="font-medium text-ink">{item.title}</span>
+                  <span className="text-ink-3"> · verbatim</span>
+                </span>
+                {excluded && <span className="shrink-0 font-medium text-risk">Excluded · instruction</span>}
+              </figcaption>
+              <blockquote className="mt-1 font-mono text-meta text-ink-2">“{item.excerpt}”</blockquote>
+            </figure>
+          )
+        })}
 
         <dl className="mt-3 divide-y divide-rule border-y border-rule text-body">
           <div className="flex items-center gap-2.5 py-1.5">

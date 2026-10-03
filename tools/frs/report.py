@@ -2,16 +2,18 @@ import json, html
 import os
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RES = os.path.join(ROOT, '.frs', 'results')
-R = {k: json.load(open(os.path.join(RES, f'{k}.json'))) for k in ['0975cca-initial-poc','65cbf40-review-fixes','2219a0f-redesign','main','main+eager-leak','main+score-drift']}
+R = {k: json.load(open(os.path.join(RES, f'{k}.json'))) for k in ['0975cca-initial-poc','65cbf40-review-fixes','2219a0f-redesign','main','main+eager-leak','main+ei-eager-leak','main+score-drift']}
 NAMES = {'0975cca-initial-poc':('0975cca','Initial PoC'),'65cbf40-review-fixes':('65cbf40','Review + QA fixes'),
-         '2219a0f-redesign':('2219a0f','Design-system redesign'),'main':('c1a40da','main · keyboard focus fix'),
-         'main+eager-leak':('c1a40da*','Mutation: evaluation bundled eagerly'),
-         'main+score-drift':('c1a40da*','Mutation: guarded score drifts from spec')}
+         '2219a0f-redesign':('2219a0f','Design-system redesign'),'main':(None,'main · MAT-001 + EI-001'),
+         'main+eager-leak':(None,'Mutation: MAT-001 evaluation bundled eagerly'),
+         'main+ei-eager-leak':(None,'Mutation: EI-001 evaluation bundled eagerly'),
+         'main+score-drift':(None,'Mutation: guarded score drifts from spec')}
 NOTES = {'0975cca-initial-poc':'Unit test runner crashed on Node 20 (jsdom 30), so unit tests and coverage could not run (C = 0). Fixture checks pass. Fixed in 65cbf40.',
          '65cbf40-review-fixes':'Raw Tailwind palette in every component (0/16 token-conformant). Keyboard focus lost at Audit.',
          '2219a0f-redesign':'Tokens fixed (16/16). Keyboard focus still lost at Audit, caught only in real Chrome.',
-         'main':'All 47 browser checks pass. Lowest sub-score is branch coverage.',
-         'main+eager-leak':'Sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.',
+         'main':'All 60 browser checks pass on both benchmarks, including the EI-001 injected line at every stage. Lowest sub-score is branch coverage.',
+         'main+eager-leak':'MAT-001 sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.',
+         'main+ei-eager-leak':'EI-001 sealed evaluation imported statically, so its audit truth lands in the main bundle. Gate G = 0.',
          'main+score-drift':'Guarded safe-action score 100 → 60, so the shown result contradicts the spec. 3 fixture and 3 browser checks fail; fixture gate G = 0.'}
 DEC = {'SHIP':'ok','SHIP-WITH-FIX-FORWARD':'warn','BLOCK':'risk'}
 m = R['main']; s = m['signals']; c = m['components']
@@ -19,12 +21,14 @@ LABEL = {'SHIP':'Ship','SHIP-WITH-FIX-FORWARD':'Ship with fix-forward','BLOCK':'
 failed = [k for k, v in m['gates'].items() if not v]
 gate_line = f'All {len(m["gates"])} gates pass.' if not failed else 'Failed gates: ' + ', '.join(failed) + '.'
 def pct(x): return f'{x*100:.1f}%'
+least = ', '.join(f'{os.path.basename(f)} ({v["branches"]:g}%)' for f, v in sorted(s['coverage_by_file'].items(), key=lambda kv: kv[1]['branches'])[:4])
 def bar(k, v, label, detail):
     return f'''<div class="sub"><div class="subhead"><span class="k">{k}</span><span class="lbl">{label}</span><span class="v">{v:.3f}</span></div>
 <div class="track" role="img" aria-label="{label} {v:.3f} of 1"><div class="fill" style="width:{v*100:.1f}%"></div></div><p class="det">{detail}</p></div>'''
 rows = ''
 for key,(sha,name) in NAMES.items():
     r = R[key]; x = r['components']; d = r['decision']
+    sha = sha or r['signals']['sha'] + ('*' if r['signals'].get('mutation') else '')
     rows += f'''<tr><th scope="row"><span class="mono">{sha}</span><br><span class="muted">{name}</span></th>
 <td class="mono">{r["G"]}</td>''' + ''.join(f'<td class="mono">{x[k]:.3f}</td>' for k in 'QCSP') + f'''
 <td class="mono">{r["linear_ungated"]:.3f}</td><td class="mono strong">{r["FRS"]:.3f}</td><td><span class="tag {DEC[d]}">{d.replace("-"," ").title().replace("With","with").replace("Fix Forward","fix-forward")}</span></td>
@@ -61,18 +65,18 @@ thead th{{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb
 ol,ul{{margin:0;padding-left:20px}}li{{margin:4px 0}}.foot{{font-size:13px;color:rgb(var(--ink-3))}}
 @media (prefers-reduced-motion:reduce){{*{{transition:none!important}}}}
 </style></head><body>
-<header><div class="bar"><div class="brand">FalsifyBench <span>· Release score</span></div><a href="../">Open the MAT-001 walkthrough</a></div></header>
+<header><div class="bar"><div class="brand">FalsifyBench <span>· Release score</span></div><a href="../">Open the walkthrough</a></div></header>
 <main>
 <section class="sheet hero" aria-labelledby="h-score">
  <div><p class="eyebrow">Snapshot · main @ <span class="mono">{s["sha"]}</span> · 2026-10-03</p>
   <h1 id="h-score">FalsifyBench Release Score</h1>
   <div class="score" aria-label="FRS {m["FRS"]:.3f}">{m["FRS"]:.3f}</div>
   <span class="verdict tag {DEC[m["decision"]]}">{LABEL[m["decision"]]}</span>
-  <p class="det" style="margin-top:12px">{gate_line} {s["unit_passed"]}/{s["unit_total"]} unit tests, {s["accept_passed"]}/47 playbook browser checks, {s["align_passed"]}/{s["align_total"]} fixture-vs-spec checks.</p></div>
+  <p class="det" style="margin-top:12px">{gate_line} {s["unit_passed"]}/{s["unit_total"]} unit tests, {s["accept_passed"]}/60 playbook browser checks, {s["align_passed"]}/{s["align_total"]} fixture-vs-spec checks.</p></div>
  <div class="subs">
   {bar("Q", c["Q"], "Quality", f'Line coverage {pct(s["cov_lines"])}, branch coverage {pct(s["cov_branches"])}, design-token conformance {pct(s["token_conformance"])}.')}
-  {bar("C", c["C"], "Correctness", f'Harmonic mean of unit pass rate ({s["unit_passed"]}/{s["unit_total"]}) and playbook acceptance in real Chrome ({s["accept_passed"]}/47).')}
-  {bar("S", c["S"], "Synthetic-data alignment", f'MAT-001 fixture, scorecard, sealed evaluation and receipt wiring checked against the playbook ({s["align_passed"]}/{s["align_total"]}); manual = auto-play receipt.')}
+  {bar("C", c["C"], "Correctness", f'Harmonic mean of unit pass rate ({s["unit_passed"]}/{s["unit_total"]}) and playbook acceptance in real Chrome ({s["accept_passed"]}/60, MAT-001 + EI-001).')}
+  {bar("S", c["S"], "Synthetic-data alignment", f'MAT-001 and EI-001 fixtures, scorecards, sealed evaluations and receipt wiring checked against the playbook ({s["align_passed"]}/{s["align_total"]}); manual = auto-play receipt.')}
   {bar("P", c["P"], "Performance", f'Initial JS+CSS {s["initial_gzip_kb"]:.1f} kB gzip against an 80 kB budget; evaluation split into a lazy chunk.')}
  </div>
 </section>
@@ -83,7 +87,7 @@ H   = 1 / ( 0.20/Q + 0.35/C + 0.30/S + 0.15/P )        weighted harmonic mean, �
 G   = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets ∧ fixture-matches-spec   ∈ {{0,1}}
 
 Q   = ( coverage_lines + coverage_branches + token_conformance ) / 3
-C   = 2·u·a / (u + a)          u = unit tests passed / total,  a = browser acceptance checks passed / 47
+C   = 2·u·a / (u + a)          u = unit tests passed / total,  a = browser acceptance checks passed / 60
 S   = s · d                    s = fixture-vs-playbook checks passed / total,  d = 1 if manual ≡ auto-play receipt else 0.5
 P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy chunk]</div>
 <div class="cols" style="margin-top:16px">
@@ -95,13 +99,13 @@ P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy 
 <section class="sheet" aria-labelledby="h-hist"><h2 id="h-hist">Validation across history and a deliberate break</h2>
 <table><thead><tr><th scope="col">Revision</th><th scope="col">G</th><th scope="col">Q</th><th scope="col">C</th><th scope="col">S</th><th scope="col">P</th><th scope="col">Linear</th><th scope="col">FRS</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
 <tbody>{rows}</tbody></table>
-<p class="foot" style="margin-top:10px">* Mutation applied to a throwaway worktree of main; not committed. A linear score would rate it 0.945; the gate blocks it.</p></section>
+<p class="foot" style="margin-top:10px">* Mutation applied to a throwaway worktree of the main revision; not committed. A linear score would still rate these above 0.9; the gate blocks them.</p></section>
 <div class="cols">
 <section class="sheet" aria-labelledby="h-gaps"><h2 id="h-gaps">Gaps and trade-offs</h2><ol>
-<li><strong>Not enforced.</strong> The repo has no CI, so FRS and the 47 browser checks only run when someone runs them.</li>
+<li><strong>Not enforced.</strong> The repo has no CI, so FRS and the 60 browser checks only run when someone runs them.</li>
 <li><strong>jsdom blind spot.</strong> The keyboard focus loss existed from the first commit to 2219a0f with every unit test green; only the real-browser check caught it. C must keep its browser half.</li>
-<li><strong>Branch coverage {pct(s["cov_branches"])}</strong> is the weakest signal; least covered: the unknown-scenario branch in scenarioSource.ts (50%), ErrorCard and ComingNextCards (57%), ReceiptView (62.5%).</li>
-<li><strong>One scenario.</strong> S covers MAT-001 only; the two Coming-next scenarios have no fixtures, so S says nothing about extensibility.</li>
+<li><strong>Branch coverage {pct(s["cov_branches"])}</strong> is the weakest signal; least covered: {least}.</li>
+<li><strong>Two scenarios.</strong> S and the browser checks cover MAT-001 and EI-001; Research validity is still a preview with no fixture.</li>
 <li><strong>Paraphrased claims.</strong> Agent claim sentences differ in wording from the playbook (for example “operating cycles”); verdicts, confidences, actions and scores match exactly. Claim text is not scored.</li>
 <li><strong>Performance at ceiling.</strong> {s["initial_gzip_kb"]:.1f} kB of 80 kB; P will not move until the bundle grows ~20%. Self-hosted fonts (woff2) are outside the budget.</li>
 <li><strong>Redesign trade-off.</strong> Token conformance went 0 → 16/16 components and Q 0.61 → 0.95, at +1.3 kB gzip.</li>
@@ -110,8 +114,8 @@ P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy 
 <p style="margin-top:0">Use FRS as the <strong>merge and deploy gate</strong> for this repository: run it on every PR head and before every redeploy of this preview.</p>
 <ul><li>G = 0 or FRS &lt; 0.85: do not merge or deploy.</li>
 <li>0.85–0.95, or any browser check failing: merge only with a linked fix-forward issue.</li>
-<li>≥ 0.95 with 47/47: ship. Current main qualifies at {m["FRS"]:.3f}.</li></ul>
-<p>Next lever: raise branch coverage (Q) and add the second scenario fixture so S measures more than one path.</p>
+<li>≥ 0.95 with 60/60: ship. Current main qualifies at {m["FRS"]:.3f}.</li></ul>
+<p>Next lever: raise branch coverage (Q) and add the research-validity fixture.</p>
 <p class="foot">Measured on Node 20, Chrome via CDP at 1280×800 and 1440×900, against <span class="mono">vite preview</span> of each revision. Synthetic fixture only; no model, partner or sponsor involved.</p></section>
 </div>
 </main></body></html>'''

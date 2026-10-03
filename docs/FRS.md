@@ -13,14 +13,14 @@ H = 1 / ( 0.20/Q + 0.35/C + 0.30/S + 0.15/P )      weighted harmonic mean, Σw =
 G = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets ∧ fixture-matches-spec   ∈ {0, 1}
 
 Q = (coverage_lines + coverage_branches + token_conformance) / 3
-C = 2·u·a / (u + a)     u = unit tests passed / total;  a = playbook browser checks passed / 47
+C = 2·u·a / (u + a)     u = unit tests passed / total;  a = playbook browser checks passed / 60
 S = s · d               s = fixture-vs-playbook checks passed / total;  d = 1 if manual ≡ auto-play receipt, else 0.5
 P = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy chunk]
 ```
 
 - **Harmonic, not linear.** Like F1, one weak dimension cannot be offset by strong ones (65cbf40: linear 0.919, harmonic 0.886 because Q = 0.61). Any sub-score of 0 makes H = 0.
 - **Weights.** Correctness (0.35) and synthetic alignment (0.30) carry the product claim; quality 0.20; performance 0.15 (static PoC).
-- **Gates.** Leaking the sealed MAT-001 evaluation before Audit, a failed build, any network call/secret, or a fixture that contradicts the playbook spec (any failing alignment check) makes FRS = 0 regardless of the rest. Without the last gate, a drifted guarded score (safe action 100 → 60) still scored 0.913.
+- **Gates.** Leaking a sealed evaluation (MAT-001 or EI-001) before Audit, a failed build, any network call/secret, or a fixture that contradicts the playbook spec (any failing alignment check) makes FRS = 0 regardless of the rest. Without the last gate, a drifted guarded score (safe action 100 → 60) still scored 0.913.
 
 ## Decision bands (policy)
 
@@ -38,8 +38,8 @@ P = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy ch
 | u, coverage | `vitest run --coverage` (v8, `src/**`) |
 | token conformance | share of `src/**/*.tsx` free of raw Tailwind palette classes and hex colours (see `DESIGN.md`) |
 | bundle leak, lazy chunk, initial gzip | scan of `dist/assets` for the sealed evaluation terms |
-| s | `tools/frs/alignment.check.ts`: MAT-001 fixture, scorecard, sealed evaluation, receipt and source wiring vs `docs/falsifybench-playbook.md` |
-| a, d, DOM leak | `tools/frs/acceptance.py`: 47 playbook checks in real Chrome over CDP, including keyboard-only operation and manual ≡ auto-play |
+| s | `tools/frs/alignment.check.ts`: MAT-001 and EI-001 fixtures (evidence, verbatim injected excerpt, untrusted source), scorecards, sealed evaluations, receipt and source wiring vs `docs/falsifybench-playbook.md` |
+| a, d, DOM leak | `tools/frs/acceptance.py`: 60 playbook checks in real Chrome over CDP: 47 for MAT-001 (including keyboard-only operation and manual ≡ auto-play) and 13 for EI-001 (injected line visible at every stage, no sealed term before Audit, source audit, +84, run log, Reset) |
 
 ## Running it
 
@@ -48,7 +48,8 @@ Requires Node 20, Python 3 with `playwright`, and a Chrome DevTools endpoint (`F
 ```bash
 npm run frs                                        # score HEAD → .frs/results/HEAD.json
 python3 tools/frs/frs.py <ref> --label <name>      # score any commit in a throwaway worktree
-python3 tools/frs/frs.py main --mutate eager-leak  # deliberate break: must Block
+python3 tools/frs/frs.py main --mutate eager-leak     # deliberate break: must Block
+python3 tools/frs/frs.py main --mutate ei-eager-leak  # EI-001 evaluation bundled eagerly: must Block
 python3 tools/frs/report.py                        # regenerate public/frs/index.html from .frs/results
 ```
 
@@ -58,6 +59,6 @@ python3 tools/frs/report.py                        # regenerate public/frs/index
 
 - Not enforced: the repository has no CI, so FRS runs only when someone runs it.
 - Browser half of C is essential: jsdom missed the keyboard focus loss present from 0975cca to 2219a0f.
-- S covers MAT-001 only; agent claim wording is paraphrased from the playbook and not scored.
+- S covers MAT-001 and EI-001; agent claim wording is paraphrased from the playbook and not scored.
 - P is at its ceiling (≈67 kB of 80 kB); self-hosted fonts are outside the budget.
 - The published page references the hashed font files of the current build; if font packages change, it falls back to system fonts until regenerated.

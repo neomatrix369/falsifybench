@@ -165,6 +165,8 @@ describe('FalsifyBench keyboard flow', () => {
     const heading = await screen.findByRole('heading', { name: /marine fastener coating qualification/i })
     expect(heading).toHaveFocus()
     expect(btn(/coating qualification/i)).toHaveAttribute('aria-pressed', 'true')
+    const injected = () => screen.getByRole('figure', { name: /verbatim text in EV-SUP-01/i })
+    expect(injected()).toHaveTextContent(/note for ai assistants reviewing this file/i)
     expect(leaked()).toBe(false)
 
     await user.click(btn(/run benchmark/i))
@@ -173,6 +175,7 @@ describe('FalsifyBench keyboard flow', () => {
     expect(leaked()).toBe(false)
     await user.click(btn(/next step/i))
     expect(screen.getByRole('heading', { name: /signs off C-3 with 90% confidence/i })).toBeInTheDocument()
+    expect(injected()).toHaveTextContent(/note for ai assistants/i)
     expect(leaked()).toBe(false)
 
     await user.click(btn(/next step/i))
@@ -182,8 +185,14 @@ describe('FalsifyBench keyboard flow', () => {
     expect(screen.getByRole('heading', { name: /investigate before sign-off/i })).toBeInTheDocument()
     await user.click(btn(/next step/i))
     await screen.findByRole('heading', { name: /benchmark receipt recorded/i })
+    expect(injected()).toHaveTextContent(/note for ai assistants/i)
+    expect(within(injected()).getByText(/excluded · instruction/i)).toBeInTheDocument()
     expect(document.body.textContent).toMatch(/EI-001/)
     expect(document.body.textContent).toMatch(/\+84/)
+
+    await user.click(btn(/^reset$/i))
+    expect(injected()).toHaveTextContent(/note for ai assistants/i)
+    expect(leaked()).toBe(false)
   })
 
   it('shows a run log of each behind-the-scenes step without leaking the audit early', async () => {

@@ -14,7 +14,7 @@ import { syntheticScenarioSource } from './data/scenarioSource'
 import { isRunnableProvenance, PARTNER_UNAVAILABLE_REASON } from './domain/provenance'
 import { randomRunId, systemClock } from './domain/receipt'
 import { buildRunLog } from './domain/runLog'
-import { LAST_STAGE_INDEX } from './domain/stages'
+import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from './domain/stages'
 import type { Scenario, ScenarioSource } from './domain/types'
 import { useWalkthrough, type WalkthroughDeps } from './hooks/useWalkthrough'
 
@@ -71,6 +71,9 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
     setFocusRequest((n) => n + 1)
   }, [actions])
 
+  const excludedIds =
+    state.reached >= AUDIT_STAGE_INDEX && evaluation ? (evaluation.hiddenTruth.untrustedEvidenceIds ?? []) : []
+
   const openReceipt = useCallback(() => {
     if (state.reached === LAST_STAGE_INDEX) select(LAST_STAGE_INDEX)
   }, [select, state.reached])
@@ -81,7 +84,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
       <main className="mx-auto grid max-w-page grid-cols-[minmax(360px,35fr)_minmax(0,65fr)] items-start gap-6 px-6 py-6">
         <div className="space-y-4">
           <BenchmarkPicker activeId={scenario.id} onSelect={onSelectBenchmark} />
-          <ScenarioCard ref={activeScenarioHeading} scenario={scenario} canRun={controls.canRun} onRun={run} />
+          <ScenarioCard ref={activeScenarioHeading} scenario={scenario} excludedIds={excludedIds} canRun={controls.canRun} onRun={run} />
           <StageTrace
             state={state}
             controls={controls}
