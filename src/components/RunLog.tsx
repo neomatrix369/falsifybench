@@ -42,7 +42,7 @@ interface Props {
 
 function nowLine({ state, unsealing, failed }: Omit<Props, 'entries'>, countdown: number | null): string | null {
   if (state.status === 'idle') return null
-  if (failed) return 'Stopped: the sealed evaluation failed to load. Reset to try again.'
+  if (failed) return 'Stopped: the sealed evaluation failed to load. Reload the page to retry; Reset alone repeats the cached failure.'
   if (unsealing) return 'Unsealing the sealed evaluation… Next step is held until it arrives.'
   if (state.cursor === LAST_STAGE_INDEX) return 'Run complete. The receipt is recorded and nothing else runs.'
   const next = `${state.cursor + 2} ${STAGE_LABELS[STAGES[state.cursor + 1]]}`
