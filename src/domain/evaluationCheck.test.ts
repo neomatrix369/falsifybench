@@ -43,6 +43,17 @@ describe('evaluationProblems', () => {
   })
 })
 
+it('reports a missing field and a failed gate together', async () => {
+  const good = await mat001.evaluation.unseal()
+  const { rationale: _omit, ...guarded } = good.guarded
+  void _omit
+  const bad = { ...good, guarded, scoring: { ...good.scoring, guarded: { ...good.scoring.guarded, safeAction: 101 } } }
+  expect(evaluationProblems(mat001, bad as ScenarioEvaluation).map((p) => p.split(':')[0])).toEqual([
+    'Malformed evaluation',
+    'I6 Rubric metrics are integers 0–100',
+  ])
+})
+
 describe('unsealRecovery', () => {
   it('asks for a reload after a failed import, and for a data fix after failed checks', () => {
     expect(unsealRecovery(new Error('chunk failed'))).toBe('reload')

@@ -34,10 +34,7 @@ function shapeProblems(e: ScenarioEvaluation): string[] {
   return fields.filter(([, value, ok]) => !ok(value)).map(([name]) => `Malformed evaluation: ${name} is missing or empty`)
 }
 
-/** Why an unsealed evaluation can't be used; empty when it passes every runtime gate. */
-export function evaluationProblems(scenario: Scenario, evaluation: ScenarioEvaluation): string[] {
-  const shape = shapeProblems(evaluation)
-  if (shape.length) return shape
+function gateProblems(scenario: Scenario, evaluation: ScenarioEvaluation): string[] {
   try {
     return integrityChecks({ scenario, evaluation }, [scenario.id])
       .filter((c) => RUNTIME_GATES.includes(c.id) && !c.ok)
@@ -45,6 +42,11 @@ export function evaluationProblems(scenario: Scenario, evaluation: ScenarioEvalu
   } catch (err) {
     return [`Malformed evaluation: ${err instanceof Error ? err.message : String(err)}`]
   }
+}
+
+/** Why an unsealed evaluation can't be used; empty when it passes the shape check and every runtime gate. */
+export function evaluationProblems(scenario: Scenario, evaluation: ScenarioEvaluation): string[] {
+  return [...shapeProblems(evaluation), ...gateProblems(scenario, evaluation)]
 }
 
 /** How a failed unseal can be recovered: a reload retries a failed import; bad data fails again whatever the user does. */
