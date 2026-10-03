@@ -95,7 +95,7 @@ P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy 
 <section class="sheet" aria-labelledby="h-gaps"><h2 id="h-gaps">Gaps and trade-offs</h2><ol>
 <li><strong>Not enforced.</strong> The repo has no CI, so FRS and the 47 browser checks only run when someone runs them.</li>
 <li><strong>jsdom blind spot.</strong> The keyboard focus loss existed from the first commit to 2219a0f with every unit test green; only the real-browser check caught it. C must keep its browser half.</li>
-<li><strong>Branch coverage {pct(s["cov_branches"])}</strong> is the weakest signal; error and pending paths in the hook and result surface are the least covered.</li>
+<li><strong>Branch coverage {pct(s["cov_branches"])}</strong> is the weakest signal; least covered: the unknown-scenario branch in scenarioSource.ts (50%), ErrorCard and ComingNextCards (57%), ReceiptView (62.5%).</li>
 <li><strong>One scenario.</strong> S covers MAT-001 only; the two Coming-next scenarios have no fixtures, so S says nothing about extensibility.</li>
 <li><strong>Paraphrased claims.</strong> Agent claim sentences differ in wording from the playbook (for example “operating cycles”); verdicts, confidences, actions and scores match exactly. Claim text is not scored.</li>
 <li><strong>Performance at ceiling.</strong> {s["initial_gzip_kb"]:.1f} kB of 80 kB; P will not move until the bundle grows ~20%. Self-hosted fonts (woff2) are outside the budget.</li>
