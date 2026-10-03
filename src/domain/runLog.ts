@@ -143,7 +143,7 @@ export function buildRunLog(input: {
               producedBy,
               { key: 'Error', value: `${input.error.name}: ${input.error.message}` },
               { key: 'Effect', value: 'Run stopped at Evidence audit; auto-play is off and no receipt is recorded' },
-              { key: 'Recovery', value: 'Reset, then run again to retry the import' },
+              { key: 'Recovery', value: 'Reload the page to retry. The browser caches a failed module import for this page, so Reset alone repeats the failure' },
             ],
           })
         } else if (!evaluation) {
