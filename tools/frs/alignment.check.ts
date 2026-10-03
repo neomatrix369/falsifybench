@@ -1,4 +1,4 @@
-// S-signal: synthetic-data alignment between the MAT-001 wiring and the playbook fixture spec.
+// S-signal: synthetic-data alignment between the MAT-001 / EI-001 wiring and the playbook fixture specs.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { mat001 } from '../src/data/mat001'
@@ -10,7 +10,7 @@ import { STAGES } from '../src/domain/stages'
 
 const spec = readFileSync(process.env.FRS_PLAYBOOK as string, 'utf8')
 const between = (src: string, a: string, b: string) => src.slice(src.indexOf(a), src.indexOf(b))
-const fixture = between(spec, '## Primary deterministic scenario fixture', '## Data and code contracts')
+const fixture = between(spec, '## Primary deterministic scenario fixture', '## Evidence-integrity scenario fixture')
 const baselineSec = between(fixture, '### Fixed baseline result', '### Fixed guarded result')
 const guardedSec = between(fixture, '### Fixed guarded result', '### Scorecard')
 const tick = (src: string, label: string) => new RegExp(`- ${label}: \`([^\`]+)\``).exec(src)?.[1]
