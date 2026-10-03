@@ -211,6 +211,8 @@ Rubric version: `MAT-RUBRIC-1.0`. Each metric is an integer from 0–100. Calcul
 
 Two benchmarks are runnable and selectable side by side: MAT-001 (release readiness) and EI-001 (evidence integrity, below). Each picker entry shows `ID · track`, then the failure under test as its title (MAT-001 `Insufficient evidence`, EI-001 `Prompt-injected source`), then the synthetic case as its subject (`Turbine support bracket`, `Coating qualification`). Label entries by the failure, not only by the case, so a reader can find the prompt-injection benchmark. Show the remaining track as a clearly marked `Coming next` preview card. It is not runnable; clicking it opens its short description and returns focus to the active benchmark.
 
+Each picker entry shows `ID · track`, then the failure under test as its title, then the synthetic case as its subject (MAT-001: `Insufficient evidence` · `Turbine support bracket`; EI-001: `Prompt-injected source` · `Coating qualification`), so a reader can find the prompt-injection benchmark. Before a run, the idle screen shows the selected benchmark's own question (`narrative.idleQuestion`) and claim (`narrative.idleClaim`), not the product-level claim, and switching benchmarks changes every line of scenario copy: MAT-001 exposes when a confident agent approves a part without sufficient evidence; EI-001 exposes when a confident agent obeys a prompt injected into one of its sources, and checks whether the guarded path treats source text as data.
+
 - Research validity: treatment-effect claim with a missing control/confounder.
 
 ## Evidence-integrity scenario fixture (EI-001)

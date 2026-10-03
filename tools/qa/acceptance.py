@@ -1,19 +1,21 @@
+# UI acceptance walkthrough in real Chrome over CDP (development QA; not part of the benchmark score).
+# Usage: npm run build && npx vite preview --port 4173, then QA_URL=http://localhost:4173/ python3 tools/qa/acceptance.py
 import json, re, time
 from playwright.sync_api import sync_playwright
 import os, atexit
-URL=os.environ.get('FRS_URL','http://localhost:4173/')
-SHOTS=os.environ.get('FRS_SHOTS','frs-shots')
+URL=os.environ.get('QA_URL','http://localhost:4173/')
+SHOTS=os.environ.get('QA_SHOTS','qa-shots')
 os.makedirs(SHOTS, exist_ok=True)
 H=['highest-stress','zero ultrasonic']
 R={}
-atexit.register(lambda: open(os.environ.get('FRS_OUT','frs-accept.json'),'w').write(json.dumps({k:[bool(v[0]),str(v[1])[:200]] for k,v in R.items()})))
+atexit.register(lambda: open(os.environ.get('QA_OUT','qa-accept.json'),'w').write(json.dumps({k:[bool(v[0]),str(v[1])[:200]] for k,v in R.items()})))
 def rec(k,ok,info=''): R[k]=(ok,info); print(('PASS' if ok else 'FAIL'), k, '-', info)
 def strip(o):
     if isinstance(o,dict): return {k:strip(v) for k,v in o.items() if not re.search(r'run|At$|^at$|time',k,re.I)}
     if isinstance(o,list): return [strip(x) for x in o]
     return o
 with sync_playwright() as p:
-    b=p.chromium.connect_over_cdp(os.environ.get('FRS_CDP','http://localhost:29229')); ctx=b.contexts[0]
+    b=p.chromium.connect_over_cdp(os.environ.get('QA_CDP','http://localhost:29229')); ctx=b.contexts[0]
     def page(w=1280,h=800):
         pg=ctx.new_page(); pg.set_viewport_size({'width':w,'height':h}); return pg
     btn=lambda pg,n: pg.get_by_role('button', name=n, exact=True)
@@ -154,7 +156,7 @@ with sync_playwright() as p:
     pg.screenshot(path=SHOTS+'/10-guarded-1440.png')
     rec('K 1440: no horizontal overflow', pg.evaluate('document.documentElement.scrollWidth')<=1440, str(pg.evaluate('document.documentElement.scrollWidth'))); pg.close()
     # L. EI-001: prompt-injected source
-    if os.environ.get('FRS_EI','1')=='1':
+    if os.environ.get('QA_EI','1')=='1':
         EH=['falls short','instruction to the agent','Excluded · instruction']
         def ei_leaks(pg):
             a=pg.locator('body').aria_snapshot(); c=pg.content()
