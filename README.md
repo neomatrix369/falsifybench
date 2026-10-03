@@ -15,7 +15,7 @@ Its first scenario, **MAT-001 — Turbine Support Bracket Release Decision**, is
 Requires Node 20+.
 
 ```bash
-npm install
+npm ci
 npm run dev        # http://localhost:5173
 npm test           # vitest (unit + DOM tests)
 npm run lint
