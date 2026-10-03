@@ -13,6 +13,7 @@ PLAYBOOK = os.path.join(REPO, 'docs', 'falsifybench-playbook.md')
 NVM = '[ -s ~/.nvm/nvm.sh ] && source ~/.nvm/nvm.sh >/dev/null 2>&1 && nvm use 20 >/dev/null 2>&1; '
 HIDDEN = ['highest-stress', 'zero ultrasonic', 'falls short', 'instruction to the agent']
 ACCEPT_TOTAL = 60
+EI_ACCEPT = 13  # L* checks in acceptance.py; only required when the revision ships EI-001
 W = {'Q': 0.20, 'C': 0.35, 'S': 0.30, 'P': 0.15}
 GZ_BUDGET_KB = 80.0
 PRE_AUDIT_LEAK_KEYS = ('A8 no hidden truth at idle (DOM+a11y)', 'B-evidence no hidden truth (DOM+a11y)',
@@ -117,8 +118,16 @@ def main():
         sig['lazy_chunk'] = any(h in open(f).read() for f in js if f not in main_js for h in HIDDEN)
         sig['initial_gzip_kb'] = round(sum(len(gzip.compress(open(f, 'rb').read(), 9)) for f in main_js + css) / 1024, 2)
 
+        # Score each revision against the scenarios it ships, so pre-EI-001 history is not blocked by EI checks.
+        has_ei = os.path.exists(f'{wt}/src/data/ei001.ts')
+        sig['scenarios'] = ['MAT-001'] + (['EI-001'] if has_ei else [])
+        accept_total = ACCEPT_TOTAL if has_ei else ACCEPT_TOTAL - EI_ACCEPT
+        leak_keys = PRE_AUDIT_LEAK_KEYS if has_ei else PRE_AUDIT_LEAK_KEYS[:3]
+        sig['accept_total'] = accept_total
         # S: synthetic-data alignment
         os.makedirs(f'{wt}/frs', exist_ok=True); shutil.copy(f'{TOOL}/alignment.check.ts', f'{wt}/frs/alignment.test.ts')
+        if has_ei:
+            shutil.copy(f'{TOOL}/alignment.ei001.check.ts', f'{wt}/frs/alignment.ei001.test.ts')
         sh('npx vitest run frs --environment node --reporter=json --outputFile=align.json', wt, env={'FRS_PLAYBOOK': PLAYBOOK})
         al = json.load(open(f'{wt}/align.json'))
         sig['align_passed'], sig['align_total'] = al['numPassedTests'], al['numTotalTests']
@@ -138,19 +147,19 @@ def main():
                 t0 = time.time()
                 subprocess.run(['python3', f'{TOOL}/acceptance.py'], capture_output=True, text=True, timeout=600,
                                env={**os.environ, 'FRS_URL': f'http://localhost:{a.port}/', 'FRS_OUT': out_json,
-                                    'FRS_SHOTS': f'{HERE}/shots/{label}'})
+                                    'FRS_SHOTS': f'{HERE}/shots/{label}', 'FRS_EI': '1' if has_ei else '0'})
                 sig['accept_s'] = round(time.time() - t0, 1)
                 R = json.load(open(out_json)) if os.path.exists(out_json) else {}
             finally:
                 os.killpg(prev.pid, signal.SIGTERM)
             sig['accept_passed'] = sum(1 for v in R.values() if v[0])
             sig['accept_failures'] = [k for k, v in R.items() if not v[0]]
-            sig['accept_unreached'] = ACCEPT_TOTAL - len(R)
+            sig['accept_unreached'] = accept_total - len(R)
             # A leak check that never ran is unverified, so it fails the gate rather than passing it.
-            sig['dom_leak'] = any(not R.get(k, [False])[0] for k in PRE_AUDIT_LEAK_KEYS)
+            sig['dom_leak'] = any(not R.get(k, [False])[0] for k in leak_keys)
             sig['deterministic'] = bool(R.get(DETERMINISM_KEY, [False])[0])
         else:
-            sig.update(accept_passed=0, accept_failures=['not run'], accept_unreached=ACCEPT_TOTAL, dom_leak=False,
+            sig.update(accept_passed=0, accept_failures=['not run'], accept_unreached=accept_total, dom_leak=False,
                        deterministic=False)
     finally:
         sh(f'git worktree remove --force {qwt}', REPO)
@@ -162,7 +171,7 @@ def main():
              'fixture_matches_spec': sig['align_total'] > 0 and not sig['align_failures']}
     G = int(all(gates.values()))
     u = sig['unit_passed'] / max(sig['unit_total'], 1)
-    acc = sig['accept_passed'] / ACCEPT_TOTAL
+    acc = sig['accept_passed'] / sig.get('accept_total', ACCEPT_TOTAL)
     x = {
         'Q': (sig['cov_lines'] + sig['cov_branches'] + sig['token_conformance']) / 3,
         'C': 0.0 if u + acc == 0 else 2 * u * acc / (u + acc),
