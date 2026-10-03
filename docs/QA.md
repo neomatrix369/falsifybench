@@ -6,6 +6,8 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 - **Targets:** deployed preview <https://dist-goqefkae.devinapps.com> and a local `npm run preview` of the same revision. Every deployed asset (`index-C8Ew7kIl.js`, `index-CZlkLA_X.css`, both evaluation chunks, `index.html`, `frs/index.html`) is byte-identical to a local build.
 - **Runtime:** Node 20.20.2. Browser checks drove Chrome over CDP with `playwright-core` (DOM, accessibility snapshot, page source, focus, clipboard, downloads, request log, emulated `prefers-reduced-motion`).
 - **Result:** all items pass on both targets; no open failures.
+- **Run-log trace pass (PRs #14–#17):** browser checks on a local Vite build of PR #15 (`e1cc7e4`), then a spot-check of the #16 fixes on `main` @ `3d84f56`, desktop Chrome at 1280 CSS px. `main` @ `c76a92c`: lint, typecheck, 48/48 tests, build, `npm run frs` SHIP 0.9913 (no gate, acceptance or alignment failures). Results are in [Run log trace](#run-log-trace); F6–F7 are below.
+- **After #18 (`npm run frs` replaced by `npm run score`):** `main` @ `97662b7` merged with this branch: lint, typecheck, 84/84 tests, build and `npm run score` pass (G = 1; guarded 94.5, baseline 12.5, mean delta +82).
 
 ## Checklist
 
@@ -38,6 +40,21 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 | E3 | Switching benchmarks mid-run resets to Not started and focuses the new scenario heading | Pass | Pass |
 | E4 | The `EV-SUP-01` verbatim quote is visible at every stage; `Excluded · instruction` appears only from Audit on and is cleared by Reset | Pass | Pass |
 
+### Run log trace
+
+| # | Check | MAT-001 | EI-001 |
+|---|---|---|---|
+| R1 | Manual run to Receipt: one entry per stage, each with a trigger (`Run benchmark`, `Next step`) and an elapsed offset | Pass | Pass |
+| R2 | Auto-play: countdown 3 → 2 → 1, entries say `Auto-play tick`, stops at Receipt | Pass | Pass |
+| R3 | Newest entry opens on its own; per-entry Show/Hide steps; Expand all / Collapse all | Pass | Pass |
+| R4 | `Now` line matches the state (waiting for Next step, countdown, unsealing, reviewing, complete); entries for the viewed stage are highlighted | Pass | Pass |
+| R5 | Before Audit, no sealed text in the log, with every entry expanded; Next step is held while the evaluation loads | Pass | Pass |
+| R6 | Guarded entry shows the score working (MAT `95 − 15 = +80`, EI `94 − 10 = +84`) | Pass | Pass |
+| R7 | Receipt entry: mode, five stage events in order, and each clause of the unsafe-approval rule checked against the actual verdicts | Pass | Pass |
+| R8 | Re-run after Reset: Audit says the evaluation is reused, with no new request, and still lists the findings | Pass | Pass |
+| R9 | Unseal results show `Produced by`; a failed load shows the error, its effect and recovery | Pass | Pass |
+| R10 | Reset clears the log and starts a new run ID; keyboard focus holds; no horizontal overflow at 1280 px | Pass | Pass |
+
 ### Local tooling
 
 | # | Check | Result |
@@ -53,9 +70,12 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 | F3 | Medium | Preview served an older build than the branch | Redeployed |
 | F4 | Medium | First-run keyboard flow stuck at Audit: Next step disables while the sealed chunk loads | `canNext`/`canBack` focus effect in `App.tsx` (c1a40da) |
 | F5 | Medium | Preview lagged `main` by PRs #5–#6 | Redeployed from `main` |
+| F6 | Medium | Run log trace did not match what ran: a cached Audit claimed a new `unseal()` request and dropped the findings; the receipt rule read `baseline = Proceed` whatever the baseline was; unseal results had no trigger | Accurate cached-audit facts, per-clause rule, `Produced by` fact (0c5ef2a, #16) |
+| F7 | Medium | After a failed evaluation load, the advice to Reset repeated the failure: browsers cache a rejected dynamic `import()` for the page's lifetime. Only a page reload recovers | Error card offers Reload page first; the `Now` line and Recovery step say reload (1d1d268, 21683ab, #17) |
 
 ## Known limits
 
 - Accessibility was checked with Playwright accessibility snapshots, not a real screen reader.
 - `@testing-library/jest-dom@7.0.1` prints an `EBADENGINE` warning (wants Node ≥ 22) on `npm install`; tests pass on Node 20.
 - Back / Next step keep focus while stepping (Next step is held with `aria-disabled` while the sealed evaluation loads). Focus moves to the stage heading only when the focused control disables itself: Back at Evidence, Next step at Receipt.
+- Receipt outcomes the fixtures can't produce (a non-Proceed baseline) and the #17 Reload page button are covered by unit tests only, not a browser run.
