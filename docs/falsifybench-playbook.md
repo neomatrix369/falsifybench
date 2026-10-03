@@ -12,7 +12,7 @@ The first runnable case is a materials-reliability release decision. The app mus
 
 ## Repository and delivery contract
 
-- Repository: `https://github.com/TheFactCheck/FactCheck`
+- Repository: `https://github.com/neomatrix369/falsifybench` (private, personal account; Devin's GitHub app cannot create repos there, so the owner creates an empty repo first).
 - Work on a new branch such as `feat/falsifybench-poc`; respect an existing repository branch convention if present. Never commit directly to `main`.
 - Inspect the repository first and preserve existing work. Reuse its conventions and public primitives where they fit; do not replace an established stack solely for preference.
 - If there is no usable application foundation, create a Vite + React + TypeScript + Tailwind app.
@@ -89,7 +89,9 @@ Controls: `Run benchmark`, `Back`, `Next step`, `Auto-play`, `Reset`.
 
 Manual interaction pauses auto-play. Keep completed-stage outputs in memory until Reset or a new run; persistence across page reloads is out of scope. Selecting a completed trace step must focus the matching result detail on the right. Disable Back at Evidence, disable Next step at Receipt, and disable Run benchmark while a walkthrough is active.
 
-Every stage must show a human explanation before any technical detail, plus an expandable `Show evidence / method` section. No raw JSON belongs in the primary walkthrough. All controls must be keyboard operable. Auto-play starts off, respects `prefers-reduced-motion`, advances one stage every 3 seconds, stops after Receipt, and stops immediately when a presenter navigates manually.
+Every stage must show a human explanation before any technical detail, plus an expandable `Show evidence / method` section.
+
+**Run log (transparency).** Under the Run trace, show a collapsible, timestamped Run log of what happens behind each stage so an observer, researcher or engineer can see the machinery without leaving the walkthrough: run ID and start (scenario ID/version, `synthetic` mode, no network or model calls); evidence IDs loaded from the public fixture; the scripted baseline response; the sealed evaluation being requested and unsealed at Audit with its load time; the score formula with its inputs (e.g. `round(mean(…))`); the guarded verdict; and receipt assembly. Before Audit the log names steps and timings only, never sealed content. A failed load is logged as failed, never left pending. Reset clears it. No raw JSON belongs in the primary walkthrough. All controls must be keyboard operable. Auto-play starts off, respects `prefers-reduced-motion`, advances one stage every 3 seconds, stops after Receipt, and stops immediately when a presenter navigates manually.
 
 The exact ordered stages are:
 
@@ -364,11 +366,22 @@ Use the maximum useful parallelism within a one-hour integration window: one wri
 - [ ] The guarded result says `Investigate` and requests targeted R4 ultrasonic inspection.
 - [ ] The receipt shows provenance, run metadata, evidence IDs, rubric/scenario versions, all metric values, and the +80 delta.
 - [ ] EI-001 is selectable beside MAT-001; its injected supplier excerpt is visible verbatim at every stage; before Audit no EI-001 sealed term is rendered; at Audit `EV-SUP-01` is `Excluded · instruction`; the guarded result says `Investigate` with +84.
+- [ ] The Run log shows run ID, evidence IDs, Audit unseal timing, score formulas, guarded verdict and receipt; before Audit it contains no sealed term.
+- [ ] `npm run frs` reports Ship, every mutation reports Block, and `/frs/index.html` is regenerated and deployed with the preview.
 - [ ] Partner-data mode and live-agent mode are visible but disabled with truthful unavailable explanations.
 - [ ] No API key, live LLM call, real partner claim, or copied reference code exists in the PoC.
 - [ ] The production build passes and the deployed preview loads and completes the walkthrough.
 - [ ] Local setup is documented and can run the same app.
 - [ ] `DESIGN.md` exists, the UI passes the Design quality bar (no agent tells), and the `impeccable` critique and `ui-ux-pro-max` Pre-Delivery Checklist results are in the PR.
+
+## Release score (FRS) — release requirement
+
+Every PR that changes app code, fixtures or the spec must report the FalsifyBench Release Score (`docs/FRS.md`) from `npm run frs` (real Chrome over CDP; the repo has no CI, so run it locally). FRS = G × weighted harmonic mean of quality Q, correctness C (unit + browser acceptance), synthetic-data alignment S (fixtures vs this spec) and performance P.
+
+- **Hard gates (FRS = 0, Block):** build/lint/typecheck failure, any sealed evaluation term in the main bundle or in the DOM/accessibility tree before Audit, an unreached pre-Audit leak check, any network call or secret, or a fixture that contradicts this spec.
+- **Decision:** FRS ≥ 0.95 with all browser checks passing → Ship; 0.85–0.95 → Ship with fix-forward (linked issue); otherwise Block. Do not merge or deploy on Block.
+- **Mutations must Block:** each scenario's evaluation bundled eagerly (`--mutate eager-leak`, `--mutate ei-eager-leak`) and a drifted guarded score.
+- **Adding a scenario** means adding its fixture section here, its alignment checks, its browser acceptance checks, its sealed terms in the leak scans, an eager-leak mutation, and regenerating `public/frs/index.html` (served at `/frs/index.html`). Gate scenario-specific checks on the scenario existing in the scored revision.
 
 ## Explicit non-goals and coverage gaps
 
@@ -392,5 +405,6 @@ Return, in this order:
 2. Repository branch, commit(s), PR URL, and deployed preview URL.
 3. Exact local install/run/build/test commands actually executed.
 4. Acceptance-checklist results and screenshots.
-5. Any pre-existing repository issue or deployment blocker.
+5. FRS score, Q/C/S/P, decision, and mutation results.
+6. Any pre-existing repository issue or deployment blocker.
 6. Explicit coverage gaps and recommended next feedback questions.
