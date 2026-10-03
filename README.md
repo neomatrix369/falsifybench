@@ -53,6 +53,8 @@ Mock mode needs no secrets and no network access.
 | React hook wiring the reducer, auto-play timer, and audit unsealing | `src/hooks/useWalkthrough.ts` |
 | UI | `src/components/*`, `src/App.tsx` |
 
+[`docs/PIPELINE.md`](docs/PIPELINE.md) follows a run from its inputs through each stage to every way it can end (complete, interrupted, failed or errored), with the known gaps.
+
 ## Deferred seams (not in this PoC)
 
 - Live agent calls. Any future integration must run server-side and read its keys from environment variables. Mock mode must never require a secret.
