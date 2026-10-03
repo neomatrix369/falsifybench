@@ -31,9 +31,9 @@ npm run preview    # serve dist/ locally
 
 Mock mode needs no secrets and no network access.
 
-## Release score
+## Benchmark score
 
-`npm run frs` computes the FalsifyBench Release Score (FRS): a gated, weighted harmonic mean of quality, correctness, synthetic-data alignment and performance that drives the merge/deploy decision. Definition and usage: [`docs/FRS.md`](docs/FRS.md). The latest snapshot ships with the site at `frs/index.html`.
+`npm run score` scores the agents on the FalsifyBench synthetic data (MAT-001, EI-001): rubric totals, safe verdicts and unsafe approvals for the baseline and guarded agents, behind data-integrity gates. It reads only `src/data`, not the codebase or git history. Definition: [`docs/SCORE.md`](docs/SCORE.md). The results page ships with the site at `score/index.html`.
 
 ## Code map
 
