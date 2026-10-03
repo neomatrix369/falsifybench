@@ -298,7 +298,7 @@ The future partner adapter must reject an item without source metadata or proven
 
 Each receipt must include mode, provenance, scenario ID/version, rubric version, run ID, timestamp, five ordered stage events, agent labels, all five evidence IDs, baseline score, guarded score, and delta. Inject a clock and run-ID factory into receipt creation; tests use fixed values. Manual and autoplay must produce identical decisions, metrics, stage-event ordering, and receipt shape for a given run. Provide copy-to-clipboard or JSON download only if it fits safely inside the time box.
 
-If an unexpected rendering or state error occurs, show an honest recoverable error card with `Reset walkthrough`; never fabricate a receipt or mark an incomplete run as complete. If the sealed evaluation fails to load, the card's primary action is `Reload page`, with `Reset walkthrough` as a secondary action, and its copy says why Reset alone won't retry.
+If an unexpected rendering or state error occurs, show an honest recoverable error card with `Reset walkthrough`; never fabricate a receipt or mark an incomplete run as complete.
 
 ## Ordered 60-minute execution plan
 
