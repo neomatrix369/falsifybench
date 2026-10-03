@@ -63,7 +63,7 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
   return (
     <>
       <Header onReceiptAnchor={openReceipt} />
-      <main className="mx-auto grid max-w-page grid-cols-[minmax(360px,35fr)_65fr] items-start gap-6 px-6 py-6">
+      <main className="mx-auto grid max-w-page grid-cols-[minmax(360px,35fr)_minmax(0,65fr)] items-start gap-6 px-6 py-6">
         <div className="space-y-4">
           <ScenarioCard ref={activeScenarioHeading} scenario={scenario} canRun={controls.canRun} onRun={run} />
           <StageTrace
