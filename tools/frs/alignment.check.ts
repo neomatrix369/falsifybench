@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { mat001 } from '../src/data/mat001'
 import { comingNextPreviews } from '../src/data/previews'
-import { syntheticScenarioSource } from '../src/data/scenarioSource'
+import { RUNNABLE_BENCHMARKS, syntheticScenarioSource } from '../src/data/scenarioSource'
 import { createReceipt } from '../src/domain/receipt'
 import { compareScores, totalScore } from '../src/domain/scoring'
 import { STAGES } from '../src/domain/stages'
@@ -132,7 +132,9 @@ describe('S: receipt wiring', () => {
 })
 
 describe('S: coming next', () => {
-  it('two non-runnable previews for the spec tracks', () => {
-    expect(comingNextPreviews.map((p) => p.track)).toEqual(['Research validity', 'Evidence integrity'])
+  it('every spec track is either runnable or a non-runnable preview, never both', () => {
+    const runnable = RUNNABLE_BENCHMARKS.map((b) => b.track)
+    const previews = comingNextPreviews.map((p) => p.track)
+    expect([...runnable, ...previews].sort()).toEqual(['Evidence integrity', 'Release readiness', 'Research validity'])
   })
 })
