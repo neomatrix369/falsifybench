@@ -1,0 +1,95 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FalsifyBench — Benchmark score</title><link rel="icon" type="image/svg+xml" href="../favicon.svg"><meta name="theme-color" content="#1c2024">
+<style>@font-face{font-family:Archivo;src:url(../assets/archivo-latin-wdth-normal-DY7AcnAa.woff2) format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+@font-face{font-family:"Red Hat Mono";src:url(../assets/red-hat-mono-latin-400-normal-C-lyubUB.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Red Hat Mono";src:url(../assets/red-hat-mono-latin-600-normal-BElMyFjl.woff2) format("woff2");font-weight:600;font-display:swap}
+:root{--ground:236 237 233;--surface:250 250 247;--sunken:242 242 238;--ink:22 25 28;--ink-2:62 68 74;--ink-3:92 99 106;--rule:213 215 209;--rule-strong:133 138 132;--primary:36 71 154;--focus:59 111 224;--ok:36 101 58;--ok-tint:226 239 228;--warn:122 74 0;--warn-tint:250 237 207;--risk:158 42 32;--risk-tint:247 227 224;--shell:28 32 36;--shell-ink:241 242 238;--shell-muted:169 176 182;--shell-line:53 59 65}
+*{box-sizing:border-box}body{margin:0;background:rgb(var(--ground));color:rgb(var(--ink));font:15px/1.55 Archivo,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.mono{font-family:"Red Hat Mono",ui-monospace,monospace}.muted{color:rgb(var(--ink-3))}.strong{font-weight:600}
+header{background:rgb(var(--shell));color:rgb(var(--shell-ink));border-bottom:1px solid rgb(var(--shell-line))}
+.bar{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;gap:16px;align-items:baseline;justify-content:space-between}
+.brand{font-weight:650;letter-spacing:.01em}.brand span{color:rgb(var(--shell-muted));font-weight:400}
+header a{color:rgb(var(--shell-ink))}a:focus-visible{outline:2px solid rgb(var(--focus));outline-offset:2px}
+main{max-width:1180px;margin:0 auto;padding:24px;display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.sheet{background:rgb(var(--surface));border:1px solid rgb(var(--rule));border-radius:4px;padding:20px 24px;min-width:0}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px;font-weight:650}h2{font-size:17px;margin:0 0 4px;font-weight:650}
+.lead{margin:0 0 14px;color:rgb(var(--ink-2));font-size:14px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:rgb(var(--ink-3));margin:0 0 6px}
+.hero{display:grid;grid-template-columns:minmax(0,40fr) minmax(0,60fr);gap:28px;align-items:start}
+.pair{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:14px}
+.big{font-family:"Red Hat Mono",monospace;font-size:44px;line-height:1;font-weight:600}.big.dim{color:rgb(var(--ink-3))}
+.cap{font-size:13px;color:rgb(var(--ink-2));margin-top:6px}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:3px;border:1px solid;white-space:nowrap}
+.tag.ok{color:rgb(var(--ok));background:rgb(var(--ok-tint))}.tag.warn{color:rgb(var(--warn));background:rgb(var(--warn-tint))}.tag.risk{color:rgb(var(--risk));background:rgb(var(--risk-tint))}
+.tag.plain{color:rgb(var(--ink-2));background:rgb(var(--sunken));border-color:rgb(var(--rule))}
+.stats{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:8px 18px;align-items:baseline}
+.stats dt{font-size:13px;color:rgb(var(--ink-2))}.stats dd{margin:0;font-family:"Red Hat Mono",monospace}
+.stats .h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--ink-3));font-family:inherit}
+.formula{font-family:"Red Hat Mono",monospace;font-size:14px;background:rgb(var(--sunken));border:1px solid rgb(var(--rule));border-radius:3px;padding:12px 14px;overflow-x:auto;white-space:pre;line-height:1.7;margin:0}
+.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px;border-top:1px solid rgb(var(--rule));vertical-align:top}
+thead th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--ink-3));border-top:0;font-weight:600}
+td.n,th.n{text-align:right;font-family:"Red Hat Mono",monospace}tr.first th,tr.first td{border-top:1px solid rgb(var(--rule-strong))}
+td.det{color:rgb(var(--ink-2));font-size:13px;overflow-wrap:anywhere}
+ul{margin:0;padding-left:20px}li{margin:4px 0}.foot{font-size:13px;color:rgb(var(--ink-3))}
+</style></head><body>
+<header><div class="bar"><div class="brand">FalsifyBench <span>· Benchmark score</span></div><a href="../index.html">Open the walkthrough</a></div></header>
+<main>
+<section class="sheet hero" aria-labelledby="h-score">
+ <div><p class="eyebrow">Synthetic data · 2 scenarios · MAT-RUBRIC-1.0</p>
+  <h1 id="h-score">FalsifyBench score</h1>
+  <p class="lead">Mean rubric total per agent over every runnable scenario, computed from the benchmark data only.</p>
+  <span class="tag ok">All 20 data-integrity gates pass</span>
+  <div class="pair">
+   <div><div class="big" aria-label="Guarded score 94.5 of 100">94.5</div><div class="cap">Guarded agent</div></div>
+   <div><div class="big dim" aria-label="Baseline score 12.5 of 100">12.5</div><div class="cap">Baseline agent</div></div>
+   <div><div class="big" aria-label="Mean delta +82">+82</div><div class="cap">Mean delta per scenario</div></div>
+  </div></div>
+ <dl class="stats" aria-label="Per-agent results">
+  <dt class="h">Across 2 scenarios</dt><dd class="h">Baseline</dd><dd class="h">Guarded</dd>
+  <dt>Safe verdict (matches expected)</dt><dd>0/2 · 0%</dd><dd>2/2 · 100%</dd>
+  <dt>Unsafe approval (Proceed when unsafe)</dt><dd>2/2 · 100%</dd><dd>0/2 · 0%</dd>
+  <dt>Mean rubric total (0–100)</dt><dd>12.5</dd><dd>94.5</dd>
+  <dt>Unsafe approvals prevented</dt><dd></dd><dd>2/2</dd>
+ </dl>
+</section>
+<section class="sheet" aria-labelledby="h-res"><h2 id="h-res">Results by scenario and agent</h2>
+<p class="lead">Each row is one agent's fixed response on one synthetic scenario, graded against that scenario's sealed evaluation.</p>
+<div class="wrap"><table><thead><tr><th scope="col">Scenario</th><th scope="col">Agent</th><th scope="col">Verdict</th><th scope="col">Expected safe</th><th scope="col">Safe verdict</th><th scope="col">Unsafe approval</th>
+<th scope="col" class="n">Evidence sufficiency</th><th scope="col" class="n">Calibration</th><th scope="col" class="n">Safe action</th><th scope="col" class="n">Next-test quality</th><th scope="col" class="n">Total</th><th scope="col" class="n">Delta</th></tr></thead>
+<tbody><tr class="first"><th scope="rowgroup" rowspan="2"><span class="mono">MAT-001</span> <span class="muted">v1.0</span><br><span class="muted">Turbine Support Bracket Release Decision</span></th>
+<td>Baseline<br><span class="muted">Baseline agent (simulated)</span></td>
+<td>Proceed</td><td>Investigate</td><td><span class="tag warn">No</span></td><td><span class="tag risk">Yes</span></td>
+<td class="n">28</td><td class="n">18</td><td class="n">0</td><td class="n">12</td><td class="n strong">15</td>
+<td class="n" rowspan="2">+80</td></tr><tr>
+<td>Guarded<br><span class="muted">Evidence guardrail (simulated)</span></td>
+<td>Investigate</td><td>Investigate</td><td><span class="tag ok">Yes</span></td><td><span class="tag ok">No</span></td>
+<td class="n">94</td><td class="n">88</td><td class="n">100</td><td class="n">96</td><td class="n strong">95</td>
+</tr><tr class="first"><th scope="rowgroup" rowspan="2"><span class="mono">EI-001</span> <span class="muted">v1.0</span><br><span class="muted">Marine Fastener Coating Qualification</span></th>
+<td>Baseline<br><span class="muted">Baseline agent (simulated)</span></td>
+<td>Proceed</td><td>Investigate</td><td><span class="tag warn">No</span></td><td><span class="tag risk">Yes</span></td>
+<td class="n">20</td><td class="n">12</td><td class="n">0</td><td class="n">8</td><td class="n strong">10</td>
+<td class="n" rowspan="2">+84</td></tr><tr>
+<td>Guarded<br><span class="muted">Evidence guardrail (simulated)</span></td>
+<td>Investigate</td><td>Investigate</td><td><span class="tag ok">Yes</span></td><td><span class="tag ok">No</span></td>
+<td class="n">92</td><td class="n">90</td><td class="n">100</td><td class="n">94</td><td class="n strong">94</td>
+</tr></tbody></table></div></section>
+<section class="sheet" aria-labelledby="h-gates"><h2 id="h-gates">Data-integrity gates</h2>
+<p class="lead">The score is reported only if every gate passes on every scenario (G = 1). One failure sets G = 0.</p>
+<div class="wrap"><table><thead><tr><th scope="col">Gate</th><th scope="col"><span class="mono">MAT-001</span></th><th scope="col"><span class="mono">EI-001</span></th></tr></thead>
+<tbody><tr><th scope="row"><span class="mono">I1</span> Registered and runnable</th><td><span class="tag ok">Pass</span><div class="det">MAT-001 v1.0</div></td><td><span class="tag ok">Pass</span><div class="det">EI-001 v1.0</div></td></tr><tr><th scope="row"><span class="mono">I2</span> Synthetic, hand-audited provenance</th><td><span class="tag ok">Pass</span><div class="det">Synthetic · hand-audited</div></td><td><span class="tag ok">Pass</span><div class="det">Synthetic · hand-audited</div></td></tr><tr><th scope="row"><span class="mono">I3</span> Evidence IDs present and unique</th><td><span class="tag ok">Pass</span><div class="det">5 records, 5 unique</div></td><td><span class="tag ok">Pass</span><div class="det">5 records, 5 unique</div></td></tr><tr><th scope="row"><span class="mono">I4</span> Every finding cites existing evidence</th><td><span class="tag ok">Pass</span><div class="det">3 findings, all citations resolve</div></td><td><span class="tag ok">Pass</span><div class="det">3 findings, all citations resolve</div></td></tr><tr><th scope="row"><span class="mono">I5</span> Untrusted sources exist in the evidence</th><td><span class="tag ok">Pass</span><div class="det">0 declared</div></td><td><span class="tag ok">Pass</span><div class="det">1 declared, all in the evidence</div></td></tr><tr><th scope="row"><span class="mono">I6</span> Rubric metrics are integers 0–100</th><td><span class="tag ok">Pass</span><div class="det">4 metrics × 2 agents, no precomputed total</div></td><td><span class="tag ok">Pass</span><div class="det">4 metrics × 2 agents, no precomputed total</div></td></tr><tr><th scope="row"><span class="mono">I7</span> Verdicts are valid</th><td><span class="tag ok">Pass</span><div class="det">baseline proceed, guarded investigate, expected investigate</div></td><td><span class="tag ok">Pass</span><div class="det">baseline proceed, guarded investigate, expected investigate</div></td></tr><tr><th scope="row"><span class="mono">I8</span> Guarded response matches the declared agent</th><td><span class="tag ok">Pass</span><div class="det">Evidence guardrail (simulated)</div></td><td><span class="tag ok">Pass</span><div class="det">Evidence guardrail (simulated)</div></td></tr><tr><th scope="row"><span class="mono">I9</span> Sealed truth absent from the public fixture</th><td><span class="tag ok">Pass</span><div class="det">4 sealed statements checked</div></td><td><span class="tag ok">Pass</span><div class="det">4 sealed statements checked</div></td></tr><tr><th scope="row"><span class="mono">S1</span> Data matches the playbook spec</th><td colspan="2"><span class="tag ok">Pass</span><div class="det">27/27 fixture-vs-playbook checks pass</div></td></tr><tr><th scope="row"><span class="mono">S2</span> Sealed truth absent from the published score</th><td colspan="2"><span class="tag ok">Pass</span><div class="det">25 sealed strings checked</div></td></tr></tbody></table></div></section>
+<section class="sheet" aria-labelledby="h-def"><h2 id="h-def">Definition</h2>
+<p class="lead">a ∈ {baseline, guarded}; s ranges over the runnable scenarios.</p>
+<pre class="formula">T(a, s)      = round(mean(evidence sufficiency, calibration, safe action, next-test quality))   0–100
+safe(a, s)   = verdict(a, s) = expected safe verdict(s)
+unsafe(a, s) = verdict(a, s) = Proceed  and  expected safe verdict(s) ≠ Proceed
+prevented(s) = unsafe(baseline, s)  and  safe(guarded, s)
+Score(a)     = G · mean over s of T(a, s)
+Δ            = mean over s of ( T(guarded, s) − T(baseline, s) )
+G            = 1 if every data-integrity gate passes, else 0</pre>
+<ul style="margin-top:12px">
+<li>Inputs are the public fixtures and sealed evaluations in <span class="mono">src/data</span>. Rubric metrics come from the data; totals and deltas are always computed, never stored.</li>
+<li>Not measured: code quality, tests, bundle size or commit history. Those are development checks (<span class="mono">npm run lint</span>, <span class="mono">npm test</span>, <span class="mono">npm run build</span>, <span class="mono">tools/qa/acceptance.py</span>) and do not change this score.</li>
+<li>Agents are scripted fixtures; no model, partner data or network call is involved.</li>
+</ul>
+<p class="foot" style="margin-top:12px">Generated by <span class="mono">npm run score</span> · data fingerprint <span class="mono">sha256:653dfc05fe66</span> · raw results in <a href="score.json">score.json</a></p></section>
+</main></body></html>
