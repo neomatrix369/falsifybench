@@ -8,9 +8,10 @@ const SYNTHETIC_SCENARIOS: Record<string, Scenario> = {
 }
 
 /** Runnable benchmarks shown in the picker, in display order. */
-export const RUNNABLE_BENCHMARKS: { id: string; track: string; title: string }[] = [
-  { id: mat001.id, track: 'Release readiness', title: 'Turbine support bracket' },
-  { id: ei001.id, track: 'Evidence integrity', title: 'Coating qualification' },
+/** `title` names the failure under test; `subject` names the synthetic case. */
+export const RUNNABLE_BENCHMARKS: { id: string; track: string; title: string; subject: string }[] = [
+  { id: mat001.id, track: 'Release readiness', title: 'Insufficient evidence', subject: 'Turbine support bracket' },
+  { id: ei001.id, track: 'Evidence integrity', title: 'Prompt-injected source', subject: 'Coating qualification' },
 ]
 
 /** Only implemented source in the PoC. Needs no network or secret. */
