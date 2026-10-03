@@ -10,7 +10,7 @@ The latest snapshot is published with the app at `frs/index.html` (live: <https:
 FRS = G · H
 
 H = 1 / ( 0.20/Q + 0.35/C + 0.30/S + 0.15/P )      weighted harmonic mean, Σw = 1
-G = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets   ∈ {0, 1}
+G = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets ∧ fixture-matches-spec   ∈ {0, 1}
 
 Q = (coverage_lines + coverage_branches + token_conformance) / 3
 C = 2·u·a / (u + a)     u = unit tests passed / total;  a = playbook browser checks passed / 47
@@ -20,7 +20,7 @@ P = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy ch
 
 - **Harmonic, not linear.** Like F1, one weak dimension cannot be offset by strong ones (65cbf40: linear 0.919, harmonic 0.886 because Q = 0.61). Any sub-score of 0 makes H = 0.
 - **Weights.** Correctness (0.35) and synthetic alignment (0.30) carry the product claim; quality 0.20; performance 0.15 (static PoC).
-- **Gates.** Leaking the sealed MAT-001 evaluation before Audit, a failed build, or any network call/secret makes FRS = 0 regardless of the rest.
+- **Gates.** Leaking the sealed MAT-001 evaluation before Audit, a failed build, any network call/secret, or a fixture that contradicts the playbook spec (any failing alignment check) makes FRS = 0 regardless of the rest. Without the last gate, a drifted guarded score (safe action 100 → 60) still scored 0.913.
 
 ## Decision bands (policy)
 

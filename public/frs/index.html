@@ -37,7 +37,7 @@ ol,ul{margin:0;padding-left:20px}li{margin:4px 0}.foot{font-size:13px;color:rgb(
   <h1 id="h-score">FalsifyBench Release Score</h1>
   <div class="score" aria-label="FRS 0.990">0.990</div>
   <span class="verdict tag ok">Ship</span>
-  <p class="det" style="margin-top:12px">All six gates pass. 32/32 unit tests, 47/47 playbook browser checks, 22/22 fixture-vs-spec checks.</p></div>
+  <p class="det" style="margin-top:12px">All 7 gates pass. 32/32 unit tests, 47/47 playbook browser checks, 22/22 fixture-vs-spec checks.</p></div>
  <div class="subs">
   <div class="sub"><div class="subhead"><span class="k">Q</span><span class="lbl">Quality</span><span class="v">0.950</span></div>
 <div class="track" role="img" aria-label="Quality 0.950 of 1"><div class="fill" style="width:95.0%"></div></div><p class="det">Line coverage 95.6%, branch coverage 89.5%, design-token conformance 100.0%.</p></div>
@@ -53,14 +53,14 @@ ol,ul{margin:0;padding-left:20px}li{margin:4px 0}.foot{font-size:13px;color:rgb(
 <div class="formula">FRS = G · H
 
 H   = 1 / ( 0.20/Q + 0.35/C + 0.30/S + 0.15/P )        weighted harmonic mean, Σw = 1
-G   = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets   ∈ {0,1}
+G   = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets ∧ fixture-matches-spec   ∈ {0,1}
 
 Q   = ( coverage_lines + coverage_branches + token_conformance ) / 3
 C   = 2·u·a / (u + a)          u = unit tests passed / total,  a = browser acceptance checks passed / 47
 S   = s · d                    s = fixture-vs-playbook checks passed / total,  d = 1 if manual ≡ auto-play receipt else 0.5
 P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy chunk]</div>
 <div class="cols" style="margin-top:16px">
- <dl><dt>G</dt><dd>Hard gates. Any leak of the sealed evaluation before Audit, a failed build or a network call makes FRS = 0, whatever else scores.</dd>
+ <dl><dt>G</dt><dd>Hard gates. Any leak of the sealed evaluation before Audit, a failed build, a network call, or a fixture that contradicts the spec makes FRS = 0, whatever else scores.</dd>
  <dt>w</dt><dd>Correctness 0.35 and synthetic alignment 0.30 carry the product claim; quality 0.20; performance 0.15 (static PoC, little headroom risk).</dd></dl>
  <dl><dt>H</dt><dd>Harmonic, like F1: one weak dimension cannot be bought back by strong ones. 65cbf40 scores 0.919 linearly but 0.886 harmonically because Q = 0.61.</dd>
  <dt>Bands</dt><dd>Ship: FRS ≥ 0.95 and a = 1. Ship with fix-forward: 0.85 ≤ FRS, or a &lt; 1. Block: FRS &lt; 0.85 or G = 0.</dd></dl>
@@ -68,9 +68,9 @@ P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy 
 <section class="sheet" aria-labelledby="h-hist"><h2 id="h-hist">Validation across history and a deliberate break</h2>
 <table><thead><tr><th scope="col">Revision</th><th scope="col">G</th><th scope="col">Q</th><th scope="col">C</th><th scope="col">S</th><th scope="col">P</th><th scope="col">Linear</th><th scope="col">FRS</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
 <tbody><tr><th scope="row"><span class="mono">0975cca</span><br><span class="muted">Initial PoC</span></th>
-<td class="mono">1</td><td class="mono">0.071</td><td class="mono">0.000</td><td class="mono">0.000</td><td class="mono">1.000</td>
-<td class="mono">0.164</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
-<td class="note">Test runner crashed on Node 20 (jsdom 30), so unit tests, coverage and fixture checks could not run. Fixed in 65cbf40.</td></tr><tr><th scope="row"><span class="mono">65cbf40</span><br><span class="muted">Review + QA fixes</span></th>
+<td class="mono">1</td><td class="mono">0.071</td><td class="mono">0.000</td><td class="mono">1.000</td><td class="mono">1.000</td>
+<td class="mono">0.464</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
+<td class="note">Unit test runner crashed on Node 20 (jsdom 30), so unit tests and coverage could not run (C = 0). Fixture checks pass. Fixed in 65cbf40.</td></tr><tr><th scope="row"><span class="mono">65cbf40</span><br><span class="muted">Review + QA fixes</span></th>
 <td class="mono">1</td><td class="mono">0.615</td><td class="mono">0.989</td><td class="mono">1.000</td><td class="mono">1.000</td>
 <td class="mono">0.919</td><td class="mono strong">0.886</td><td><span class="tag warn">Ship with fix-forward</span></td>
 <td class="note">Raw Tailwind palette in every component (0/16 token-conformant). Keyboard focus lost at Audit.</td></tr><tr><th scope="row"><span class="mono">2219a0f</span><br><span class="muted">Design-system redesign</span></th>
@@ -82,7 +82,10 @@ P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy 
 <td class="note">All 47 browser checks pass. Lowest sub-score is branch coverage.</td></tr><tr><th scope="row"><span class="mono">c1a40da*</span><br><span class="muted">Mutation: evaluation bundled eagerly</span></th>
 <td class="mono">0</td><td class="mono">0.950</td><td class="mono">1.000</td><td class="mono">1.000</td><td class="mono">0.700</td>
 <td class="mono">0.945</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
-<td class="note">Sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.</td></tr></tbody></table>
+<td class="note">Sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.</td></tr><tr><th scope="row"><span class="mono">c1a40da*</span><br><span class="muted">Mutation: guarded score drifts from spec</span></th>
+<td class="mono">0</td><td class="mono">0.948</td><td class="mono">0.905</td><td class="mono">0.864</td><td class="mono">1.000</td>
+<td class="mono">0.915</td><td class="mono strong">0.000</td><td><span class="tag risk">Block</span></td>
+<td class="note">Guarded safe-action score 100 → 60, so the shown result contradicts the spec. 3 fixture and 3 browser checks fail; fixture gate G = 0.</td></tr></tbody></table>
 <p class="foot" style="margin-top:10px">* Mutation applied to a throwaway worktree of main; not committed. A linear score would rate it 0.945; the gate blocks it.</p></section>
 <div class="cols">
 <section class="sheet" aria-labelledby="h-gaps"><h2 id="h-gaps">Gaps and trade-offs</h2><ol>

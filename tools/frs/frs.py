@@ -149,7 +149,8 @@ def main():
     # Score
     gates = {'lint': sig['lint_ok'], 'typecheck': sig['typecheck_ok'], 'build': sig['build_ok'],
              'no_bundle_leak': not sig['bundle_leak'], 'no_dom_leak': not sig['dom_leak'],
-             'no_network_or_secrets': not sig['network_or_secret_hits']}
+             'no_network_or_secrets': not sig['network_or_secret_hits'],
+             'fixture_matches_spec': sig['align_total'] > 0 and not sig['align_failures']}
     G = int(all(gates.values()))
     u = sig['unit_passed'] / max(sig['unit_total'], 1)
     acc = sig['accept_passed'] / ACCEPT_TOTAL

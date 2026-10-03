@@ -2,15 +2,17 @@ import json, html
 import os
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RES = os.path.join(ROOT, '.frs', 'results')
-R = {k: json.load(open(os.path.join(RES, f'{k}.json'))) for k in ['0975cca-initial-poc','65cbf40-review-fixes','2219a0f-redesign','main','main+eager-leak']}
+R = {k: json.load(open(os.path.join(RES, f'{k}.json'))) for k in ['0975cca-initial-poc','65cbf40-review-fixes','2219a0f-redesign','main','main+eager-leak','main+score-drift']}
 NAMES = {'0975cca-initial-poc':('0975cca','Initial PoC'),'65cbf40-review-fixes':('65cbf40','Review + QA fixes'),
          '2219a0f-redesign':('2219a0f','Design-system redesign'),'main':('c1a40da','main · keyboard focus fix'),
-         'main+eager-leak':('c1a40da*','Mutation: evaluation bundled eagerly')}
-NOTES = {'0975cca-initial-poc':'Test runner crashed on Node 20 (jsdom 30), so unit tests, coverage and fixture checks could not run. Fixed in 65cbf40.',
+         'main+eager-leak':('c1a40da*','Mutation: evaluation bundled eagerly'),
+         'main+score-drift':('c1a40da*','Mutation: guarded score drifts from spec')}
+NOTES = {'0975cca-initial-poc':'Unit test runner crashed on Node 20 (jsdom 30), so unit tests and coverage could not run (C = 0). Fixture checks pass. Fixed in 65cbf40.',
          '65cbf40-review-fixes':'Raw Tailwind palette in every component (0/16 token-conformant). Keyboard focus lost at Audit.',
          '2219a0f-redesign':'Tokens fixed (16/16). Keyboard focus still lost at Audit, caught only in real Chrome.',
          'main':'All 47 browser checks pass. Lowest sub-score is branch coverage.',
-         'main+eager-leak':'Sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.'}
+         'main+eager-leak':'Sealed evaluation imported statically, so the hidden truth lands in the main bundle. Gate G = 0.',
+         'main+score-drift':'Guarded safe-action score 100 → 60, so the shown result contradicts the spec. 3 fixture and 3 browser checks fail; fixture gate G = 0.'}
 DEC = {'SHIP':'ok','SHIP-WITH-FIX-FORWARD':'warn','BLOCK':'risk'}
 m = R['main']; s = m['signals']; c = m['components']
 LABEL = {'SHIP':'Ship','SHIP-WITH-FIX-FORWARD':'Ship with fix-forward','BLOCK':'Block'}
@@ -78,14 +80,14 @@ ol,ul{{margin:0;padding-left:20px}}li{{margin:4px 0}}.foot{{font-size:13px;color
 <div class="formula">FRS = G · H
 
 H   = 1 / ( 0.20/Q + 0.35/C + 0.30/S + 0.15/P )        weighted harmonic mean, Σw = 1
-G   = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets   ∈ {{0,1}}
+G   = lint ∧ typecheck ∧ build ∧ no-bundle-leak ∧ no-DOM-leak-before-Audit ∧ no-network/secrets ∧ fixture-matches-spec   ∈ {{0,1}}
 
 Q   = ( coverage_lines + coverage_branches + token_conformance ) / 3
 C   = 2·u·a / (u + a)          u = unit tests passed / total,  a = browser acceptance checks passed / 47
 S   = s · d                    s = fixture-vs-playbook checks passed / total,  d = 1 if manual ≡ auto-play receipt else 0.5
 P   = 0.7 · min(1, 80 kB / initial_gzip) + 0.3 · [sealed evaluation in a lazy chunk]</div>
 <div class="cols" style="margin-top:16px">
- <dl><dt>G</dt><dd>Hard gates. Any leak of the sealed evaluation before Audit, a failed build or a network call makes FRS = 0, whatever else scores.</dd>
+ <dl><dt>G</dt><dd>Hard gates. Any leak of the sealed evaluation before Audit, a failed build, a network call, or a fixture that contradicts the spec makes FRS = 0, whatever else scores.</dd>
  <dt>w</dt><dd>Correctness 0.35 and synthetic alignment 0.30 carry the product claim; quality 0.20; performance 0.15 (static PoC, little headroom risk).</dd></dl>
  <dl><dt>H</dt><dd>Harmonic, like F1: one weak dimension cannot be bought back by strong ones. 65cbf40 scores 0.919 linearly but 0.886 harmonically because Q = 0.61.</dd>
  <dt>Bands</dt><dd>Ship: FRS ≥ 0.95 and a = 1. Ship with fix-forward: 0.85 ≤ FRS, or a &lt; 1. Block: FRS &lt; 0.85 or G = 0.</dd></dl>
