@@ -2,8 +2,8 @@
 
 Read-only acceptance review of FalsifyBench against the playbook's **Acceptance checklist**, **Product truthfulness rules**, **Guided walkthrough** and **Data and code contracts** (`docs/falsifybench-playbook.md`).
 
-- **Revision:** `main` @ `30183f9` (PRs #1–#6)
-- **Targets:** deployed preview <https://dist-goqefkae.devinapps.com> and a local `npm run preview` of the same revision. Every deployed asset (`index-8JJ1Kb_j.js`, CSS, both evaluation chunks, `index.html`, `frs/index.html`) is byte-identical to a local build.
+- **Revision:** `main` @ `ca6b654` (PRs #1–#9). First pass was at `30183f9` (PRs #1–#6); this pass adds #7 (EI-001 injected line at every stage, FRS EI-001 scoring) and #8 (dev dependency guard).
+- **Targets:** deployed preview <https://dist-goqefkae.devinapps.com> and a local `npm run preview` of the same revision. Every deployed asset (`index-C8Ew7kIl.js`, `index-CZlkLA_X.css`, both evaluation chunks, `index.html`, `frs/index.html`) is byte-identical to a local build.
 - **Runtime:** Node 20.20.2. Browser checks drove Chrome over CDP with `playwright-core` (DOM, accessibility snapshot, page source, focus, clipboard, downloads, request log, emulated `prefers-reduced-motion`).
 - **Result:** all items pass on both targets; no open failures.
 
@@ -36,6 +36,13 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 | E1 | Sealed audit text absent before Audit; `ei001.evaluation` chunk fetched only at Audit; the injected supplier note is shown as received | Pass | Pass |
 | E2 | Baseline `Proceed` 90%, guarded `Investigate` 88%; totals 10 / 94, delta +84; receipt has `EI-001 · v1.0` and EV-SALT-01, EV-SPEC-01, EV-FIELD-01, EV-LIT-01, EV-SUP-01 | Pass | Pass |
 | E3 | Switching benchmarks mid-run resets to Not started and focuses the new scenario heading | Pass | Pass |
+| E4 | The `EV-SUP-01` verbatim quote is visible at every stage; `Excluded · instruction` appears only from Audit on and is cleared by Reset | Pass | Pass |
+
+### Local tooling
+
+| # | Check | Result |
+|---|---|---|
+| T1 | `predev` (`tools/check-deps.mjs`) passes on a clean install, fails fast with a reinstall hint when a package is missing or its `main` entry is missing, and `npm run dev` then starts | Pass |
 
 ## Failures found and fixed during review
 
