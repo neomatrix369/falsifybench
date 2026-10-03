@@ -116,6 +116,20 @@ describe('FalsifyBench guards', () => {
     expect(screen.getByText(/stage 3 of 5/i)).toBeInTheDocument()
   })
 
+  it('keeps keyboard focus off <body> while Next step waits for the sealed evaluation', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const pending = { ...mat001, evaluation: { unseal: () => new Promise<never>(() => {}) } }
+    const user = userEvent.setup()
+    render(<App deps={deps} source={{ loadScenario: async () => pending }} />)
+    await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
+    btn(/next step/i).focus()
+    await user.keyboard('{Enter}')
+    await user.keyboard('{Enter}')
+    expect(btn(/next step/i)).toBeDisabled()
+    expect(document.activeElement).not.toBe(document.body)
+    expect(document.activeElement?.tagName).toBe('H2')
+  })
+
   it('refuses to run a scenario without synthetic provenance', async () => {
     const { mat001 } = await import('./data/mat001')
     const partner = { ...mat001, provenance: { ...mat001.provenance, status: 'partner_pending_validation' as const } }

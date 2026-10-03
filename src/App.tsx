@@ -40,16 +40,17 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
     setFocusRequest((n) => n + 1)
   }, [actions])
 
-  // Keep keyboard focus off <body> when the pressed control disables itself.
-  const next = useCallback(() => {
-    actions.next()
-    if (state.cursor === LAST_STAGE_INDEX - 1) setFocusRequest((n) => n + 1)
-  }, [actions, state.cursor])
-
-  const back = useCallback(() => {
-    actions.back()
-    if (state.cursor === 1) setFocusRequest((n) => n + 1)
-  }, [actions, state.cursor])
+  // Keep keyboard focus off <body> when the focused control disables itself,
+  // including Next step while the sealed evaluation loads.
+  const stepControls = useRef({ canNext: controls.canNext, canBack: controls.canBack })
+  useEffect(() => {
+    const prev = stepControls.current
+    stepControls.current = { canNext: controls.canNext, canBack: controls.canBack }
+    const disabled = (prev.canNext && !controls.canNext) || (prev.canBack && !controls.canBack)
+    const active = document.activeElement
+    const stranded = active === null || active === document.body || (active as HTMLButtonElement).disabled === true
+    if (disabled && stranded) setFocusRequest((n) => n + 1)
+  }, [controls.canNext, controls.canBack])
 
   const reset = useCallback(() => {
     actions.reset()
@@ -70,8 +71,8 @@ function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }
             state={state}
             controls={controls}
             onSelect={select}
-            onBack={back}
-            onNext={next}
+            onBack={actions.back}
+            onNext={actions.next}
             onToggleAutoplay={actions.toggleAutoplay}
             onReset={reset}
           />
