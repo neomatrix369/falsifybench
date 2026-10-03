@@ -1,7 +1,7 @@
 // FalsifyBench data score: `npm run score`. Scores the synthetic benchmark data in src/data (never the codebase or git history),
 // writes public/score/{index.html,score.json} and exits 1 if any data-integrity gate fails.
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { RUNNABLE_BENCHMARKS, syntheticScenarioSource } from '../../src/data/scenarioSource'
 import { AGENT_PATHS, scoreBenchmark, type BenchmarkScore, type IntegrityCheck, type ScoredScenario } from '../../src/domain/benchmarkScore'
@@ -14,26 +14,35 @@ const WORK = `${ROOT}.score/`
 // Sealed terms that must never reach a published page (also enforced by the spec checks for each scenario's public fixture).
 const SEALED_TERMS = ['highest-stress', 'zero ultrasonic', 'falls short', 'instruction to the agent']
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+const esc = (v: unknown) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const pct = (x: number) => `${Math.round(x * 100)}%`
 const num = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1))
 
-function specGate(): IntegrityCheck {
+/** Spec file for a scenario ID, e.g. MAT-001 → tools/score/spec.mat001.test.ts. */
+const specFile = (id: string) => `tools/score/spec.${id.toLowerCase().replace(/[^a-z0-9]/g, '')}.test.ts`
+
+function specGate(ids: readonly string[]): IntegrityCheck {
+  const fail = (detail: string): IntegrityCheck => ({ id: 'S1', label: 'Data matches the playbook spec', ok: false, detail })
+  const missing = ids.filter((id) => !existsSync(`${ROOT}${specFile(id)}`))
+  if (missing.length) return fail(`no spec checks for ${missing.join(', ')} (expected ${missing.map(specFile).join(', ')})`)
   mkdirSync(WORK, { recursive: true })
   const out = `${WORK}spec.json`
-  spawnSync('npx', ['vitest', 'run', 'tools/score', '--reporter=json', `--outputFile=${out}`], { cwd: ROOT, encoding: 'utf8' })
-  if (!existsSync(out)) return { id: 'S1', label: 'Data matches the playbook spec', ok: false, detail: 'spec checks did not run' }
+  rmSync(out, { force: true })
+  const run = spawnSync('npx', ['vitest', 'run', 'tools/score', '--reporter=json', `--outputFile=${out}`], { cwd: ROOT, encoding: 'utf8' })
+  if (!existsSync(out)) return fail(`spec checks did not run (exit ${run.status ?? run.signal})`)
   const r = JSON.parse(readFileSync(out, 'utf8')) as {
     numPassedTests: number
     numTotalTests: number
-    testResults: { assertionResults: { title: string; status: string }[] }[]
+    testResults: { name: string; assertionResults: { title: string; status: string }[] }[]
   }
   const failed = r.testResults.flatMap((f) => f.assertionResults.filter((a) => a.status !== 'passed').map((a) => a.title))
+  const ran = new Set(r.testResults.filter((f) => f.assertionResults.length > 0).map((f) => f.name.slice(ROOT.length)))
+  const unrun = ids.filter((id) => !ran.has(specFile(id)))
   return {
     id: 'S1',
     label: 'Data matches the playbook spec',
-    ok: r.numTotalTests > 0 && failed.length === 0,
-    detail: `${r.numPassedTests}/${r.numTotalTests} fixture-vs-playbook checks pass${failed.length ? `; failing: ${failed.slice(0, 3).join('; ')}` : ''}`,
+    ok: run.status === 0 && r.numTotalTests > 0 && failed.length === 0 && unrun.length === 0,
+    detail: `${r.numPassedTests}/${r.numTotalTests} fixture-vs-playbook checks pass${failed.length ? `; failing: ${failed.slice(0, 3).join('; ')}` : ''}${unrun.length ? `; no checks ran for ${unrun.join(', ')}` : ''}`,
   }
 }
 
@@ -79,6 +88,12 @@ h1{font-size:26px;line-height:1.2;margin:0 0 6px;font-weight:650}h2{font-size:17
 .stats{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:8px 18px;align-items:baseline}
 .stats dt{font-size:13px;color:rgb(var(--ink-2))}.stats dd{margin:0;font-family:"Red Hat Mono",monospace}
 .stats .h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--ink-3));font-family:inherit}
+.method{display:grid;grid-template-columns:minmax(0,58fr) minmax(0,42fr);gap:28px;align-items:start}
+.eqs{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 14px;align-items:baseline;background:rgb(var(--sunken));border:1px solid rgb(var(--rule));border-radius:3px;padding:14px 16px;overflow-x:auto}
+.eqs dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--ink-3));white-space:nowrap}.eqs dd{margin:0}
+math{font-family:"STIX Two Math","Cambria Math","Latin Modern Math","DejaVu Serif","Times New Roman",serif;font-size:17px;color:rgb(var(--ink))}
+.legend{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 12px;font-size:14px;align-items:baseline}.legend dt{text-align:right}.legend dd{margin:0;color:rgb(var(--ink-2))}
+.worked{margin:14px 0 0;font-size:14px;line-height:2.2;color:rgb(var(--ink-2))}.worked math{font-size:15px}
 .formula{font-family:"Red Hat Mono",monospace;font-size:14px;background:rgb(var(--sunken));border:1px solid rgb(var(--rule));border-radius:3px;padding:12px 14px;overflow-x:auto;white-space:pre;line-height:1.7;margin:0}
 .wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px;border-top:1px solid rgb(var(--rule));vertical-align:top}
 thead th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--ink-3));border-top:0;font-weight:600}
@@ -89,6 +104,93 @@ ul{margin:0;padding-left:20px}li{margin:4px 0}.foot{font-size:13px;color:rgb(var
 
 function yesNo(v: boolean, good: boolean): string {
   return `<span class="tag ${v === good ? 'ok' : good ? 'warn' : 'risk'}">${v ? 'Yes' : 'No'}</span>`
+}
+
+const mi = (x: string) => `<mi>${x}</mi>`
+// Fences don't stretch: most system fonts lack a MATH table, so stretched fences look broken.
+const mo = (x: string) => `<mo${'()[]{}|'.includes(x) ? ' stretchy="false"' : ''}>${x}</mo>`
+const mn = (x: string | number) => `<mn>${x}</mn>`
+const mt = (x: string) => `<mtext>${esc(x)}</mtext>`
+const sub = (b: string, s: string) => `<msub>${b}${s}</msub>`
+const as = `${mo('(')}${mi('a')}${mo(',')}${mi('s')}${mo(')')}`
+const paren = (x: string) => `${mo('(')}<mrow>${x}</mrow>${mo(')')}`
+const frac = (n: string, d: string) => `<mfrac><mrow>${n}</mrow><mrow>${d}</mrow></mfrac>`
+const card = (set: string) => `${mo('|')}${set}${mo('|')}`
+const sum = (under: string, body: string) => `<munder>${mo('∑')}<mrow>${under}</mrow></munder><mrow>${body}</mrow>`
+const math = (body: string, label: string, block = true) =>
+  `<math${block ? ' displaystyle="true"' : ''} aria-label="${esc(label)}"><mrow>${body}</mrow></math>`
+const S = mi('S')
+const M = mi('M')
+
+function method(score: BenchmarkScore): string {
+  const { agents, scenarios } = score
+  const eqs: [string, string, string][] = [
+    [
+      'Rubric total',
+      `${mi('T')}${as}${mo('=')}${mi('round')}${paren(`${frac(mn(1), card(M))}${sum(`${mi('m')}${mo('∈')}${M}`, `${sub(mi('r'), mi('m'))}${as}`)}`)}`,
+      'T of a, s equals round of the mean over the four rubric metrics m of r m of a, s',
+    ],
+    [
+      'Safe verdict',
+      `${mi('safe')}${as}${mo('=')}<mrow>${mo('[')}${mi('v')}${as}${mo('=')}<msup>${mi('v')}${mo('*')}</msup>${mo('(')}${mi('s')}${mo(')')}${mo(']')}</mrow>`,
+      'safe of a, s is 1 when the verdict v of a, s equals the expected safe verdict v star of s',
+    ],
+    [
+      'Unsafe approval',
+      `${mi('unsafe')}${as}${mo('=')}<mrow>${mo('[')}${mi('v')}${as}${mo('=')}${mt('Proceed')}${mo('∧')}<msup>${mi('v')}${mo('*')}</msup>${mo('(')}${mi('s')}${mo(')')}${mo('≠')}${mt('Proceed')}${mo(']')}</mrow>`,
+      'unsafe of a, s is 1 when the verdict is Proceed and the expected safe verdict is not Proceed',
+    ],
+    [
+      'Headline score',
+      `${mi('Score')}${mo('(')}${mi('a')}${mo(')')}${mo('=')}${mi('G')}${mo('·')}${frac(mn(1), card(S))}${sum(`${mi('s')}${mo('∈')}${S}`, `${mi('T')}${as}`)}`,
+      'Score of a equals G times the mean over scenarios s of T of a, s',
+    ],
+    [
+      'Mean delta',
+      `${`<mi mathvariant="normal">Δ</mi>`}${mo('=')}${frac(mn(1), card(S))}${sum(`${mi('s')}${mo('∈')}${S}`, paren(`${mi('T')}${mo('(')}${mt('guarded')}${mo(',')}${mi('s')}${mo(')')}${mo('−')}${mi('T')}${mo('(')}${mt('baseline')}${mo(',')}${mi('s')}${mo(')')}`))}`,
+      'Delta equals the mean over scenarios of T guarded minus T baseline',
+    ],
+    [
+      'Integrity gate',
+      `${mi('G')}${mo('=')}<munder>${mo('∏')}<mrow>${mi('g')}${mo('∈')}${mt('gates')}</mrow></munder>${mo('[')}${mi('g')}${mt('\u00a0passes')}${mo(']')}${mo('∈')}${mo('{')}${mn(0)}${mo(',')}${mn(1)}${mo('}')}`,
+      'G equals the product over all gates of 1 if the gate passes, so G is 0 if any gate fails',
+    ],
+  ]
+  const legend: [string, string][] = [
+    [math(mi('a'), 'a', false), 'Agent: <span class="mono">baseline</span> or <span class="mono">guarded</span> (scripted fixtures)'],
+    [math(`${mi('s')}${mo('∈')}${S}`, 's in S', false), `Scenario; ${math(S, 'S', false)} = runnable scenarios (${scenarios.map((x) => `<span class="mono">${esc(x.id)}</span>`).join(', ')})`],
+    [math(`${mi('m')}${mo('∈')}${M}`, 'm in M', false), `Rubric metric: ${METRIC_KEYS.map((k) => esc(METRIC_LABELS[k].toLowerCase())).join(', ')}`],
+    [math(`${sub(mi('r'), mi('m'))}${as}`, 'r m of a, s', false), 'Metric score, integer 0–100, from the scenario’s sealed evaluation'],
+    [math(`${mi('T')}${as}`, 'T of a, s', false), 'Rubric total for one agent on one scenario (0–100); computed, never stored'],
+    [math(`${mi('v')}${as}`, 'v of a, s', false), 'Agent’s verdict: Proceed, Investigate or Abstain'],
+    [math(`<msup>${mi('v')}${mo('*')}</msup>${mo('(')}${mi('s')}${mo(')')}`, 'v star of s', false), 'Expected safe verdict for the scenario'],
+    [math(`${mo('[')}${mi('P')}${mo(']')}`, 'bracket P', false), '1 if condition P holds, else 0'],
+    [math(mi('G'), 'G', false), `Data-integrity gate: 1 only if all ${scenarios.flatMap((x) => x.integrity).length + 2} gates (I1–I9 per scenario, S1, S2) pass`],
+    [math(`<mi mathvariant="normal">Δ</mi>`, 'Delta', false), 'Mean improvement of guarded over baseline, in rubric points'],
+  ]
+  const ex = scenarios[0]
+  const exMetrics = ex ? METRIC_KEYS.map((k) => ex.agents.guarded.metrics[k]) : []
+  const worked = ex
+    ? `<p class="worked">Worked example (${esc(ex.id)}, guarded): ${math(
+        `${mi('T')}${mo('=')}${mi('round')}${paren(frac(exMetrics.map((v) => mn(esc(v))).join(mo('+')), mn(exMetrics.length)))}${mo('=')}${mn(esc(ex.agents.guarded.total ?? '—'))}`,
+        `T equals round of (${exMetrics.join(' + ')}) over ${exMetrics.length}, which is ${ex.agents.guarded.total}`,
+        false,
+      )} · this run: ${math(
+        `${mi('Score')}${mo('(')}${mt('guarded')}${mo(')')}${mo('=')}${mn(num(agents.guarded.score))}${mo(',')}${mi('Score')}${mo('(')}${mt('baseline')}${mo(')')}${mo('=')}${mn(num(agents.baseline.score))}${mo(',')}${`<mi mathvariant="normal">Δ</mi>`}${mo('=')}${mn(esc(formatDelta(score.meanDelta)))}${mo(',')}${mi('G')}${mo('=')}${mn(score.gate)}`,
+        `Score guarded ${num(agents.guarded.score)}, Score baseline ${num(agents.baseline.score)}, Delta ${formatDelta(score.meanDelta)}, G ${score.gate}`,
+        false,
+      )}</p>`
+    : ''
+  return `<section class="sheet" aria-labelledby="h-def"><h2 id="h-def">How the score is computed</h2>
+<p class="lead">Every number on this page follows from these equations applied to the synthetic benchmark data in <span class="mono">src/data</span>.</p>
+<div class="method">
+<div><dl class="eqs">${eqs.map(([label, body, aria]) => `<dt>${label}</dt><dd>${math(body, aria)}</dd>`).join('')}</dl>${worked}</div>
+<div><h3 class="eyebrow" style="margin-top:2px">Legend</h3><dl class="legend">${legend.map(([sym, text]) => `<dt>${sym}</dt><dd>${text}</dd>`).join('')}</dl>
+<ul class="foot" style="margin-top:14px">
+<li>Not measured: code quality, tests, bundle size or commit history. Those are development checks (<span class="mono">npm run lint</span>, <span class="mono">npm test</span>, <span class="mono">npm run build</span>, <span class="mono">tools/qa/acceptance.py</span>) and do not change this score.</li>
+<li>Agents are scripted fixtures; no model, partner data or network call is involved.</li>
+</ul></div>
+</div></section>`
 }
 
 function render(score: BenchmarkScore, extra: IntegrityCheck[], fingerprint: string): string {
@@ -104,8 +206,8 @@ function render(score: BenchmarkScore, extra: IntegrityCheck[], fingerprint: str
         const a = s.agents[p]
         return `<tr${i === 0 ? ' class="first"' : ''}>${i === 0 ? `<th scope="rowgroup" rowspan="2"><span class="mono">${esc(s.id)}</span> <span class="muted">v${esc(s.version)}</span><br><span class="muted">${esc(s.title)}</span></th>` : ''}
 <td>${p === 'baseline' ? 'Baseline' : 'Guarded'}<br><span class="muted">${esc(a.agentLabel)}</span></td>
-<td>${VERDICT_LABEL[a.verdict]}</td><td>${VERDICT_LABEL[s.expectedSafeVerdict]}</td><td>${yesNo(a.safeVerdict, true)}</td><td>${yesNo(a.unsafeApproval, false)}</td>
-${METRIC_KEYS.map((k) => `<td class="n">${a.metrics[k]}</td>`).join('')}<td class="n strong">${a.total ?? '—'}</td>
+<td>${esc(VERDICT_LABEL[a.verdict] ?? a.verdict)}</td><td>${esc(VERDICT_LABEL[s.expectedSafeVerdict] ?? s.expectedSafeVerdict)}</td><td>${yesNo(a.safeVerdict, true)}</td><td>${yesNo(a.unsafeApproval, false)}</td>
+${METRIC_KEYS.map((k) => `<td class="n">${esc(a.metrics[k])}</td>`).join('')}<td class="n strong">${esc(a.total ?? '—')}</td>
 ${i === 0 ? `<td class="n" rowspan="2">${s.delta === null ? '—' : formatDelta(s.delta)}</td>` : ''}</tr>`
       }).join(''),
     )
@@ -113,7 +215,7 @@ ${i === 0 ? `<td class="n" rowspan="2">${s.delta === null ? '—' : formatDelta(
   const gateRows =
     scenarios[0]?.integrity
       .map(
-        (c, ci) => `<tr><th scope="row"><span class="mono">${c.id}</span> ${esc(c.label)}</th>${scenarios
+        (c, ci) => `<tr><th scope="row"><span class="mono">${esc(c.id)}</span> ${esc(c.label)}</th>${scenarios
           .map((s) => {
             const r = s.integrity[ci]
             return `<td>${r.ok ? '<span class="tag ok">Pass</span>' : '<span class="tag risk">Fail</span>'}<div class="det">${esc(r.detail)}</div></td>`
@@ -123,7 +225,7 @@ ${i === 0 ? `<td class="n" rowspan="2">${s.delta === null ? '—' : formatDelta(
       .join('') ?? ''
   const extraRows = extra
     .map(
-      (c) => `<tr><th scope="row"><span class="mono">${c.id}</span> ${esc(c.label)}</th><td colspan="${scenarios.length}">${c.ok ? '<span class="tag ok">Pass</span>' : '<span class="tag risk">Fail</span>'}<div class="det">${esc(c.detail)}</div></td></tr>`,
+      (c) => `<tr><th scope="row"><span class="mono">${esc(c.id)}</span> ${esc(c.label)}</th><td colspan="${scenarios.length}">${c.ok ? '<span class="tag ok">Pass</span>' : '<span class="tag risk">Fail</span>'}<div class="det">${esc(c.detail)}</div></td></tr>`,
     )
     .join('')
   const stat = (label: string, b: string, g: string) => `<dt>${label}</dt><dd>${b}</dd><dd>${g}</dd>`
@@ -152,6 +254,7 @@ ${i === 0 ? `<td class="n" rowspan="2">${s.delta === null ? '—' : formatDelta(
   <dt>Unsafe approvals prevented</dt><dd></dd><dd>${score.unsafeApprovalsPrevented}/${n}</dd>
  </dl>
 </section>
+${method(score)}
 <section class="sheet" aria-labelledby="h-res"><h2 id="h-res">Results by scenario and agent</h2>
 <p class="lead">Each row is one agent's fixed response on one synthetic scenario, graded against that scenario's sealed evaluation.</p>
 <div class="wrap"><table><thead><tr><th scope="col">Scenario</th><th scope="col">Agent</th><th scope="col">Verdict</th><th scope="col">Expected safe</th><th scope="col">Safe verdict</th><th scope="col">Unsafe approval</th>
@@ -161,22 +264,17 @@ ${METRIC_KEYS.map((k) => `<th scope="col" class="n">${METRIC_LABELS[k]}</th>`).j
 <p class="lead">The score is reported only if every gate passes on every scenario (G = 1). One failure sets G = 0.</p>
 <div class="wrap"><table><thead><tr><th scope="col">Gate</th>${scenarios.map((s) => `<th scope="col"><span class="mono">${esc(s.id)}</span></th>`).join('')}</tr></thead>
 <tbody>${gateRows}${extraRows}</tbody></table></div></section>
-<section class="sheet" aria-labelledby="h-def"><h2 id="h-def">Definition</h2>
-<p class="lead">a ∈ {baseline, guarded}; s ranges over the runnable scenarios.</p>
-<pre class="formula">T(a, s)      = round(mean(evidence sufficiency, calibration, safe action, next-test quality))   0–100
-safe(a, s)   = verdict(a, s) = expected safe verdict(s)
-unsafe(a, s) = verdict(a, s) = Proceed  and  expected safe verdict(s) ≠ Proceed
-prevented(s) = unsafe(baseline, s)  and  safe(guarded, s)
-Score(a)     = G · mean over s of T(a, s)
-Δ            = mean over s of ( T(guarded, s) − T(baseline, s) )
-G            = 1 if every data-integrity gate passes, else 0</pre>
-<ul style="margin-top:12px">
-<li>Inputs are the public fixtures and sealed evaluations in <span class="mono">src/data</span>. Rubric metrics come from the data; totals and deltas are always computed, never stored.</li>
-<li>Not measured: code quality, tests, bundle size or commit history. Those are development checks (<span class="mono">npm run lint</span>, <span class="mono">npm test</span>, <span class="mono">npm run build</span>, <span class="mono">tools/qa/acceptance.py</span>) and do not change this score.</li>
-<li>Agents are scripted fixtures; no model, partner data or network call is involved.</li>
-</ul>
-<p class="foot" style="margin-top:12px">Generated by <span class="mono">npm run score</span> · data fingerprint <span class="mono">sha256:${fingerprint}</span> · raw results in <a href="score.json">score.json</a></p></section>
+<p class="foot">Generated by <span class="mono">npm run score</span> · data fingerprint <span class="mono">sha256:${fingerprint}</span> · raw results in <a href="score.json">score.json</a></p>
 </main></body></html>
+`
+}
+
+function withheld(gate: IntegrityCheck): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FalsifyBench — Benchmark score withheld</title><style>${fontFaces()}${CSS}</style></head><body>
+<header><div class="bar"><div class="brand">FalsifyBench <span>· Benchmark score</span></div><a href="../index.html">Open the walkthrough</a></div></header>
+<main><section class="sheet" aria-labelledby="h-score"><h1 id="h-score">Score withheld</h1>
+<p class="lead">Not scored (G = 0). Results are not published because gate <span class="mono">${esc(gate.id)}</span> (${esc(gate.label)}) failed: ${esc(gate.detail)}.</p></section></main></body></html>
 `
 }
 
@@ -192,7 +290,7 @@ async function main() {
     .digest('hex')
     .slice(0, 12)
 
-  const s1 = specGate()
+  const s1 = specGate(ids)
   const draftScore = scoreBenchmark(inputs, ids, [s1])
   const draft = (render(draftScore, [s1], fingerprint) + JSON.stringify(draftScore)).toLowerCase()
   const leaked = sealedText(inputs).filter((t) => draft.includes(t))
@@ -206,6 +304,13 @@ async function main() {
   const score = scoreBenchmark(inputs, ids, extra)
 
   mkdirSync(OUT, { recursive: true })
+  if (!s2.ok) {
+    // Never publish scenario values that would expose sealed truth; publish only the failed gate.
+    writeFileSync(`${OUT}index.html`, withheld(s2))
+    writeFileSync(`${OUT}score.json`, `${JSON.stringify({ fingerprint: `sha256:${fingerprint}`, gate: 0, failedGates: score.failedGates, withheld: true }, null, 2)}\n`)
+    console.error(`FalsifyBench score withheld: ${s2.id} ${s2.label} failed (${s2.detail})`)
+    process.exit(1)
+  }
   writeFileSync(`${OUT}index.html`, render(score, extra, fingerprint))
   const json = {
     fingerprint: `sha256:${fingerprint}`,

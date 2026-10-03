@@ -94,8 +94,9 @@ const check = (id: string, label: string, ok: boolean, detail: string): Integrit
 export function integrityChecks({ scenario, evaluation }: ScoredScenario, registeredIds: readonly string[]): IntegrityCheck[] {
   const ids = scenario.evidence.map((e) => e.id)
   const idSet = new Set(ids)
+  const blankIds = ids.filter((id) => typeof id !== 'string' || id.trim() === '').length
   const badCitations = evaluation.findings.flatMap((f) =>
-    f.evidenceIds.length === 0 ? [`${f.id} cites nothing`] : f.evidenceIds.filter((id) => !idSet.has(id)).map((id) => `${f.id} → ${id}`),
+    f.evidenceIds.length === 0 ? [`${f.id} cites nothing`] : f.evidenceIds.filter((id) => !idSet.has(id) || id.trim() === '').map((id) => `${f.id} → ${id}`),
   )
   const untrusted = evaluation.hiddenTruth.untrustedEvidenceIds ?? []
   const strayUntrusted = untrusted.filter((id) => !idSet.has(id))
@@ -120,8 +121,8 @@ export function integrityChecks({ scenario, evaluation }: ScoredScenario, regist
     check(
       'I3',
       'Evidence IDs present and unique',
-      ids.length > 0 && idSet.size === ids.length,
-      `${ids.length} records, ${idSet.size} unique`,
+      ids.length > 0 && idSet.size === ids.length && blankIds === 0,
+      `${ids.length} records, ${idSet.size} unique${blankIds ? `, ${blankIds} blank` : ''}`,
     ),
     check(
       'I4',

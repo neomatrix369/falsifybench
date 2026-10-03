@@ -40,6 +40,15 @@ describe('benchmark data score', () => {
     expect(s.agents.guarded.score).toBe(0)
   })
 
+  it('a blank evidence ID fails the gate even when a finding cites it', () => {
+    const evidence = [{ ...mat001.evidence[0], id: ' ' }, ...mat001.evidence.slice(1)]
+    const findings = [{ ...mat001Evaluation.findings[0], evidenceIds: [' '] }, ...mat001Evaluation.findings.slice(1)]
+    const s = scoreBenchmark([{ scenario: { ...mat001, evidence }, evaluation: { ...mat001Evaluation, findings } }], IDS)
+    const failed = s.scenarios[0].integrity.filter((c) => !c.ok).map((c) => c.id)
+    expect(failed).toEqual(['I3', 'I4'])
+    expect(s.gate).toBe(0)
+  })
+
   it('an out-of-range rubric value fails the gate', () => {
     const scoring = { ...mat001Evaluation.scoring, guarded: { ...mat001Evaluation.scoring.guarded, safeAction: 120 } }
     const s = scoreBenchmark([{ scenario: mat001, evaluation: { ...mat001Evaluation, scoring } }], IDS)
