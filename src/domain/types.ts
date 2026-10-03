@@ -89,6 +89,8 @@ export interface ScenarioEvaluation {
 /** Presenter copy that may be shown before Audit. */
 export interface ScenarioNarrative {
   idleQuestion: string
+  /** Names the failure this benchmark exposes; shown under the idle question. */
+  idleClaim: string
   evidenceHeadline: string
   evidenceIntro: string
   baselineHeadline: string

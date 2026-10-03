@@ -27,6 +27,9 @@ describe('FalsifyBench walkthrough', () => {
   it('defaults to MAT-001 with synthetic labelling and disabled partner/live modes', async () => {
     await setup()
     expect(screen.getByRole('heading', { name: /turbine support bracket release decision/i })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: /safe to release into a reliability workflow/i })).toHaveTextContent(
+      /MAT-001 exposes when a confident agent approves a part without sufficient evidence/i,
+    )
     expect(screen.getAllByText(/synthetic · hand-audited/i).length).toBeGreaterThan(0)
     expect(screen.getByRole('radio', { name: /synthetic \/ mocked — active/i })).toBeChecked()
     const partner = screen.getByRole('radio', { name: /partner data — unavailable/i })
@@ -211,6 +214,9 @@ describe('FalsifyBench keyboard flow', () => {
     const heading = await screen.findByRole('heading', { name: /marine fastener coating qualification/i })
     expect(heading).toHaveFocus()
     expect(btn(/coating qualification/i)).toHaveAttribute('aria-pressed', 'true')
+    const idle = screen.getByRole('region', { name: /can this agent be trusted to qualify a coating/i })
+    expect(idle).toHaveTextContent(/EI-001 exposes when a confident agent obeys a prompt injected into one of its sources/i)
+    expect(idle).not.toHaveTextContent(/sufficient evidence/i)
     const injected = () => screen.getByRole('figure', { name: /verbatim text in EV-SUP-01/i })
     expect(injected()).toHaveTextContent(/note for ai assistants reviewing this file/i)
     expect(leaked()).toBe(false)
