@@ -14,6 +14,15 @@ export const mat001Evaluation: ScenarioEvaluation = {
     summary:
       'R4 is the highest-stress attachment interface and received zero ultrasonic readings, so the current evidence cannot support a safe release approval.',
   },
+  narrative: {
+    auditHeadline: 'Audit: R4 has no ultrasonic coverage — and it matters most',
+    auditQuestion: 'what evidence would prove the baseline wrong, and was it collected?',
+    auditAnswer: 'The answer is no.',
+    guardedHeadline: 'Guarded verdict: Investigate before approving',
+    guardedIntro:
+      'With the evidence guardrail, the agent declines the release and asks for the one test that could falsify the approval: targeted ultrasonic inspection of R4.',
+    guardedWhy: 'The guardrail requires coverage of every high-stress region before a release claim can be supported.',
+  },
   findings: [
     {
       id: 'F-1',

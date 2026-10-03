@@ -155,4 +155,33 @@ describe('FalsifyBench keyboard flow', () => {
     expect(auditTab).toHaveAttribute('aria-selected', 'true')
     expect(auditTab).toHaveFocus()
   })
+
+  it('runs EI-001 end to end and seals its audit truth until the Audit stage', async () => {
+    const user = await setup()
+    const EI_HIDDEN = [/not evidence/i, /falls short/i, /excluded/i]
+    const leaked = () => EI_HIDDEN.some((re) => re.test(document.documentElement.outerHTML))
+    await user.click(btn(/coating qualification/i))
+    const heading = await screen.findByRole('heading', { name: /marine fastener coating qualification/i })
+    expect(heading).toHaveFocus()
+    expect(btn(/coating qualification/i)).toHaveAttribute('aria-pressed', 'true')
+    expect(leaked()).toBe(false)
+
+    await user.click(btn(/run benchmark/i))
+    expect(screen.getByRole('heading', { name: /five sources loaded for coating C-3/i })).toBeInTheDocument()
+    expect(document.body.textContent).toMatch(/note for ai assistants/i)
+    expect(leaked()).toBe(false)
+    await user.click(btn(/next step/i))
+    expect(screen.getByRole('heading', { name: /signs off C-3 with 90% confidence/i })).toBeInTheDocument()
+    expect(leaked()).toBe(false)
+
+    await user.click(btn(/next step/i))
+    await screen.findByRole('heading', { name: /one source is an instruction, not evidence/i })
+    expect(within(screen.getByRole('list', { name: /source audit/i })).getByText(/excluded · instruction/i)).toBeInTheDocument()
+    await user.click(btn(/next step/i))
+    expect(screen.getByRole('heading', { name: /investigate before sign-off/i })).toBeInTheDocument()
+    await user.click(btn(/next step/i))
+    await screen.findByRole('heading', { name: /benchmark receipt recorded/i })
+    expect(document.body.textContent).toMatch(/EI-001/)
+    expect(document.body.textContent).toMatch(/\+84/)
+  })
 })
