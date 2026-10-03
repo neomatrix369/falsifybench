@@ -1,0 +1,104 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ComingNextCards } from './components/ComingNextCards'
+import { UnavailableModesNote } from './components/DataModeSelector'
+import { ErrorCard, WalkthroughErrorBoundary } from './components/ErrorCard'
+import { Header } from './components/Header'
+import { ReceiptSummary } from './components/ReceiptSummary'
+import { ResultSurface } from './components/ResultSurface'
+import { ScenarioCard } from './components/ScenarioCard'
+import { StageTrace } from './components/StageTrace'
+import { MAT_001_ID } from './data/mat001'
+import { syntheticScenarioSource } from './data/scenarioSource'
+import { randomRunId, systemClock } from './domain/receipt'
+import { LAST_STAGE_INDEX } from './domain/stages'
+import type { Scenario, ScenarioSource } from './domain/types'
+import { useWalkthrough, type WalkthroughDeps } from './hooks/useWalkthrough'
+
+const DEFAULT_DEPS: WalkthroughDeps = { clock: systemClock, createRunId: randomRunId }
+
+function Bench({ scenario, deps }: { scenario: Scenario; deps: WalkthroughDeps }) {
+  const { state, evaluation, receipt, error, controls, actions } = useWalkthrough(scenario, deps)
+  const resultHeading = useRef<HTMLHeadingElement>(null)
+  const activeScenarioHeading = useRef<HTMLHeadingElement>(null)
+  const [focusRequest, setFocusRequest] = useState(0)
+
+  useEffect(() => {
+    if (focusRequest > 0) resultHeading.current?.focus()
+  }, [focusRequest])
+
+  const select = useCallback(
+    (index: number) => {
+      actions.select(index)
+      setFocusRequest((n) => n + 1)
+    },
+    [actions],
+  )
+
+  const openReceipt = useCallback(() => {
+    if (state.reached === LAST_STAGE_INDEX) select(LAST_STAGE_INDEX)
+  }, [select, state.reached])
+
+  return (
+    <>
+      <Header onReceiptAnchor={openReceipt} />
+      <main className="mx-auto grid max-w-[1440px] grid-cols-[minmax(360px,35fr)_65fr] items-start gap-6 px-6 py-6">
+        <div className="space-y-4">
+          <ScenarioCard ref={activeScenarioHeading} scenario={scenario} canRun={controls.canRun} onRun={actions.run} />
+          <StageTrace
+            state={state}
+            controls={controls}
+            onSelect={select}
+            onBack={actions.back}
+            onNext={actions.next}
+            onToggleAutoplay={actions.toggleAutoplay}
+            onReset={actions.reset}
+          />
+          <ComingNextCards onReturnToActive={() => activeScenarioHeading.current?.focus()} />
+          <UnavailableModesNote />
+        </div>
+        <div className="space-y-4">
+          <WalkthroughErrorBoundary onReset={actions.reset} resetKey={state.runId}>
+            {error ? (
+              <ErrorCard message={error.message} onReset={actions.reset} />
+            ) : (
+              <ResultSurface
+                ref={resultHeading}
+                state={state}
+                scenario={scenario}
+                evaluation={evaluation}
+                receipt={receipt}
+                onSelect={select}
+              />
+            )}
+            <ReceiptSummary receipt={receipt} onOpen={openReceipt} />
+          </WalkthroughErrorBoundary>
+        </div>
+      </main>
+    </>
+  )
+}
+
+export default function App({
+  source = syntheticScenarioSource,
+  deps = DEFAULT_DEPS,
+}: {
+  source?: ScenarioSource
+  deps?: WalkthroughDeps
+}) {
+  const [scenario, setScenario] = useState<Scenario | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    source.loadScenario(MAT_001_ID).then(setScenario, (err: unknown) => setLoadError(String(err)))
+  }, [source])
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-xl p-10">
+        <ErrorCard message={loadError} onReset={() => window.location.reload()} />
+      </div>
+    )
+  }
+  if (!scenario) return <p className="p-10 text-sm text-slate-500">Loading MAT-001…</p>
+  return <Bench scenario={scenario} deps={deps} />
+}
