@@ -48,4 +48,17 @@ describe('buildRunLog', () => {
     })
     expect(reused[reused.length - 1]?.detail).toMatch(/already unsealed earlier/)
   })
+
+  it('records a failed unseal instead of staying pending', () => {
+    const log = buildRunLog({
+      state: atAudit,
+      scenario: mat001,
+      evaluation: null,
+      receipt: null,
+      unseal: { requestedAt: at(12) },
+      error: new Error('chunk failed'),
+    })
+    expect(log[log.length - 1]).toMatchObject({ label: 'Sealed evaluation failed to load', detail: 'chunk failed' })
+    expect(log.some((e) => e.pending)).toBe(false)
+  })
 })

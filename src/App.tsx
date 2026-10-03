@@ -91,7 +91,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount }: Benc
             onToggleAutoplay={actions.toggleAutoplay}
             onReset={reset}
           />
-          <RunLog entries={buildRunLog({ state, scenario, evaluation, receipt, unseal })} />
+          <RunLog entries={buildRunLog({ state, scenario, evaluation, receipt, unseal, error })} />
           <ComingNextCards activeId={scenario.id} onReturnToActive={() => activeScenarioHeading.current?.focus()} />
           <UnavailableModesNote />
         </div>
@@ -156,7 +156,13 @@ export default function App({
   if (loadError) {
     return (
       <div className="mx-auto max-w-xl p-10">
-        <ErrorCard message={loadError} onReset={() => window.location.reload()} />
+        <ErrorCard
+          message={loadError}
+          onReset={() => {
+            if (activeId === MAT_001_ID) window.location.reload()
+            else setActiveId(MAT_001_ID)
+          }}
+        />
       </div>
     )
   }

@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { syntheticScenarioSource } from './data/scenarioSource'
 
 const deps = { clock: () => new Date('2026-01-01T12:00:00.000Z'), createRunId: () => 'RUN-FIXED' }
 const HIDDEN = [/highest-stress/i, /zero ultrasonic/i]
@@ -204,5 +205,20 @@ describe('FalsifyBench keyboard flow', () => {
     expect(log().textContent).toMatch(/unsafe approval prevented: yes/)
     await user.click(btn(/hide details/i))
     expect(screen.queryByRole('log')).not.toBeInTheDocument()
+  })
+
+  it('returns to MAT-001 when another benchmark fails to load', async () => {
+    const user = userEvent.setup()
+    const source = {
+      ...syntheticScenarioSource,
+      loadScenario: (id: string) =>
+        id === 'EI-001' ? Promise.reject(new Error('EI-001 unavailable')) : syntheticScenarioSource.loadScenario(id),
+    }
+    render(<App deps={deps} source={source} />)
+    await user.click(await screen.findByRole('button', { name: /coating qualification/i }))
+    expect(await screen.findByText(/EI-001 unavailable/)).toBeInTheDocument()
+    await user.click(btn(/reset walkthrough/i))
+    expect(await screen.findByRole('heading', { name: /turbine support bracket release decision/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /coating qualification/i })).toBeInTheDocument()
   })
 })

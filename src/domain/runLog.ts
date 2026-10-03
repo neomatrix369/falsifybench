@@ -33,6 +33,7 @@ export function buildRunLog(input: {
   evaluation: ScenarioEvaluation | null
   receipt: BenchmarkReceipt | null
   unseal: UnsealTiming | null
+  error?: Error | null
 }): RunLogEntry[] {
   const { state, scenario, evaluation, receipt, unseal } = input
   if (!state.runId) return []
@@ -72,7 +73,9 @@ export function buildRunLog(input: {
             ? 'Sealed evaluation already unsealed earlier in this session; reusing it'
             : 'Unsealing the sealed evaluation (a separate module fetched only at this stage)',
         })
-        if (!evaluation) {
+        if (!evaluation && input.error) {
+          log.push({ at: null, stage: 'audit', label: 'Sealed evaluation failed to load', detail: input.error.message })
+        } else if (!evaluation) {
           log.push({ at: null, stage: 'audit', label: 'Waiting for sealed evaluation…', detail: '', pending: true })
         } else if (!cached) {
           log.push({
