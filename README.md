@@ -26,6 +26,10 @@ npm run preview    # serve dist/ locally
 
 Mock mode needs no secrets and no network access.
 
+## Release score
+
+`npm run frs` computes the FalsifyBench Release Score (FRS): a gated, weighted harmonic mean of quality, correctness, synthetic-data alignment and performance that drives the merge/deploy decision. Definition and usage: [`docs/FRS.md`](docs/FRS.md). The latest snapshot ships with the site at `frs/index.html`.
+
 ## Code map
 
 | Concern | Location |
