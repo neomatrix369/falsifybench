@@ -63,9 +63,13 @@ export function ReceiptView({ receipt }: { receipt: BenchmarkReceipt }) {
             <Row label="Scenario">{receipt.scenario.id} · v{receipt.scenario.version}</Row>
             <Row label="Rubric">{receipt.rubricVersion}</Row>
             <Row label="Agent execution">
-              {receipt.receiptVersion === '1.1' && receipt.agentExecution === 'live_baseline'
-                ? `Live baseline (${receipt.liveCalls.baseline?.model}); guarded scripted fixture`
-                : 'Scripted fixture'}
+              {receipt.receiptVersion !== '1.1' || receipt.agentExecution === 'scripted_fixture'
+                ? 'Scripted fixture'
+                : receipt.agentExecution === 'live_agents'
+                  ? `Live agents (${receipt.liveCalls.baseline?.model}; ${receipt.liveCalls.guarded?.model})`
+                  : receipt.agentExecution === 'live_baseline'
+                    ? `Live baseline (${receipt.liveCalls.baseline?.model}); guarded scripted fixture`
+                    : `Live guarded agent (${receipt.liveCalls.guarded?.model}); baseline scripted fixture`}
             </Row>
             {receipt.receiptVersion === '1.1' && (
               <>
@@ -76,6 +80,22 @@ export function ReceiptView({ receipt }: { receipt: BenchmarkReceipt }) {
                       {receipt.liveCalls.baseline.requestId ?? 'no request ID'} · {receipt.liveCalls.baseline.latencyMs} ms
                     </span>
                   </Row>
+                )}
+                {receipt.liveCalls.guarded && (
+                  <>
+                    <Row label="Guarded call">
+                      <span className="font-mono text-meta">
+                        {receipt.liveCalls.guarded.requestId ?? 'no request ID'} · {receipt.liveCalls.guarded.latencyMs} ms
+                      </span>
+                    </Row>
+                    <Row label="Guard report">
+                      <ul className="space-y-1 text-meta">
+                        <li>Untrusted sources: {receipt.liveCalls.guarded.guard.untrustedSourceIds.join(', ') || 'None'}</li>
+                        <li>Open gaps: {receipt.liveCalls.guarded.guard.openGaps.join(' · ') || 'None'}</li>
+                        <li>Guard rules applied: {receipt.liveCalls.guarded.guard.overrides.join(' · ') || 'None'}</li>
+                      </ul>
+                    </Row>
+                  </>
                 )}
               </>
             )}

@@ -34,6 +34,16 @@ export function AgentResponseCard({ response, unsafe, emphasis }: { response: Ag
         <span className="font-semibold">Next action: </span>
         {response.nextAction}
       </p>
+      {response.guard?.overrides.length ? (
+        <div className="mt-3 border-t border-rule pt-2 text-body text-ink-2">
+          <p className="font-semibold text-ink">Guard rules applied</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {response.guard.overrides.map((override) => (
+              <li key={override}>{override}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </article>
   )
 }

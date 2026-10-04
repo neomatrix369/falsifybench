@@ -67,7 +67,7 @@ describe('FalsifyBench walkthrough', () => {
     const partner = screen.getByRole('radio', { name: /partner data — unavailable/i })
     expect(partner).toBeDisabled()
     expect(partner).toHaveAccessibleDescription('Awaiting validated partner source.')
-    expect(screen.getByRole('radio', { name: /live agent — unavailable/i })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: /live agents — unavailable/i })).toBeDisabled()
     expect(btn(/^back$/i)).toBeDisabled()
     expect(btn(/next step/i)).toBeDisabled()
   })

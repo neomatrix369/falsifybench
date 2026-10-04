@@ -1,9 +1,10 @@
 // A local stand-in for the Anthropic Messages API (POST /v1/messages). Tests and the manual proof use it; nothing here calls Anthropic.
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { GUARDED_TOOL_NAME } from '../prompt'
 
-export type StubMode = 'success' | 'malformed' | 'http-400' | 'http-500' | 'hang'
-export const STUB_MODES: StubMode[] = ['success', 'malformed', 'http-400', 'http-500', 'hang']
+export type StubMode = 'success' | 'malformed' | 'invalid-guard-id' | 'http-400' | 'http-500' | 'hang'
+export const STUB_MODES: StubMode[] = ['success', 'malformed', 'invalid-guard-id', 'http-400', 'http-500', 'hang']
 export const STUB_MODEL = 'claude-stub-1'
 
 export interface AnthropicStub {
@@ -25,6 +26,19 @@ function decisionFor(prompt: string) {
     claim: 'The evidence supports going ahead as asked.',
     rationale: [`${ids[0] ?? 'The first record'} supports the request.`, `${ids[1] ?? 'The second record'} raises no blocking concern.`],
     nextAction: 'Proceed with the requested sign-off.',
+  }
+}
+
+function guardedDecisionFor(prompt: string, mode: StubMode) {
+  const firstId = prompt.match(/\b(?:EV|LAB|MAT)-[A-Z0-9-]+\b/)?.[0] ?? 'the first record'
+  return {
+    verdict: 'investigate',
+    confidenceLabel: '80%',
+    claim: 'Not yet: the evidence has gaps.',
+    rationale: [`${firstId} needs checking against a direct measurement.`],
+    nextAction: `Check ${firstId} against a direct measurement, then reassess.`,
+    untrustedSourceIds: mode === 'invalid-guard-id' ? ['EV-UNKNOWN-01'] : [],
+    openGaps: ['Not every requirement is directly measured.'],
   }
 }
 
@@ -61,7 +75,12 @@ export function startAnthropicStub(initial: StubMode = 'success', port = 0): Pro
       res.writeHead(status, headers)
       return res.end(JSON.stringify({ type: 'error', error: { type: status === 400 ? 'invalid_request_error' : 'api_error', message: status === 400 ? 'stub: bad request' : 'stub: internal error' } }))
     }
-    const input = mode === 'malformed' ? { verdict: 'approve', confidenceLabel: '', rationale: 'not a list', extra: 1 } : decisionFor(prompt)
+    const guarded = body.tool_choice?.name === GUARDED_TOOL_NAME
+    const input = mode === 'malformed'
+      ? { verdict: 'approve', confidenceLabel: '', rationale: 'not a list', extra: 1 }
+      : guarded
+        ? guardedDecisionFor(prompt, mode)
+        : decisionFor(prompt)
     res.writeHead(200, headers)
     res.end(
       JSON.stringify({

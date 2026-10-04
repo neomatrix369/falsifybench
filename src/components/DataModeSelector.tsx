@@ -12,7 +12,7 @@ export interface AgentSelection {
 }
 
 function liveReason(health: LiveHealth | null): string {
-  if (liveAvailable(health)) return `Baseline from ${health!.model} through the local server. ${LIVE_SCOPE_NOTE}`
+  if (liveAvailable(health)) return `Both live agents use ${health!.model} through the local server. ${LIVE_SCOPE_NOTE}`
   if (health) {
     const reason = health.reason ?? 'has no API key'
     return `The local server is running but ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`
@@ -106,7 +106,7 @@ export function DataModeSelector({ agent = { mode: 'scripted', health: null } }:
           <Option
             name="agent-execution"
             value="live"
-            label={!available ? 'Live agent — unavailable' : live ? 'Live baseline — active' : 'Live baseline — available'}
+            label={!available ? 'Live agents — unavailable' : live ? 'Live agents — active' : 'Live agents — available'}
             checked={live}
             disabled={!available}
             reason={liveReason(agent.health)}

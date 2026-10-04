@@ -66,8 +66,8 @@ export const PARTNER_UNAVAILABLE_REASON = 'Awaiting validated partner source.'
 export const LIVE_AGENT_UNAVAILABLE_REASON =
   'Runs only on a local machine through the local server, which `npm run dev` starts. No server answered here, so no model is called.'
 
-/** Shown on a live baseline answer instead of `SCRIPTED_FIXTURE_LABEL`. */
+/** Shown on a live answer instead of `SCRIPTED_FIXTURE_LABEL`. */
 export const liveModelLabel = (model: string) => `Live model run — ${model} via the local server`
 
-/** Plain statement of what a live run is: the baseline is live, the guarded agent is not. */
-export const LIVE_SCOPE_NOTE = 'Only the baseline is live; the guarded agent stays a scripted fixture until Step 4.'
+/** Plain statement of live execution and the hand-written sealed answer key. */
+export const LIVE_SCOPE_NOTE = 'Both agents are live through the local server; the sealed answer key remains hand-written and is used only to grade.'

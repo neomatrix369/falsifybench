@@ -33,6 +33,25 @@ describe('evaluationProblems', () => {
     expect(problems.map((p) => p.slice(0, 2))).toEqual(['I4', 'I8'])
   })
 
+  it('accepts a live guarded response labelled with its model', async () => {
+    const evaluation = await mat001.evaluation.unseal()
+    const run = scriptedRun(mat001, evaluation)
+    const guarded = {
+      ...run.responses.guarded,
+      agentLabel: 'Evidence guardrail (claude-stub-1)',
+      live: {
+        provider: 'anthropic' as const,
+        model: 'claude-stub-1',
+        requestId: null,
+        latencyMs: 1,
+        roundTripMs: 1,
+        endpoint: '/api/agents/guarded',
+        validatedFields: [],
+      },
+    }
+    expect(evaluationProblems(mat001, evaluation, { ...run, responses: { ...run.responses, guarded } })).toEqual([])
+  })
+
   it('reports a malformed shape instead of throwing', () => {
     const problems = evaluationProblems(mat001, {} as ScenarioEvaluation, {} as GradedRun)
     expect(problems.length).toBeGreaterThan(0)

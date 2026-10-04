@@ -2,7 +2,7 @@ import { compareScores, METRIC_KEYS, METRIC_LABELS } from './scoring'
 import { InvalidEvaluationError } from './evaluationCheck'
 import { UnsealTimeoutError } from './unsealTimeout'
 import type { BenchmarkReceipt } from './receipt'
-import { LIVE_BASELINE_ENDPOINT, LIVE_BASELINE_TIMEOUT_MS, LIVE_FAILURE_LABEL, LiveAgentError, type LiveBaselineCall } from './live'
+import { LIVE_BASELINE_ENDPOINT, LIVE_BASELINE_TIMEOUT_MS, LIVE_FAILURE_LABEL, LIVE_GUARDED_ENDPOINT, LiveAgentError, type LiveBaselineCall } from './live'
 import { STAGES, STAGE_LABELS } from './stages'
 import type { StageTrigger, WalkthroughState } from './walkthrough'
 import type { AgentResponse, GradedRun, MetricScores, Scenario, ScenarioEvaluation, WalkthroughStage } from './types'
@@ -169,6 +169,24 @@ export function buildRunLog(input: {
               { key: 'Recovery', value: 'Fix the scenario data. Reload and Reset load the same module, so both fail the same checks; npm run score lists every failed gate' },
             ],
           })
+        } else if (!evaluation && input.error instanceof LiveAgentError) {
+          log.push({
+            at: null,
+            stage: 'guarded',
+            label: 'Live guarded agent call failed',
+            detail: `${LIVE_FAILURE_LABEL[input.error.kind]}: ${input.error.message}`,
+            facts: [
+              { key: 'Agent', value: 'Evidence guardrail (live model)' },
+              { key: 'Error', value: `${input.error.name}: ${input.error.message}` },
+              { key: 'Kind', value: `${input.error.kind} (${LIVE_FAILURE_LABEL[input.error.kind]})` },
+              ...(input.error.httpStatus !== undefined ? [{ key: 'HTTP status', value: String(input.error.httpStatus) }] : []),
+              ...(input.error.upstreamStatus !== undefined ? [{ key: 'Provider status', value: String(input.error.upstreamStatus) }] : []),
+              ...(input.error.requestId ? [{ key: 'Request ID', value: input.error.requestId }] : []),
+              ...input.error.problems.map((problem, i) => ({ key: `Failed check ${i + 1}`, value: problem })),
+              { key: 'Effect', value: 'Run stopped before the guarded answer was used; no receipt was recorded' },
+              { key: 'Recovery', value: 'Retry reruns both live agents for this run; Reset starts a new run' },
+            ],
+          })
         } else if (!evaluation && input.error) {
           log.push({
             at: null,
@@ -213,7 +231,18 @@ export function buildRunLog(input: {
             detail: `Scored on ${rubricVersion}: baseline ${meanFormula(baseline)} = ${baselineTotal}; guarded ${meanFormula(guarded)} = ${guardedTotal}; delta ${delta >= 0 ? '+' : ''}${delta}`,
             facts: [
               trigger,
-              { key: 'Agent', value: `${answer.agentLabel} (scripted fixture, no model called${live ? '; the guarded agent stays scripted until Step 4' : ''})` },
+              { key: 'Agent', value: `${answer.agentLabel} (${answer.live ? `live model ${answer.live.model}` : 'scripted fixture, no model called'})` },
+              ...(answer.live
+                ? [
+                    { key: 'Execution', value: `Live model call: Anthropic Messages API via the local server, POST ${LIVE_GUARDED_ENDPOINT}` },
+                    { key: 'Request ID', value: answer.live.requestId ?? 'none returned by the provider' },
+                    { key: 'Latency', value: `${answer.live.latencyMs} ms at the provider; ${answer.live.roundTripMs} ms browser round trip` },
+                    { key: 'Validated', value: `${answer.live.validatedFields.join(', ')} → pass, checked by the local server and again in the browser` },
+                    { key: 'Untrusted sources', value: answer.guard?.untrustedSourceIds.join(', ') || 'None' },
+                    { key: 'Open gaps', value: answer.guard?.openGaps.join(' · ') || 'None' },
+                    { key: 'Guard rules applied', value: answer.guard?.overrides.join(' · ') || 'None' },
+                  ]
+                : []),
               { key: 'Graded by', value: `${run.grader.label}${run.responses.baseline.live ? ' (a live answer has no hand scores, so the fixture grader cannot score it)' : ''}` },
               { key: 'Verdict', value: `${VERDICT_WORD[answer.verdict]} · ${answer.confidenceLabel}` },
               { key: 'Next action', value: answer.nextAction },
@@ -263,15 +292,15 @@ function liveRunStarted(state: WalkthroughState, scenario: Scenario, model: stri
     at: state.startedAt,
     stage: 'run',
     label: `Run ${state.runId} started`,
-    detail: `${scenario.id} v${scenario.version} · mode: synthetic · ${scenario.provenance.label} · live baseline (${model}) via the local server; guarded scripted`,
+    detail: `${scenario.id} v${scenario.version} · mode: synthetic · ${scenario.provenance.label} · both agents live via the local server (${model})`,
     facts: [
       { key: 'Triggered by', value: TRIGGER_LABEL[state.triggers[0] ?? 'run'] },
       { key: 'Run ID', value: `${state.runId} (4 random bytes from crypto.getRandomValues)` },
       { key: 'Scenario', value: `${scenario.id} v${scenario.version} · ${scenario.title}` },
       { key: 'Scenario source', value: 'Synthetic source: public fixture bundled with the page, no fetch' },
       { key: 'Provenance', value: `${scenario.provenance.label} · ${scenario.provenance.source} · audited by ${scenario.provenance.auditedBy}` },
-      { key: 'Agents', value: `Baseline: live model (Anthropic, configured ${model}); guarded: ${scenario.guardedAgentLabel}, a scripted fixture until Step 4` },
-      { key: 'Network / model calls', value: `One POST ${LIVE_BASELINE_ENDPOINT} to the local server at Baseline, which calls the Anthropic Messages API. Nothing else leaves this tab` },
+      { key: 'Agents', value: `Baseline and guarded: live model (Anthropic, configured ${model})` },
+      { key: 'Network / model calls', value: `POST ${LIVE_BASELINE_ENDPOINT} at Baseline and ${LIVE_GUARDED_ENDPOINT} at Guarded to the local server, which calls the Anthropic Messages API. Nothing else leaves this tab` },
       { key: 'Grader', value: 'Rule grader: a live answer has no hand-entered scores' },
       { key: 'Plan', value: STAGES.map((s, i) => `${i + 1} ${STAGE_LABELS[s]}`).join(' → ') },
     ],
@@ -329,7 +358,7 @@ function liveFailedEntry(at: string, producedBy: RunLogFact, error: Error): RunL
   return {
     at,
     stage: 'baseline',
-    label: 'Live baseline call failed',
+    label: 'Live agent call failed',
     detail: e ? `${LIVE_FAILURE_LABEL[e.kind]}: ${e.message}` : error.message,
     facts: [
       producedBy,
@@ -344,7 +373,7 @@ function liveFailedEntry(at: string, producedBy: RunLogFact, error: Error): RunL
           ]
         : []),
       { key: 'Effect', value: 'Run stopped at Baseline; no answer was used, auto-play is off and no receipt is recorded' },
-      { key: 'Recovery', value: 'Retry asks the model again for this run; Reset starts a new run' },
+      { key: 'Recovery', value: 'Retry reruns both live agents for this run; Reset starts a new run' },
     ],
   }
 }
@@ -367,7 +396,20 @@ function receiptFacts(trigger: RunLogFact, receipt: BenchmarkReceipt): RunLogFac
     { key: 'Check: mode', value: `${receipt.mode} → pass (only synthetic runs can be recorded in this PoC)` },
     ...(receipt.receiptVersion === '1.1'
       ? [
-          { key: 'Agent execution', value: receipt.agentExecution === 'live_baseline' ? `live baseline (${receipt.liveCalls.baseline?.model}); guarded scripted` : 'scripted fixture' },
+          {
+            key: 'Agent execution',
+            value:
+              receipt.agentExecution === 'live_agents'
+                ? `live agents (baseline ${receipt.liveCalls.baseline?.model}; guarded ${receipt.liveCalls.guarded?.model})`
+                : receipt.agentExecution === 'live_baseline'
+                  ? `live baseline (${receipt.liveCalls.baseline?.model}); guarded scripted`
+                  : receipt.agentExecution === 'live_guarded'
+                    ? `baseline scripted; live guarded (${receipt.liveCalls.guarded?.model})`
+                    : 'scripted fixture',
+          },
+          ...(receipt.liveCalls.guarded
+            ? [{ key: 'Guard rules applied', value: receipt.liveCalls.guarded.guard.overrides.join(' · ') || 'None' }]
+            : []),
           { key: 'Grader', value: `${receipt.grader.id} ${receipt.grader.version}` },
         ]
       : []),

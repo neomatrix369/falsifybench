@@ -53,7 +53,7 @@ describe('server import graph', () => {
       expect(edge.to).toBe(edge.from.replace(/\.ts$/, '.evaluation.ts'))
     }
     for (const file of graph.staticFiles.filter((f) => f.startsWith('server/'))) {
-      expect(readFileSync(join(ROOT, file), 'utf8'), file).not.toMatch(/\.unseal\b|\bbaseline\b\s*[:,]|\.baseline\b/)
+      expect(readFileSync(join(ROOT, file), 'utf8'), file).not.toMatch(/\.unseal\b|(?:scenario|s)\.baseline\b/)
     }
     for (const id of PUBLIC_SCENARIO_IDS) {
       expect(Object.keys(publicScenario(id)!).sort()).toEqual(['domain', 'evidence', 'id', 'input', 'question', 'task', 'title', 'version'])

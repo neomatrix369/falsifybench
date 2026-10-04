@@ -156,7 +156,9 @@ export function integrityChecks({ scenario, evaluation, run }: ScoredScenario, r
     check(
       'I8',
       'Guarded response matches the declared agent',
-      run.responses.guarded.agentLabel === scenario.guardedAgentLabel,
+      run.responses.guarded.live
+        ? run.responses.guarded.agentLabel === `Evidence guardrail (${run.responses.guarded.live.model})`
+        : run.responses.guarded.agentLabel === scenario.guardedAgentLabel,
       run.responses.guarded.agentLabel,
     ),
     check(

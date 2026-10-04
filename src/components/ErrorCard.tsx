@@ -11,7 +11,7 @@ const EXPLANATION: Record<'reset' | RunRecovery, string> = {
   'fix-data':
     'No receipt was recorded and this run is not marked complete. The sealed evaluation failed its data checks, so it was not used. Reload and Reset load the same data; fix the scenario data (npm run score lists every failed gate).',
   'retry-live':
-    'No receipt was recorded and this run is not marked complete. The live baseline call failed, so no answer was used. Retry asks the model again for this run; Reset starts a new run.',
+    'No receipt was recorded and this run is not marked complete. A live agent call failed, so no answer was used. Retry runs both live agents again for this run; Reset starts a new run.',
 }
 
 export function ErrorCard({
@@ -34,7 +34,7 @@ export function ErrorCard({
       <div className="flex items-center gap-2 text-risk">
         <TriangleAlert aria-hidden className="h-5 w-5" />
         <h2 ref={heading} tabIndex={-1} className="text-title font-semibold focus:outline-none">
-          {recovery === 'retry-live' ? 'The live baseline call failed' : 'The walkthrough hit an unexpected error'}
+          {recovery === 'retry-live' ? 'A live agent call failed' : 'The walkthrough hit an unexpected error'}
         </h2>
       </div>
       <p className="mt-2 text-body text-ink-2">{EXPLANATION[recovery]}</p>

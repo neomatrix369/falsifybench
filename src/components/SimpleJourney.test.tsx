@@ -29,6 +29,32 @@ const journey = () => screen.getByRole('list', { name: /benchmark journey/i })
 const journeySteps = () => journey().querySelectorAll(':scope > li')
 const expected = compareScores(mat001Scores.baseline, mat001Scores.guarded)
 
+function liveGuardAnswer(): AgentResponse {
+  const answer = {
+    agentLabel: 'Evidence guardrail (claude-stub-1)',
+    verdict: 'investigate' as const,
+    confidenceLabel: '80%',
+    claim: 'The evidence has gaps.',
+    rationale: ['EV-SUP-01 requires verification.'],
+    nextAction: 'Check EV-SUP-01.',
+    guard: {
+      untrustedSourceIds: ['EV-SUP-01'],
+      openGaps: ['Not every requirement is directly measured.'],
+      overrides: ['Guard rule: EV-SUP-01 contains instructions addressed to the reader, so it is treated as untrusted.'],
+    },
+    live: {
+      provider: 'anthropic' as const,
+      model: 'claude-stub-1',
+      requestId: 'req_guarded',
+      latencyMs: 10,
+      roundTripMs: 11,
+      endpoint: '/api/agents/guarded',
+      validatedFields: ['verdict', 'confidenceLabel', 'claim', 'rationale', 'nextAction', 'untrustedSourceIds', 'openGaps'],
+    },
+  }
+  return answer
+}
+
 describe('Simple tab', () => {
   it('selects Simple in the Benchmark view tablist and lists the 5 journey steps', async () => {
     await setup()
@@ -178,13 +204,13 @@ describe('Simple tab with a live baseline', () => {
   async function setupLive(run: AgentRunner['run']) {
     const runner: AgentRunner = {
       execution: 'live',
-      run: (agent, scenario, options) => (agent === 'guarded' ? scriptedAgentRunner.run('guarded', scenario, options) : run(agent, scenario, options)),
+      run: (agent, scenario, options) => (agent === 'guarded' ? Promise.resolve(liveGuardAnswer()) : run(agent, scenario, options)),
     }
     const user = userEvent.setup()
     render(<App deps={deps} initialId="MAT-001" initialTab="simple" liveRunner={runner} probeLive={async () => configured} />)
     await screen.findByRole('button', { name: /run benchmark/i })
-    await user.click(await screen.findByRole('radio', { name: /live baseline — available/i }))
-    await screen.findByRole('radio', { name: /live baseline — active/i })
+    await user.click(await screen.findByRole('radio', { name: /live agents — available/i }))
+    await screen.findByRole('radio', { name: /live agents — active/i })
     return user
   }
 
@@ -213,8 +239,27 @@ describe('Simple tab with a live baseline', () => {
     await user.click(btn(/run benchmark/i))
     await user.click(btn(/next step/i))
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(/the live baseline call failed/i)
+    expect(alert).toHaveTextContent(/a live agent call failed/i)
     expect(within(alert).getByRole('button', { name: /retry live call/i })).toBeInTheDocument()
     expect(domContainsHidden()).toBe(false)
+  })
+
+  it('shows the guarded live model and applied rules in Simple and Detailed views', async () => {
+    const { liveAnswer } = await import('../domain/liveFixtures.test-helpers')
+    const user = await setupLive(async () => liveAnswer())
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    await user.click(btn(/next step/i))
+    await screen.findByRole('list', { name: /issues found/i })
+    await user.click(btn(/next step/i))
+
+    const guarded = journeySteps()[3] as HTMLElement
+    expect(guarded).toHaveTextContent('Live: claude-stub-1')
+    expect(within(guarded).getByText('Guard rules applied')).toBeInTheDocument()
+    expect(within(guarded).getByText(/EV-SUP-01 contains instructions addressed to the reader/)).toBeInTheDocument()
+
+    await user.click(within(guarded).getByRole('button', { name: /details/i }))
+    expect(screen.getAllByText('Live model run — claude-stub-1 via the local server').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Guard rules applied').length).toBeGreaterThan(0)
   })
 })

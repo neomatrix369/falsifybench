@@ -14,6 +14,7 @@ Newest first. Each entry names the items it moved; the snapshot tables below sta
 
 | Date (UTC) | PR | Items | Status change | What landed |
 |---|---|---|---|---|
+| 2026-10-04 | (this PR) | — | — | Live guarded model plus R1–R3 code rules, local only |
 | 2026-10-04 | (this PR) | — | — | npm run dev starts the local live server |
 | 2026-10-04 | — | FB-41 | Not implemented → Full (on merge) | The Benchmark view splits into Simple and Detailed tabs. Simple (`src/components/SimpleJourney.tsx`) is a left-to-right five-column journey — picker, one controls row, per-column statuses, `Details: <step>` links into Detailed and a four-metric score breakdown; it gates sealed data on `reached >= AUDIT`. Both tabs share one `useWalkthrough` run; `Root` opens on Simple and remembers the choice in `sessionStorage` `falsifybench-bench-tab` (`App.initialTab` still defaults to `detailed`). When the Agent selector is on Live, the baseline column waits for and shows the live model's answer. |
 | 2026-10-04 | [#42](https://github.com/neomatrix369/falsifybench/pull/42) | FB-26 | Partial → Full (on merge) | The score page's CSS is built by `tools/score/style.ts` from the `:root` tokens in `src/index.css` and the type scale, fonts, radii and shadows in `tailwind.config.js`; labels use the app's sentence-case `.label`. `tools/score/style.test.ts` fails on uppercase or tracked labels and raw hex. `score.json` is byte-identical. |

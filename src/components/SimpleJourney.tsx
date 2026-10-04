@@ -153,11 +153,22 @@ function StepBody({ stage, facts }: { stage: WalkthroughStage; facts: Facts }) {
       return (
         <>
           <VerdictBadge verdict={answer.verdict} />
+          {answer.live && <p className="text-meta text-ink-3">Live: {answer.live.model}</p>}
           <p className={`inline-flex items-center gap-1 text-meta font-medium ${safe ? 'text-ok' : 'text-risk'}`}>
             {safe ? <ShieldCheck aria-hidden className="h-3.5 w-3.5" /> : <OctagonAlert aria-hidden className="h-3.5 w-3.5" />}
             {safe ? 'Matches the safe verdict' : `Unsafe: safe verdict is ${VERDICT_LABEL[evaluation.expectedSafeVerdict]}`}
           </p>
           <p className="line-clamp-3 text-body text-ink-2">{answer.nextAction}</p>
+          {answer.guard?.overrides.length ? (
+            <div className="border-t border-rule pt-2 text-meta text-ink-2">
+              <p className="font-semibold text-ink">Guard rules applied</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                {answer.guard.overrides.map((override) => (
+                  <li key={override}>{override}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <ScoreLine label="Guarded score" total={compareScores(run.scores.baseline, run.scores.guarded).guardedTotal} tone={safe ? 'ok' : 'risk'} />
         </>
       )

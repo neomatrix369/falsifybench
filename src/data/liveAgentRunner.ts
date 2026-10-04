@@ -1,14 +1,14 @@
 import { AGENT_DECISION_FIELDS, agentDecisionProblems, toAgentDecision } from '../domain/agentResponseCheck'
 import {
   LIVE_BASELINE_ENDPOINT,
+  LIVE_GUARDED_ENDPOINT,
   LIVE_HEALTH_ENDPOINT,
   LiveAgentError,
   type LiveErrorBody,
   type LiveFailureKind,
   type LiveHealth,
 } from '../domain/live'
-import type { AgentResponse, AgentRunner } from '../domain/types'
-import { scriptedAgentRunner } from './scriptedAgentRunner'
+import type { AgentResponse, AgentRunner, Scenario } from '../domain/types'
 
 type Fetch = typeof globalThis.fetch
 
@@ -39,6 +39,34 @@ export function liveBaselineProblems(body: unknown): string[] {
   return problems
 }
 
+export function liveGuardedProblems(body: unknown, scenario: Scenario): string[] {
+  const problems = liveBaselineProblems(body)
+  const response = (body as { response?: unknown } | null)?.response
+  if (typeof response !== 'object' || response === null) return problems
+  const r = response as Record<string, unknown>
+  const guard = r.guard
+  if (typeof guard !== 'object' || guard === null || Array.isArray(guard)) return [...problems, 'guard: missing']
+  const report = guard as Record<string, unknown>
+  const evidenceIds = new Set(scenario.evidence.map((item) => item.id))
+  for (const field of ['untrustedSourceIds', 'openGaps', 'overrides'] as const) {
+    const values = report[field]
+    if (!Array.isArray(values)) {
+      problems.push(`guard.${field} must be a list of strings`)
+      continue
+    }
+    values.forEach((value, index) => {
+      if (typeof value !== 'string' || value.trim() === '') problems.push(`guard.${field}[${index}] must be a non-empty string`)
+      else if (field === 'untrustedSourceIds' && !evidenceIds.has(value)) problems.push(`guard.untrustedSourceIds[${index}] must be an evidence ID in this scenario`)
+    })
+  }
+  const live = r.live as Record<string, unknown> | undefined
+  const fields = live?.validatedFields
+  if (Array.isArray(fields) && ['untrustedSourceIds', 'openGaps'].some((field) => !fields.includes(field))) {
+    problems.push('live.validatedFields must list untrustedSourceIds and openGaps')
+  }
+  return problems
+}
+
 function errorFrom(status: number, body: unknown): LiveAgentError {
   const e = (body as Partial<LiveErrorBody> | null)?.error
   const kind = e && KINDS.includes(e.kind) ? e.kind : 'server'
@@ -53,25 +81,29 @@ function errorFrom(status: number, body: unknown): LiveAgentError {
 }
 
 /**
- * Local runs only: the baseline comes from a live model through the local server (`/api`, proxied by `vite dev`);
- * the guarded agent stays scripted until Step 4. The browser sends only the scenario ID: no prompt, evidence or key.
+ * Local runs only: both agents call the local server (`/api`, proxied by `vite dev`). The browser sends only the
+ * scenario ID and, for the guarded call, the validated baseline decision: no prompt, evidence or key.
  */
 export function createLiveAgentRunner({
   fetch = (...args) => globalThis.fetch(...args),
-  guarded = scriptedAgentRunner,
   now = () => performance.now(),
-}: { fetch?: Fetch; guarded?: AgentRunner; now?: () => number } = {}): AgentRunner {
+}: { fetch?: Fetch; now?: () => number } = {}): AgentRunner {
   return {
     execution: 'live',
     async run(agent, scenario, options): Promise<AgentResponse> {
-      if (agent === 'guarded') return guarded.run('guarded', scenario)
+      if (agent === 'guarded' && !options?.baseline) {
+        throw new LiveAgentError({ kind: 'bad-request', message: 'The guarded live agent requires the live baseline decision.' })
+      }
       const started = now()
       let res: Response
       try {
-        res = await fetch(LIVE_BASELINE_ENDPOINT, {
+        res = await fetch(agent === 'guarded' ? LIVE_GUARDED_ENDPOINT : LIVE_BASELINE_ENDPOINT, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ scenarioId: scenario.id }),
+          body: JSON.stringify({
+            scenarioId: scenario.id,
+            ...(agent === 'guarded' ? { baseline: toAgentDecision(options!.baseline) } : {}),
+          }),
           signal: options?.signal,
         })
       } catch (err) {
@@ -79,14 +111,16 @@ export function createLiveAgentRunner({
       }
       const body: unknown = await res.json().catch(() => null)
       if (!res.ok) throw errorFrom(res.status, body)
-      const problems = liveBaselineProblems(body)
+      const problems = agent === 'guarded' ? liveGuardedProblems(body, scenario) : liveBaselineProblems(body)
       if (problems.length) {
-        throw new LiveAgentError({ kind: 'validation', message: `The local server's baseline reply failed validation (${problems.length} problem${problems.length > 1 ? 's' : ''})`, httpStatus: res.status, problems })
+        const subject = agent === 'guarded' ? 'guarded agent' : 'baseline'
+        throw new LiveAgentError({ kind: 'validation', message: `The local server's ${subject} reply failed validation (${problems.length} problem${problems.length > 1 ? 's' : ''})`, httpStatus: res.status, problems })
       }
       const r = (body as { response: AgentResponse & { live: NonNullable<AgentResponse['live']> } }).response
       return {
         agentLabel: r.agentLabel,
         ...toAgentDecision(r),
+        ...(agent === 'guarded' ? { guard: r.guard } : {}),
         live: { ...r.live, validatedFields: [...r.live.validatedFields], roundTripMs: Math.round(now() - started) },
       }
     },

@@ -50,7 +50,7 @@ describe('runRecovery', () => {
   })
 })
 
-describe('Run log for a live baseline', () => {
+describe('Run log for live agents', () => {
   const at = '2026-01-01T00:00:01.000Z'
   const started = walkthroughReducer(initialWalkthroughState, { type: 'START', runId: 'RUN-0000BEEF', at })
   const atBaseline: WalkthroughState = walkthroughReducer(started, { type: 'NEXT', source: 'manual', at: '2026-01-01T00:00:02.000Z' })
@@ -59,11 +59,12 @@ describe('Run log for a live baseline', () => {
     buildRunLog({ state: atBaseline, scenario: ei001, evaluation: null, run: null, receipt: null, unseal: null, live: { model: 'claude-sonnet-4-6', call } })
   const facts = (entry: { facts?: { key: string; value: string }[] }) => Object.fromEntries((entry.facts ?? []).map((f) => [f.key, f.value]))
 
-  it('says up front that only the baseline is live', () => {
+  it('says up front that both agents are live', () => {
     const [start] = log(null)
-    expect(start.detail).toContain('live baseline (claude-sonnet-4-6) via the local server; guarded scripted')
+    expect(start.detail).toContain('both agents live via the local server (claude-sonnet-4-6)')
     expect(start.detail).not.toContain('no external API or model calls')
-    expect(facts(start).Agents).toMatch(/guarded: .*a scripted fixture until Step 4/)
+    expect(facts(start).Agents).toMatch(/Baseline and guarded: live model/)
+    expect(facts(start)['Network / model calls']).toContain('/api/agents/guarded')
   })
 
   it('shows the request and a pending line while the model is asked', () => {
@@ -89,14 +90,14 @@ describe('Run log for a live baseline', () => {
   it('records a failure with its kind, status, request ID and every failed check', () => {
     const error = new LiveAgentError({ kind: 'validation', message: 'bad output', httpStatus: 502, requestId: 'req_9', problems: ['a', 'b'] })
     const failed = log({ status: 'error', ...base, settledAt: '2026-01-01T00:00:03.000Z', error }).at(-1)!
-    expect(failed.label).toBe('Live baseline call failed')
+    expect(failed.label).toBe('Live agent call failed')
     expect(facts(failed)).toMatchObject({
       Kind: 'validation (model output failed validation)',
       'HTTP status': '502',
       'Request ID': 'req_9',
       'Failed check 1': 'a',
       'Failed check 2': 'b',
-      Recovery: 'Retry asks the model again for this run; Reset starts a new run',
+      Recovery: 'Retry reruns both live agents for this run; Reset starts a new run',
     })
   })
 })
