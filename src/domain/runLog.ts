@@ -2,9 +2,10 @@ import { compareScores, METRIC_KEYS, METRIC_LABELS } from './scoring'
 import { InvalidEvaluationError } from './evaluationCheck'
 import { UnsealTimeoutError } from './unsealTimeout'
 import type { BenchmarkReceipt } from './receipt'
+import { LIVE_BASELINE_ENDPOINT, LIVE_BASELINE_TIMEOUT_MS, LIVE_FAILURE_LABEL, LiveAgentError, type LiveBaselineCall } from './live'
 import { STAGES, STAGE_LABELS } from './stages'
 import type { StageTrigger, WalkthroughState } from './walkthrough'
-import type { GradedRun, MetricScores, Scenario, ScenarioEvaluation, WalkthroughStage } from './types'
+import type { AgentResponse, GradedRun, MetricScores, Scenario, ScenarioEvaluation, WalkthroughStage } from './types'
 
 export interface UnsealTiming {
   requestedAt: string
@@ -69,11 +70,13 @@ export function buildRunLog(input: {
   unseal: UnsealTiming | null
   error?: Error | null
   abandoned?: RunLogEntry | null
+  /** Set when this run's baseline goes to a live model (local runs only): the configured model and the call so far. */
+  live?: { model: string; call: LiveBaselineCall | null } | null
 }): RunLogEntry[] {
-  const { state, scenario, evaluation, run, receipt, unseal } = input
+  const { state, scenario, evaluation, run, receipt, unseal, live } = input
   if (!state.runId) return input.abandoned ? [input.abandoned] : []
   const log: RunLogEntry[] = [
-    {
+    live ? liveRunStarted(state, scenario, live.model) : {
       at: state.startedAt,
       stage: 'run',
       label: `Run ${state.runId} started`,
@@ -107,6 +110,10 @@ export function buildRunLog(input: {
         })
         break
       case 'baseline':
+        if (live) {
+          log.push(...liveBaselineEntries(event.at, trigger, scenario, live.model, live.call))
+          break
+        }
         log.push({
           at: event.at,
           stage: 'baseline',
@@ -206,7 +213,8 @@ export function buildRunLog(input: {
             detail: `Scored on ${rubricVersion}: baseline ${meanFormula(baseline)} = ${baselineTotal}; guarded ${meanFormula(guarded)} = ${guardedTotal}; delta ${delta >= 0 ? '+' : ''}${delta}`,
             facts: [
               trigger,
-              { key: 'Agent', value: `${answer.agentLabel} (scripted fixture, no model called)` },
+              { key: 'Agent', value: `${answer.agentLabel} (scripted fixture, no model called${live ? '; the guarded agent stays scripted until Step 4' : ''})` },
+              { key: 'Graded by', value: `${run.grader.label}${run.responses.baseline.live ? ' (a live answer has no hand scores, so the fixture grader cannot score it)' : ''}` },
               { key: 'Verdict', value: `${VERDICT_WORD[answer.verdict]} · ${answer.confidenceLabel}` },
               { key: 'Next action', value: answer.nextAction },
               {
@@ -250,6 +258,97 @@ export function buildRunLog(input: {
   return log
 }
 
+function liveRunStarted(state: WalkthroughState, scenario: Scenario, model: string): RunLogEntry {
+  return {
+    at: state.startedAt,
+    stage: 'run',
+    label: `Run ${state.runId} started`,
+    detail: `${scenario.id} v${scenario.version} · mode: synthetic · ${scenario.provenance.label} · live baseline (${model}) via the local server; guarded scripted`,
+    facts: [
+      { key: 'Triggered by', value: TRIGGER_LABEL[state.triggers[0] ?? 'run'] },
+      { key: 'Run ID', value: `${state.runId} (4 random bytes from crypto.getRandomValues)` },
+      { key: 'Scenario', value: `${scenario.id} v${scenario.version} · ${scenario.title}` },
+      { key: 'Scenario source', value: 'Synthetic source: public fixture bundled with the page, no fetch' },
+      { key: 'Provenance', value: `${scenario.provenance.label} · ${scenario.provenance.source} · audited by ${scenario.provenance.auditedBy}` },
+      { key: 'Agents', value: `Baseline: live model (Anthropic, configured ${model}); guarded: ${scenario.guardedAgentLabel}, a scripted fixture until Step 4` },
+      { key: 'Network / model calls', value: `One POST ${LIVE_BASELINE_ENDPOINT} to the local server at Baseline, which calls the Anthropic Messages API. Nothing else leaves this tab` },
+      { key: 'Grader', value: 'Rule grader: a live answer has no hand-entered scores' },
+      { key: 'Plan', value: STAGES.map((s, i) => `${i + 1} ${STAGE_LABELS[s]}`).join(' → ') },
+    ],
+  }
+}
+
+function liveBaselineEntries(at: string, trigger: RunLogFact, scenario: Scenario, model: string, call: LiveBaselineCall | null): RunLogEntry[] {
+  const asked: RunLogEntry = {
+    at: call?.requestedAt ?? at,
+    stage: 'baseline',
+    label: 'Live baseline requested',
+    detail: `POST ${LIVE_BASELINE_ENDPOINT} { scenarioId: "${scenario.id}" } to the local server${call && call.attempt > 1 ? ` · attempt ${call.attempt}` : ''}`,
+    facts: [
+      trigger,
+      { key: 'Request', value: `POST ${LIVE_BASELINE_ENDPOINT} with only the scenario ID; the browser sends no evidence, prompt or key` },
+      { key: 'Prompt', value: `Built by the local server from the public fixture only (brief, question, ${scenario.evidence.length} evidence records); the server never imports the sealed evaluation` },
+      { key: 'Model', value: `${model} (configured on the local server)` },
+      { key: 'Attempt', value: String(call?.attempt ?? 1) },
+      { key: 'Timeout', value: `${LIVE_BASELINE_TIMEOUT_MS / 1000} s, then an error card with Retry` },
+      { key: 'Next step held', value: call?.status === 'pending' ? 'Yes, until the model answers' : 'No' },
+    ],
+  }
+  if (!call || call.status === 'pending') return [asked, { at: null, stage: 'baseline', label: 'Waiting for the live baseline…', detail: '', pending: true }]
+  const producedBy: RunLogFact = { key: 'Produced by', value: `the local server's answer to Live baseline requested (${trigger.value})` }
+  if (call.status === 'error') return [asked, liveFailedEntry(call.settledAt, producedBy, call.error)]
+  return [asked, liveAnsweredEntry(call.settledAt, producedBy, call.response)]
+}
+
+function liveAnsweredEntry(at: string, producedBy: RunLogFact, answer: AgentResponse): RunLogEntry {
+  const live = answer.live
+  if (!live) throw new Error('A live baseline entry needs a live answer')
+  return {
+    at,
+    stage: 'baseline',
+    label: 'Baseline decided',
+    detail: `Live model answer from ${live.model} in ${live.latencyMs} ms: ${VERDICT_WORD[answer.verdict]} at ${answer.confidenceLabel} confidence`,
+    facts: [
+      producedBy,
+      { key: 'Agent', value: answer.agentLabel },
+      { key: 'Execution', value: `Live model call: Anthropic Messages API via the local server, structured tool output` },
+      { key: 'Model', value: `${live.model} (as reported by the provider)` },
+      { key: 'Request ID', value: live.requestId ?? 'none returned by the provider' },
+      { key: 'Latency', value: `${live.latencyMs} ms at the provider; ${live.roundTripMs} ms browser round trip` },
+      { key: 'Validated', value: `${live.validatedFields.join(', ')} → pass, checked by the local server and again in the browser` },
+      { key: 'Verdict', value: `${VERDICT_WORD[answer.verdict]} at ${answer.confidenceLabel} confidence` },
+      { key: 'Claim', value: answer.claim },
+      { key: 'Next action', value: answer.nextAction },
+      { key: 'Graded yet?', value: 'No. The grading truth stays sealed until Evidence audit; the rule grader scores this answer then' },
+    ],
+  }
+}
+
+function liveFailedEntry(at: string, producedBy: RunLogFact, error: Error): RunLogEntry {
+  const e = error instanceof LiveAgentError ? error : null
+  return {
+    at,
+    stage: 'baseline',
+    label: 'Live baseline call failed',
+    detail: e ? `${LIVE_FAILURE_LABEL[e.kind]}: ${e.message}` : error.message,
+    facts: [
+      producedBy,
+      { key: 'Error', value: `${error.name}: ${error.message}` },
+      ...(e
+        ? [
+            { key: 'Kind', value: `${e.kind} (${LIVE_FAILURE_LABEL[e.kind]})` },
+            ...(e.httpStatus !== undefined ? [{ key: 'HTTP status', value: String(e.httpStatus) }] : []),
+            ...(e.upstreamStatus !== undefined ? [{ key: 'Provider status', value: String(e.upstreamStatus) }] : []),
+            ...(e.requestId ? [{ key: 'Request ID', value: e.requestId }] : []),
+            ...e.problems.map((problem, i) => ({ key: `Failed check ${i + 1}`, value: problem })),
+          ]
+        : []),
+      { key: 'Effect', value: 'Run stopped at Baseline; no answer was used, auto-play is off and no receipt is recorded' },
+      { key: 'Recovery', value: 'Retry asks the model again for this run; Reset starts a new run' },
+    ],
+  }
+}
+
 function auditFacts(evaluation: ScenarioEvaluation): RunLogFact[] {
   const excluded = evaluation.hiddenTruth.untrustedEvidenceIds ?? []
   return [
@@ -266,6 +365,12 @@ function receiptFacts(trigger: RunLogFact, receipt: BenchmarkReceipt): RunLogFac
   return [
     trigger,
     { key: 'Check: mode', value: `${receipt.mode} → pass (only synthetic runs can be recorded in this PoC)` },
+    ...(receipt.receiptVersion === '1.1'
+      ? [
+          { key: 'Agent execution', value: receipt.agentExecution === 'live_baseline' ? `live baseline (${receipt.liveCalls.baseline?.model}); guarded scripted` : 'scripted fixture' },
+          { key: 'Grader', value: `${receipt.grader.id} ${receipt.grader.version}` },
+        ]
+      : []),
     { key: 'Check: stage events', value: `${receipt.stageEvents.length} of ${STAGES.length} → ${receipt.stageEvents.length === STAGES.length ? 'pass' : 'fail'}` },
     { key: 'Check: order', value: `${order.join(' → ')} → ${ordered ? 'pass' : 'fail'}` },
     {

@@ -1,6 +1,6 @@
 import { STAGES } from './stages'
 import { compareScores } from './scoring'
-import type { DataMode, GradedRun, MetricScores, ProvenanceStatus, Scenario, ScenarioEvaluation, StageEvent, Verdict } from './types'
+import type { DataMode, GradedRun, GraderId, MetricScores, ProvenanceStatus, Scenario, ScenarioEvaluation, StageEvent, Verdict } from './types'
 
 export type Clock = () => Date
 export type RunIdFactory = () => string
@@ -14,8 +14,7 @@ export const randomRunId: RunIdFactory = () => {
   return `RUN-${hex.toUpperCase()}`
 }
 
-export interface BenchmarkReceipt {
-  receiptVersion: '1.0'
+interface ReceiptCore {
   mode: DataMode
   provenance: ProvenanceStatus
   provenanceLabel: string
@@ -25,7 +24,6 @@ export interface BenchmarkReceipt {
   startedAt: string
   recordedAt: string
   agents: { baseline: string; guarded: string }
-  agentExecution: 'scripted_fixture'
   evidenceIds: string[]
   stageEvents: StageEvent[]
   verdicts: { baseline: Verdict; guarded: Verdict; expectedSafe: Verdict }
@@ -37,6 +35,35 @@ export interface BenchmarkReceipt {
   unsafeApprovalPrevented: boolean
   guardedNextAction: string
 }
+
+/** Scripted answers graded by the fixture grader. Unchanged since v1.0 (pinned by tools/receipt/receipt.golden.test.ts). */
+export interface BenchmarkReceiptV1 extends ReceiptCore {
+  receiptVersion: '1.0'
+  agentExecution: 'scripted_fixture'
+}
+
+/** One live model call recorded in a v1.1 receipt. */
+export interface ReceiptLiveCall {
+  provider: 'anthropic'
+  model: string
+  requestId: string | null
+  latencyMs: number
+  validatedFields: string[]
+}
+
+/**
+ * v1.1 = v1.0 plus two fields, written when a live model answered (local runs only) or a grader other than the fixture
+ * grader scored the run. `agentExecution` says which agent was live, `grader` names who scored, and `liveCalls` holds
+ * one entry per live answer. Every v1.0 field keeps its meaning; `agents.baseline` is the label of the agent that answered.
+ */
+export interface BenchmarkReceiptV11 extends ReceiptCore {
+  receiptVersion: '1.1'
+  agentExecution: 'scripted_fixture' | 'live_baseline'
+  grader: { id: GraderId; version: string }
+  liveCalls: { baseline?: ReceiptLiveCall }
+}
+
+export type BenchmarkReceipt = BenchmarkReceiptV1 | BenchmarkReceiptV11
 
 export class IncompleteRunError extends Error {
   constructor(message: string) {
@@ -74,7 +101,7 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
   const answers = run.responses
   const comparison = compareScores(baseline, guarded)
 
-  return {
+  const v1: BenchmarkReceiptV1 = {
     receiptVersion: '1.0',
     mode,
     provenance: scenario.provenance.status,
@@ -103,5 +130,17 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
       answers.baseline.verdict === 'proceed' &&
       evaluation.expectedSafeVerdict !== 'proceed' &&
       answers.guarded.verdict === evaluation.expectedSafeVerdict,
+  }
+  const live = answers.baseline.live
+  if (!live && run.grader.id === 'fixture-grader') return v1
+  return {
+    ...v1,
+    receiptVersion: '1.1',
+    agents: { baseline: answers.baseline.agentLabel, guarded: scenario.guardedAgentLabel },
+    agentExecution: live ? 'live_baseline' : 'scripted_fixture',
+    grader: { id: run.grader.id, version: rubricVersion },
+    liveCalls: live
+      ? { baseline: { provider: live.provider, model: live.model, requestId: live.requestId, latencyMs: live.latencyMs, validatedFields: [...live.validatedFields] } }
+      : {},
   }
 }

@@ -53,6 +53,24 @@ export interface AgentResponse {
   claim: string
   rationale: string[]
   nextAction: string
+  /** Present only when a live model produced this answer; scripted fixtures never carry it. */
+  live?: LiveCall
+}
+
+/** What actually happened on one live model call, as reported by the local server and measured by the browser. */
+export interface LiveCall {
+  provider: 'anthropic'
+  /** Model ID the provider reported for this call. */
+  model: string
+  /** Provider request ID (`request-id` header), or null if none was returned. */
+  requestId: string | null
+  /** Time the local server waited for the provider. */
+  latencyMs: number
+  /** Browser round trip to the local server, including `latencyMs`. */
+  roundTripMs: number
+  endpoint: string
+  /** Fields of the model's structured output that passed validation before use. */
+  validatedFields: string[]
 }
 
 export interface MetricScores {
@@ -181,13 +199,28 @@ export interface ScenarioSource {
 
 export type AgentPath = 'baseline' | 'guarded'
 
-/** Produces one agent's answer for a scenario from its public evidence. Today: `scriptedAgentRunner` replays fixed answers. */
+/**
+ * Produces one agent's answer for a scenario from its public evidence. `scriptedAgentRunner` replays fixed answers;
+ * `liveAgentRunner` asks a model for the baseline through the local server (local runs only).
+ */
 export interface AgentRunner {
+  /** `live` runners call a model: the walkthrough asks for the baseline at the Baseline stage and holds Next step until it answers. Default `scripted`. */
+  readonly execution?: 'scripted' | 'live'
   run(agent: 'baseline' | 'guarded', scenario: Scenario): Promise<AgentResponse>
 }
 
-/** Scores one agent's answer against the sealed grading truth. Today: `fixtureGrader` looks up hand-entered scores. */
+export type GraderId = 'fixture-grader' | 'rule-grader' | 'custom'
+
+/** Which grader scored a run, as shown in the UI, Run log and receipt. */
+export interface GraderIdentity {
+  id: GraderId
+  label: string
+}
+
+/** Scores one agent's answer against the sealed grading truth. `fixtureGrader` looks up hand-entered scores; `ruleGraderSeam` applies the rule grader. */
 export interface Grader {
+  readonly id?: GraderId
+  readonly label?: string
   rubricVersion(scenario: Scenario): string
   grade(scenario: Scenario, evaluation: ScenarioEvaluation, agent: 'baseline' | 'guarded', response: AgentResponse): MetricScores
 }
@@ -203,6 +236,7 @@ export interface RubricScores {
 export interface GradedRun {
   responses: Record<AgentPath, AgentResponse>
   scores: RubricScores
+  grader: GraderIdentity
 }
 
 export interface PartnerScenarioValidator {

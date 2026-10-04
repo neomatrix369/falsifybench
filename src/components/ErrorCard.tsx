@@ -1,8 +1,8 @@
 import { RefreshCw, RotateCcw, TriangleAlert } from 'lucide-react'
 import { Component, useEffect, useRef, type ErrorInfo, type ReactNode } from 'react'
-import type { UnsealRecovery } from '../domain/evaluationCheck'
+import type { RunRecovery } from '../domain/recovery'
 
-const EXPLANATION: Record<'reset' | UnsealRecovery, string> = {
+const EXPLANATION: Record<'reset' | RunRecovery, string> = {
   reset: 'No receipt was recorded and this run is not marked complete. Reset to start a fresh, deterministic run.',
   reload:
     'No receipt was recorded and this run is not marked complete. The browser caches a failed module import for this page, so reload the page to retry; Reset alone repeats the failure.',
@@ -10,16 +10,21 @@ const EXPLANATION: Record<'reset' | UnsealRecovery, string> = {
     'No receipt was recorded and this run is not marked complete. The sealed evaluation was too slow to load, but it may still arrive: Reset retries it. Reload the page if it keeps timing out.',
   'fix-data':
     'No receipt was recorded and this run is not marked complete. The sealed evaluation failed its data checks, so it was not used. Reload and Reset load the same data; fix the scenario data (npm run score lists every failed gate).',
+  'retry-live':
+    'No receipt was recorded and this run is not marked complete. The live baseline call failed, so no answer was used. Retry asks the model again for this run; Reset starts a new run.',
 }
 
 export function ErrorCard({
   message,
   onReset,
   recovery = 'reset',
+  onRetry,
 }: {
   message: string
   onReset: () => void
-  recovery?: 'reset' | UnsealRecovery
+  recovery?: 'reset' | RunRecovery
+  /** Required for `retry-live`: repeats the live call. */
+  onRetry?: () => void
 }) {
   // The control that had focus (e.g. a held Next step) may now be disabled; move focus to the card.
   const heading = useRef<HTMLHeadingElement>(null)
@@ -29,12 +34,21 @@ export function ErrorCard({
       <div className="flex items-center gap-2 text-risk">
         <TriangleAlert aria-hidden className="h-5 w-5" />
         <h2 ref={heading} tabIndex={-1} className="text-title font-semibold focus:outline-none">
-          The walkthrough hit an unexpected error
+          {recovery === 'retry-live' ? 'The live baseline call failed' : 'The walkthrough hit an unexpected error'}
         </h2>
       </div>
       <p className="mt-2 text-body text-ink-2">{EXPLANATION[recovery]}</p>
       <p className="mt-2 font-mono text-meta text-ink-3">{message}</p>
-      {recovery === 'reload' || recovery === 'retry' ? (
+      {recovery === 'retry-live' && onRetry ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" className="btn-primary" onClick={onRetry}>
+            <RefreshCw aria-hidden className="h-4 w-4" /> Retry live call
+          </button>
+          <button type="button" className="btn-secondary" onClick={onReset}>
+            <RotateCcw aria-hidden className="h-4 w-4" /> Reset walkthrough
+          </button>
+        </div>
+      ) : recovery === 'reload' || recovery === 'retry' ? (
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
             <RefreshCw aria-hidden className="h-4 w-4" /> Reload page

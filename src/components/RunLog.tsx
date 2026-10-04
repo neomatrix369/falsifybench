@@ -4,7 +4,7 @@ import type { RunLogEntry } from '../domain/runLog'
 import { LAST_STAGE_INDEX, STAGES, STAGE_LABELS } from '../domain/stages'
 import type { WalkthroughState } from '../domain/walkthrough'
 import { AUTOPLAY_INTERVAL_MS } from '../hooks/useWalkthrough'
-import type { UnsealRecovery } from '../domain/evaluationCheck'
+import type { RunRecovery } from '../domain/recovery'
 
 type ExpandMode = 'latest' | 'all' | 'none'
 
@@ -38,14 +38,18 @@ interface Props {
   entries: RunLogEntry[]
   state: WalkthroughState
   unsealing: boolean
-  failure: UnsealRecovery | null
+  failure: RunRecovery | null
+  /** Next step is held for the live baseline model, not the sealed evaluation. */
+  awaitingLive?: boolean
 }
 
-function nowLine({ state, unsealing, failure }: Omit<Props, 'entries'>, countdown: number | null): string | null {
+function nowLine({ state, unsealing, failure, awaitingLive }: Omit<Props, 'entries'>, countdown: number | null): string | null {
   if (state.status === 'idle') return null
+  if (failure === 'retry-live') return 'Stopped: the live baseline call failed and no answer was used. Retry asks the model again; Reset starts a new run.'
   if (failure === 'fix-data') return 'Stopped: the sealed evaluation failed its data checks and was not used. Reload and Reset load the same data.'
   if (failure === 'retry') return 'Stopped: the sealed evaluation timed out. Reset retries it; reload the page if it keeps timing out.'
   if (failure) return 'Stopped: the sealed evaluation failed to load. Reload the page to retry; Reset alone repeats the cached failure.'
+  if (unsealing && awaitingLive) return 'Waiting for the live baseline model… Next step is held until it answers.'
   if (unsealing) return 'Unsealing the sealed evaluation… Next step is held until it arrives.'
   if (state.cursor === LAST_STAGE_INDEX) return 'Run complete. The receipt is recorded and nothing else runs.'
   const next = `${state.cursor + 2} ${STAGE_LABELS[STAGES[state.cursor + 1]]}`
@@ -54,13 +58,13 @@ function nowLine({ state, unsealing, failure }: Omit<Props, 'entries'>, countdow
   return `Waiting for you: Next step runs stage ${next}.`
 }
 
-export function RunLog({ entries, state, unsealing, failure }: Props) {
+export function RunLog({ entries, state, unsealing, failure, awaitingLive = false }: Props) {
   const [open, setOpen] = useState(true)
   const [mode, setMode] = useState<ExpandMode>('latest')
   const [overrides, setOverrides] = useState<Record<number, boolean>>({})
   const countdown = useAutoplayCountdown(state.autoplay && !unsealing && failure === null, state.cursor)
   const viewing = state.status === 'idle' ? null : STAGES[state.cursor]
-  const now = nowLine({ state, unsealing, failure }, countdown)
+  const now = nowLine({ state, unsealing, failure, awaitingLive }, countdown)
 
   useEffect(() => {
     setMode('latest')

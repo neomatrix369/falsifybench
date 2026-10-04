@@ -62,7 +62,23 @@ export function ReceiptView({ receipt }: { receipt: BenchmarkReceipt }) {
             <Row label="Provenance">{receipt.provenanceLabel}</Row>
             <Row label="Scenario">{receipt.scenario.id} · v{receipt.scenario.version}</Row>
             <Row label="Rubric">{receipt.rubricVersion}</Row>
-            <Row label="Agent execution">Scripted fixture</Row>
+            <Row label="Agent execution">
+              {receipt.receiptVersion === '1.1' && receipt.agentExecution === 'live_baseline'
+                ? `Live baseline (${receipt.liveCalls.baseline?.model}); guarded scripted fixture`
+                : 'Scripted fixture'}
+            </Row>
+            {receipt.receiptVersion === '1.1' && (
+              <>
+                <Row label="Grader">{receipt.grader.id} · {receipt.grader.version}</Row>
+                {receipt.liveCalls.baseline && (
+                  <Row label="Live call">
+                    <span className="font-mono text-meta">
+                      {receipt.liveCalls.baseline.requestId ?? 'no request ID'} · {receipt.liveCalls.baseline.latencyMs} ms
+                    </span>
+                  </Row>
+                )}
+              </>
+            )}
             <Row label="Agents">{receipt.agents.baseline}; {receipt.agents.guarded}</Row>
           </dl>
         </section>

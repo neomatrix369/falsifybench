@@ -9,6 +9,8 @@ export function createFixtureGrader(table: Record<string, RubricScores>): Grader
     return scores
   }
   return {
+    id: 'fixture-grader',
+    label: 'Fixture grader: hand-entered scores for the scripted answers',
     rubricVersion: (scenario) => entry(scenario.id).rubricVersion,
     grade: (scenario, _evaluation, agent) => entry(scenario.id)[agent],
   }

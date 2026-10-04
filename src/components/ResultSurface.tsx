@@ -1,6 +1,7 @@
 import { LoaderCircle, ScanSearch, ShieldCheck } from 'lucide-react'
 import { forwardRef, useRef, type ReactNode } from 'react'
-import { SYNTHETIC_LABEL } from '../domain/provenance'
+import { LIVE_SCOPE_NOTE, SYNTHETIC_LABEL } from '../domain/provenance'
+import type { LiveBaselineCall } from '../domain/live'
 import { compareScores, formatDelta } from '../domain/scoring'
 import { STAGES, STAGE_LABELS } from '../domain/stages'
 import { VERDICT_LABEL } from '../domain/verdict'
@@ -65,7 +66,40 @@ function OutcomeStrip({ evaluation, run }: { evaluation: ScenarioEvaluation; run
   )
 }
 
+/** Set when the baseline goes to a live model (local runs only). */
+export interface LiveBaselineView {
+  model: string
+  call: LiveBaselineCall | null
+}
+
+function LiveBaselineBody({ scenario, live }: { scenario: Scenario; live: LiveBaselineView }) {
+  const answer = live.call?.status === 'done' ? live.call.response : null
+  return (
+    <>
+      <p className="max-w-[72ch] text-body text-ink-2">
+        The baseline is a live model ({answer?.live?.model ?? live.model}) answering through the local server from the same{' '}
+        {scenario.evidence.length} public evidence records. {LIVE_SCOPE_NOTE}
+      </p>
+      {answer ? (
+        <AgentResponseCard response={answer} />
+      ) : (
+        <p role="status" className="flex items-center gap-2 text-body text-ink-3">
+          <LoaderCircle aria-hidden className="h-4 w-4 animate-spin" /> Waiting for the live baseline model… Next step is held until it answers.
+        </p>
+      )}
+      <Disclosure>
+        <p>
+          The browser sent only the scenario ID. The local server built the prompt from the public brief, question and evidence, called
+          the model with structured output and validated every field before use. The grading truth stays sealed until Evidence audit,
+          where the rule grader scores this answer.
+        </p>
+      </Disclosure>
+    </>
+  )
+}
+
 interface PanelProps {
+  live?: LiveBaselineView | null
   scenario: Scenario
   evaluation: ScenarioEvaluation | null
   /** The agents' answers and grades; arrives with the evaluation. */
@@ -124,8 +158,15 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
     ),
   },
   baseline: {
-    headline: ({ scenario }) => scenario.narrative.baselineHeadline,
-    body: ({ scenario }) => (
+    headline: ({ scenario, live }) => {
+      if (!live) return scenario.narrative.baselineHeadline
+      const answer = live.call?.status === 'done' ? live.call.response : null
+      return answer ? `The live baseline answers: ${VERDICT_LABEL[answer.verdict]}` : 'Asking the live baseline model…'
+    },
+    body: ({ scenario, live }) =>
+      live ? (
+        <LiveBaselineBody scenario={scenario} live={live} />
+      ) : (
       <>
         <p className="max-w-[72ch] text-body text-ink-2">{scenario.narrative.baselineIntro}</p>
         <AgentResponseCard response={scenario.baseline} />
@@ -137,7 +178,7 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
           <p>The baseline response is a fixed, scripted fixture. No model was called; it represents a common failure pattern.</p>
         </Disclosure>
       </>
-    ),
+      ),
   },
   audit: {
     headline: ({ evaluation }) =>
@@ -188,7 +229,7 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
   },
   guarded: {
     headline: ({ evaluation }) => (evaluation ? evaluation.narrative.guardedHeadline : 'Preparing guarded verdict…'),
-    body: ({ scenario, evaluation, run }) =>
+    body: ({ scenario, evaluation, run, live }) =>
       !evaluation || !run ? (
         <Loading />
       ) : (
@@ -196,7 +237,7 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
           <p className="max-w-[72ch] text-body text-ink-2">{evaluation.narrative.guardedIntro}</p>
           <OutcomeStrip evaluation={evaluation} run={run} />
           <div className="grid grid-cols-2 gap-6">
-            <AgentResponseCard response={run.responses.baseline} unsafe />
+            <AgentResponseCard response={run.responses.baseline} unsafe={run.responses.baseline.verdict !== evaluation.expectedSafeVerdict} />
             <AgentResponseCard response={run.responses.guarded} emphasis />
           </div>
           <p className="rounded-sm border border-rule bg-sunken px-3 py-2 text-body text-ink-2">
@@ -204,7 +245,13 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
             <span className="font-mono text-meta">{evaluation.guardedBasis.join(' · ')}</span>. The answer key is used only to grade
             the two runs, never as input to either.
           </p>
-          {evaluation.turns && scenario.baselineTurns && (
+          {live && (
+            <p className="text-body text-ink-2">
+              <span className="font-semibold text-ink">Live run: </span>
+              {LIVE_SCOPE_NOTE} Graded by {run.grader.label}.
+            </p>
+          )}
+          {!live && evaluation.turns && scenario.baselineTurns && (
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <p className="label mb-1">Baseline run · turns graded</p>
@@ -219,11 +266,15 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
               </div>
             </div>
           )}
-          <ScoreCard scores={run.scores} />
+          <ScoreCard scores={run.scores} grader={run.grader} />
           <Why>{evaluation.narrative.guardedWhy}</Why>
           <Disclosure>
             <p>Sufficient next action: {evaluation.sufficientNextAction}</p>
-            <p className="mt-1">Scores are fixture inputs on rubric {run.scores.rubricVersion}; totals are computed, not stored.</p>
+            <p className="mt-1">
+              {run.grader.id === 'fixture-grader'
+                ? `Scores are fixture inputs on rubric ${run.scores.rubricVersion}; totals are computed, not stored.`
+                : `Scores were computed by ${run.grader.label}; totals are computed, not stored.`}
+            </p>
           </Disclosure>
         </>
       ),
@@ -252,7 +303,7 @@ interface Props extends PanelProps {
 }
 
 export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function ResultSurface(
-  { state, scenario, evaluation, run, receipt, onSelect, onSelectTab },
+  { state, scenario, evaluation, run, receipt, onSelect, onSelectTab, live },
   headingRef,
 ) {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -286,7 +337,7 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
 
   const stage = STAGES[state.cursor]
   const panel = PANELS[stage]
-  const props = { scenario, evaluation, run, receipt }
+  const props = { scenario, evaluation, run, receipt, live }
 
   return (
     <section aria-labelledby="result-heading" className="sheet">

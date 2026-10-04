@@ -11,6 +11,8 @@ const BRIEF_ROWS: [keyof ScenarioBrief, string][] = [
 
 interface Props {
   scenario: Scenario
+  /** Replaces the scripted baseline's label when the baseline is a live model. */
+  baselineLabel?: string
   /** Sources the unsealed audit excluded; empty before the Audit stage. */
   excludedIds: string[]
   excludedReason?: string
@@ -18,7 +20,7 @@ interface Props {
   onRun: () => void
 }
 
-export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function ScenarioCard({ scenario, excludedIds, excludedReason = 'instruction', canRun, onRun }, ref) {
+export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function ScenarioCard({ scenario, baselineLabel, excludedIds, excludedReason = 'instruction', canRun, onRun }, ref) {
   const quoted = scenario.evidence.filter((item) => item.excerpt)
   return (
     <section aria-labelledby="active-scenario-title" className="sheet">
@@ -71,7 +73,7 @@ export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function Scena
           <div className="flex items-center gap-2.5 py-1.5">
             <dt className="sr-only">Baseline</dt>
             <Bot aria-hidden className="h-4 w-4 shrink-0 text-ink-3" />
-            <dd className="text-ink">{scenario.baseline.agentLabel}</dd>
+            <dd className="text-ink">{baselineLabel ?? scenario.baseline.agentLabel}</dd>
           </div>
           <div className="flex items-center gap-2.5 py-1.5">
             <dt className="sr-only">Guardrail</dt>
