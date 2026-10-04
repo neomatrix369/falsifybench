@@ -13,7 +13,7 @@ import { StageTrace } from './components/StageTrace'
 import { DEFAULT_BENCHMARK_ID, syntheticScenarioSource } from './data/scenarioSource'
 import { scriptedAgentRunner } from './data/scriptedAgentRunner'
 import { liveAgentRunner } from './data/liveAgentRunner'
-import { liveAvailable, type LiveHealth } from './domain/live'
+import { LIVE_HEALTH_RETRY_MS, liveAvailable, type LiveHealth } from './domain/live'
 import { runRecovery } from './domain/recovery'
 import { isRunnableProvenance, PARTNER_UNAVAILABLE_REASON } from './domain/provenance'
 import { randomRunId, systemClock } from './domain/receipt'
@@ -304,11 +304,18 @@ export default function App({
   useEffect(() => {
     if (!probeLive) return
     let cancelled = false
-    probeLive().then((h) => {
-      if (!cancelled) setHealth(h)
-    })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const probe = () => {
+      probeLive().then((h) => {
+        if (cancelled) return
+        setHealth(h)
+        if (h === null) timer = setTimeout(probe, LIVE_HEALTH_RETRY_MS)
+      })
+    }
+    probe()
     return () => {
       cancelled = true
+      if (timer !== undefined) clearTimeout(timer)
     }
   }, [probeLive])
   const mode: AgentMode = agentMode === 'live' && liveAvailable(health) ? 'live' : 'scripted'
