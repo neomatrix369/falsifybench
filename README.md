@@ -64,9 +64,12 @@ Mock mode needs no secrets and no network access.
 | [Implementation and MoSCoW inventory](docs/IMPLEMENTATION_MOSCOW.md) | Full, partial and not-implemented capabilities with proposed priorities and source evidence |
 
 The audit and inventory are dated snapshots of revision [`43cf9d390f49`](https://github.com/neomatrix369/falsifybench/commit/43cf9d390f499d419225be6c72d8badf66d9161a), not current-main release certification. See their scope notes before applying findings to newer changes.
+[`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) lists what is real and what is mocked or stubbed, gives each capability a status (fully, partially or not implemented) and a MoSCoW priority, and sets out the steps to replace the mocks with real agents, grading and data.
 
 ## Deferred seams (not in this PoC)
 
 - Live agent calls. Any future integration must run server-side and read its keys from environment variables. Mock mode must never require a secret.
 - A partner-data adapter. Validation is a pure stub, and partner benchmarks are never runnable until a validated source exists.
 - Editable evidence, persistence, and the full research-validity walkthrough.
+
+What each seam needs to become real, in priority order: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md).
