@@ -118,6 +118,14 @@ describe('About page content', () => {
     expect(tested.length + later.length).toBe(16)
   })
 
+  it('credits the Encode Challengescape in the hero', () => {
+    render(<Root />)
+    const hero = within(aboutView()!).getByRole('region', { name: /confident science agent/i })
+    const link = within(hero).getByRole('link', { name: /encode: ai for science challengescape/i })
+    expect(link).toHaveAttribute('href', 'https://encode-challengescape.pillar.vc/')
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
   it('shows a fallback when the published score cannot be read', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
     render(<Root />)
