@@ -23,18 +23,17 @@ function guardNextAction(untrustedSourceIds: string[], openGaps: string[], propo
   }
 
   let guardText = buildGuardText()
-  let action = guardText + (hasProposedNextAction ? `${modelStepPrefix}${proposedNextAction}` : '')
-  while (action.length > MAX_NEXT_ACTION_LENGTH && includedGaps.length) {
+  while (guardText.length > MAX_NEXT_ACTION_LENGTH && includedGaps.length) {
     includedGaps.pop()
     guardText = buildGuardText()
-    action = guardText + (hasProposedNextAction ? `${modelStepPrefix}${proposedNextAction}` : '')
   }
-  if (hasProposedNextAction && action.length > MAX_NEXT_ACTION_LENGTH) {
-    const prefix = `${guardText}${modelStepPrefix}`
-    const maxStepLength = MAX_NEXT_ACTION_LENGTH - prefix.length
-    action = `${prefix}${proposedNextAction.slice(0, Math.max(0, maxStepLength - 1))}…`
-  }
-  return action
+  if (!hasProposedNextAction) return guardText
+
+  const prefix = `${guardText}${modelStepPrefix}`
+  const remaining = MAX_NEXT_ACTION_LENGTH - prefix.length
+  if (remaining < 2) return guardText
+  if (proposedNextAction.length <= remaining) return `${prefix}${proposedNextAction}`
+  return `${prefix}${proposedNextAction.slice(0, remaining - 1)}…`
 }
 
 export function applyGuardRules(

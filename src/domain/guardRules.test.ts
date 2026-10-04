@@ -116,12 +116,29 @@ describe('applyGuardRules', () => {
     expect(result.decision.nextAction.length).toBeLessThanOrEqual(2000)
   })
 
-  it('drops gap details before truncating an overlong model-proposed step', () => {
+  it('preserves gap details while truncating an overlong model-proposed step', () => {
     const decision = { ...proceed, nextAction: 'x'.repeat(2000) }
     const result = applyGuardRules([], decision, { untrustedSourceIds: [], openGaps: ['Unmeasured region'] })
-    expect(result.decision.nextAction).not.toContain('Unmeasured region')
+    expect(result.decision.nextAction).toContain('(Unmeasured region)')
     expect(result.decision.nextAction).toContain("Model's proposed next step: ")
     expect(result.decision.nextAction.endsWith('…')).toBe(true)
     expect(result.decision.nextAction.length).toBe(2000)
+  })
+
+  it('keeps all short gap details when truncating a 3,000-character model step', () => {
+    const decision = { ...proceed, nextAction: 'x'.repeat(3000) }
+    const result = applyGuardRules([], decision, { untrustedSourceIds: [], openGaps: ['Unmeasured region', 'Missing test'] })
+    expect(result.decision.nextAction).toContain('(Unmeasured region; Missing test)')
+    expect(result.decision.nextAction.length).toBeLessThanOrEqual(2000)
+    expect(result.decision.nextAction.endsWith('…')).toBe(true)
+  })
+
+  it('omits the model step when the marker leaves no room for text and an ellipsis', () => {
+    const gap = 'g'.repeat(1913)
+    const decision = { ...proceed, nextAction: 'Run the test.' }
+    const result = applyGuardRules([], decision, { untrustedSourceIds: [], openGaps: [gap] })
+    expect(result.decision.nextAction).toContain(`(${gap})`)
+    expect(result.decision.nextAction).not.toContain("Model's proposed next step: ")
+    expect(result.decision.nextAction.length).toBeLessThanOrEqual(2000)
   })
 })
