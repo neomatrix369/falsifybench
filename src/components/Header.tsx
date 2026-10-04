@@ -42,9 +42,11 @@ interface Props {
   view?: View
   onSwitchView?: (view: View) => void
   onReceiptAnchor?: () => void
+  /** Scenario previews live in the Detailed tab; switch there before jumping. */
+  onPreviewsAnchor?: () => void
 }
 
-export function Header({ view = 'benchmark', onSwitchView, onReceiptAnchor, agent }: Props) {
+export function Header({ view = 'benchmark', onSwitchView, onReceiptAnchor, onPreviewsAnchor, agent }: Props) {
   return (
     <header className="sticky top-0 z-20">
       <div className="bg-shell text-shell-ink">
@@ -57,7 +59,7 @@ export function Header({ view = 'benchmark', onSwitchView, onReceiptAnchor, agen
           <nav aria-label="Page sections" className="flex items-center gap-1 text-body">
             {view === 'benchmark' && (
               <>
-                <a href="#scenario-previews" className={NAV_LINK}>
+                <a href="#scenario-previews" onClick={onPreviewsAnchor} className={NAV_LINK}>
                   Scenario previews
                 </a>
                 <a href="#current-receipt" onClick={onReceiptAnchor} className={NAV_LINK}>
