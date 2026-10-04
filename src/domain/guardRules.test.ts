@@ -35,7 +35,8 @@ describe('applyGuardRules', () => {
       ...proceed,
       verdict: 'investigate',
       claim: 'Do not proceed yet: the guard rules blocked this approval.',
-      nextAction: 'Exclude EV-01 from the decision, then reassess.',
+      nextAction:
+        "Exclude EV-01 from the decision, then reassess. Model's proposed next step: Check EV-01 against the specification.",
     })
     expect(result.guard.overrides).toEqual([
       'Guard rule: the decision relied on untrusted source(s) EV-01, so proceed was changed to investigate.',
@@ -48,7 +49,8 @@ describe('applyGuardRules', () => {
       ...proceed,
       verdict: 'investigate',
       claim: 'Do not proceed yet: the guard rules blocked this approval.',
-      nextAction: 'Directly check what no record measures (Unmeasured region; Missing test), then reassess.',
+      nextAction:
+        "Directly check what no record measures (Unmeasured region; Missing test), then reassess. Model's proposed next step: Check EV-01 against the specification.",
     })
     expect(result.guard.overrides).toEqual(['Guard rule: 2 open gap(s) remain, so proceed was changed to investigate.'])
   })
@@ -59,11 +61,26 @@ describe('applyGuardRules', () => {
       ...proceed,
       verdict: 'investigate',
       claim: 'Do not proceed yet: the guard rules blocked this approval.',
-      nextAction: 'Exclude EV-01 from the decision, then directly check what no record measures (Unmeasured region), then reassess.',
+      nextAction:
+        "Exclude EV-01 from the decision, then directly check what no record measures (Unmeasured region), then reassess. Model's proposed next step: Check EV-01 against the specification.",
     })
     expect(result.guard.overrides).toEqual([
       'Guard rule: the decision relied on untrusted source(s) EV-01, so proceed was changed to investigate.',
     ])
+  })
+
+  it('keeps the model-proposed salt-spray test on an R1-only override', () => {
+    const decision = { ...proceed, nextAction: 'Run the 1,500 h salt-spray test.' }
+    const result = applyGuardRules([], decision, { untrustedSourceIds: ['EV-SUP-01'], openGaps: [] })
+    expect(result.decision.nextAction).toBe(
+      "Exclude EV-SUP-01 from the decision, then reassess. Model's proposed next step: Run the 1,500 h salt-spray test.",
+    )
+  })
+
+  it('omits the proposed-step suffix when the model action is whitespace', () => {
+    const decision = { ...proceed, nextAction: ' \n ' }
+    const result = applyGuardRules([], decision, { untrustedSourceIds: ['EV-01'], openGaps: [] })
+    expect(result.decision.nextAction).toBe('Exclude EV-01 from the decision, then reassess.')
   })
 
   it('leaves investigate unchanged with no overrides', () => {
@@ -97,5 +114,14 @@ describe('applyGuardRules', () => {
     expect(result.decision.nextAction).toContain(firstGap)
     expect(result.decision.nextAction).not.toContain(lastGap)
     expect(result.decision.nextAction.length).toBeLessThanOrEqual(2000)
+  })
+
+  it('drops gap details before truncating an overlong model-proposed step', () => {
+    const decision = { ...proceed, nextAction: 'x'.repeat(2000) }
+    const result = applyGuardRules([], decision, { untrustedSourceIds: [], openGaps: ['Unmeasured region'] })
+    expect(result.decision.nextAction).not.toContain('Unmeasured region')
+    expect(result.decision.nextAction).toContain("Model's proposed next step: ")
+    expect(result.decision.nextAction.endsWith('…')).toBe(true)
+    expect(result.decision.nextAction.length).toBe(2000)
   })
 })
