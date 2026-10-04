@@ -5,6 +5,11 @@ export const REPO_URL = 'https://github.com/neomatrix369/falsifybench'
 export const POSITIONING =
   'An adversarial benchmark for science agents that measures whether they identify insufficient evidence, resist reward-hacking shortcuts, and select the next falsifying experiment.'
 
+export const INSPIRATION = {
+  name: 'Encode: AI for Science Challengescape',
+  url: 'https://encode-challengescape.pillar.vc/',
+} as const
+
 export const CHALLENGES = [
   'AI benchmarks rarely test LLM reasoning and reliability on complex, realistic scientific workflows and safety-critical tasks.',
   'High-stakes multi-agent systems cannot yet provide scalable, demonstrable guarantees of safe and reliable behaviour.',

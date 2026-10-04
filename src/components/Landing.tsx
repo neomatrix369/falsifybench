@@ -9,6 +9,7 @@ import {
   REPO_URL,
   AGENT_PROBLEMS,
   AGENT_SCIENCE_LINE,
+  INSPIRATION,
   type ThemeStatus,
   SCIENCE_AGENT_THEMES,
   UNIFYING_QUESTION,
@@ -260,6 +261,15 @@ export function Landing({ onSwitchView }: { onSwitchView: (view: View) => void }
                 <span className="sr-only">(opens in a new tab)</span>
               </a>
             </div>
+            <p className="mt-5 border-t border-rule pt-3 text-body text-ink-2">
+              Inspired by the{' '}
+              <a href={INSPIRATION.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-ink underline decoration-rule-strong hover:text-primary">
+                {INSPIRATION.name}
+                <ExternalLink aria-hidden className="h-3.5 w-3.5" />
+                <span className="sr-only">(opens in a new tab)</span>
+              </a>
+              .
+            </p>
           </div>
           <div className="bg-sunken/60 px-6 py-6">
             <h2 className="text-body font-semibold text-ink">One primitive, every scenario</h2>
