@@ -9,15 +9,17 @@
 header{background:rgb(var(--shell));color:rgb(var(--shell-ink));border-bottom:1px solid rgb(var(--shell-line));box-shadow:0 1px 0 rgb(var(--shell-line)), 0 4px 12px -6px rgb(var(--ink) / 0.35)}
 .bar{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;gap:16px;align-items:baseline;justify-content:space-between}
 .brand{font-size:1rem;line-height:1.55rem;font-weight:600;font-stretch:118%}.brand span{font-size:0.875rem;line-height:1.4rem;color:rgb(var(--shell-muted));font-weight:400;font-stretch:100%}
-header a{color:rgb(var(--shell-ink));text-underline-offset:3px}a{text-underline-offset:3px}a:focus-visible{outline:2px solid rgb(var(--focus));outline-offset:2px}
+header a{color:rgb(var(--shell-ink))}a{text-underline-offset:3px}:focus-visible{outline:2px solid rgb(var(--focus));outline-offset:2px}
+::selection{background:rgb(var(--primary) / 0.18);color:rgb(var(--ink))}*{scrollbar-color:rgb(var(--rule-strong)) transparent}
 main{max-width:1180px;margin:0 auto;padding:24px;display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
 .sheet{background:rgb(var(--surface));border:1px solid rgb(var(--rule));border-radius:4px;box-shadow:0 1px 2px rgb(var(--ink) / 0.06), 0 2px 8px -2px rgb(var(--ink) / 0.06);padding:20px 24px;min-width:0}
 h1{font-size:1.625rem;line-height:2rem;letter-spacing:-0.012em;margin:0 0 8px;font-weight:600;font-stretch:108%}h2{font-size:1.125rem;line-height:1.5rem;margin:0 0 4px;font-weight:600;font-stretch:108%}
-.lead{margin:0 0 16px;color:rgb(var(--ink-2))}
+.lead{margin:0 0 8px;color:rgb(var(--ink-2))}.meta{font-size:0.75rem;line-height:1.1rem;color:rgb(var(--ink-3));margin:0 0 12px}
 .label{font-size:0.75rem;line-height:1.1rem;font-weight:500;color:rgb(var(--ink-3));margin:0 0 4px}
 .hero{display:grid;grid-template-columns:minmax(0,40fr) minmax(0,60fr);gap:32px;align-items:start}
-.pair{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px}
-.big{font-family:"Red Hat Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:2.5rem;line-height:2.5rem;letter-spacing:-0.02em;font-weight:600}.big.dim{color:rgb(var(--ink-3))}
+/* The one reading: set between two ink rules, like the app's outcome strip. */
+.pair{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px;padding:12px 0;border-top:2px solid rgb(var(--ink));border-bottom:2px solid rgb(var(--ink))}
+.big{font-family:"Red Hat Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:2.5rem;line-height:2.5rem;letter-spacing:-0.02em;font-weight:600}.big.dim{color:rgb(var(--ink-3))}.big.delta{color:rgb(var(--ok))}
 .cap{font-size:0.75rem;line-height:1.1rem;color:rgb(var(--ink-2));margin-top:8px}
 .tag{display:inline-block;font-size:0.75rem;line-height:1.1rem;font-weight:600;padding:2px 8px;border-radius:2px;border:1px solid;white-space:nowrap}
 .tag.ok{color:rgb(var(--ok));background:rgb(var(--ok-tint));border-color:rgb(var(--ok-line))}.tag.warn{color:rgb(var(--warn));background:rgb(var(--warn-tint));border-color:rgb(var(--warn-line))}.tag.risk{color:rgb(var(--risk));background:rgb(var(--risk-tint));border-color:rgb(var(--risk-line))}
@@ -29,24 +31,27 @@ h1{font-size:1.625rem;line-height:2rem;letter-spacing:-0.012em;margin:0 0 8px;fo
 .eqs dt{font-size:0.75rem;line-height:1.1rem;font-weight:500;color:rgb(var(--ink-3));white-space:nowrap}.eqs dd{margin:0}
 math{font-family:"STIX Two Math","Cambria Math","Latin Modern Math","DejaVu Serif","Times New Roman",serif;font-size:1.0625rem;color:rgb(var(--ink))}
 .legend{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:baseline}.legend dt{text-align:right}.legend dd{margin:0;color:rgb(var(--ink-2))}
-.worked{margin:16px 0 0;line-height:2.2;color:rgb(var(--ink-2))}.worked math{font-size:0.9375rem}
+.worked{margin:16px 0 0;line-height:2.2;color:rgb(var(--ink-2));overflow-x:auto}.worked math{font-size:0.9375rem}
 .wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-top:1px solid rgb(var(--rule));vertical-align:top}
 thead th{font-size:0.75rem;line-height:1.1rem;font-weight:500;color:rgb(var(--ink-3));border-top:0}
 td.n,th.n{text-align:right;font-family:"Red Hat Mono",ui-monospace,SFMono-Regular,Menlo,monospace}thead th.n{font-family:"Archivo Variable",ui-sans-serif,system-ui,sans-serif}tr.first th,tr.first td{border-top:1px solid rgb(var(--rule-strong))}
 td.det{font-size:0.75rem;line-height:1.1rem;color:rgb(var(--ink-2));overflow-wrap:anywhere}
 ul{margin:0;padding-left:20px}li{margin:4px 0}.foot{font-size:0.75rem;line-height:1.1rem;color:rgb(var(--ink-3))}
+@media (max-width:900px){.hero,.method{grid-template-columns:minmax(0,1fr);gap:24px}}
+@media (max-width:560px){.bar{flex-wrap:wrap;padding:12px 16px}main{padding:16px 12px;gap:16px}.sheet{padding:16px}
+.pair{grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr))}.stats{grid-template-columns:minmax(0,1fr) auto auto;gap:8px 12px}.stats dd{white-space:nowrap}}
 </style></head><body>
 <header><div class="bar"><div class="brand">FalsifyBench <span>· Benchmark score</span></div><a href="../index.html">Open the walkthrough</a></div></header>
 <main>
 <section class="sheet hero" aria-labelledby="h-score">
- <div><p class="label">Synthetic data · 3 scenarios · MAT-RUBRIC-1.0</p>
-  <h1 id="h-score">FalsifyBench score</h1>
+ <div><h1 id="h-score">FalsifyBench score</h1>
   <p class="lead">Mean rubric total per agent over every runnable scenario, computed from the benchmark data only.</p>
+  <p class="meta">Synthetic data · 3 scenarios · <span class="mono">MAT-RUBRIC-1.0</span></p>
   <span class="tag ok">All 29 data-integrity gates pass</span>
   <div class="pair">
    <div><div class="big" aria-label="Guarded score 94.3 of 100">94.3</div><div class="cap">Guarded agent</div></div>
    <div><div class="big dim" aria-label="Baseline score 11.3 of 100">11.3</div><div class="cap">Baseline agent</div></div>
-   <div><div class="big" aria-label="Mean delta +83">+83</div><div class="cap">Mean delta per scenario</div></div>
+   <div><div class="big delta" aria-label="Mean delta +83">+83</div><div class="cap">Mean delta per scenario</div></div>
   </div></div>
  <dl class="stats" aria-label="Per-agent results">
   <dt class="h">Across 3 scenarios</dt><dd class="h">Baseline</dd><dd class="h">Guarded</dd>

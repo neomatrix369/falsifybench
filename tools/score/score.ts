@@ -139,14 +139,14 @@ ${i === 0 ? `<td class="n" rowspan="2">${s.delta === null ? '—' : formatDelta(
 <header><div class="bar"><div class="brand">FalsifyBench <span>· Benchmark score</span></div><a href="../index.html">Open the walkthrough</a></div></header>
 <main>
 <section class="sheet hero" aria-labelledby="h-score">
- <div><p class="label">Synthetic data · ${n} scenarios · ${esc(rubrics)}</p>
-  <h1 id="h-score">FalsifyBench score</h1>
+ <div><h1 id="h-score">FalsifyBench score</h1>
   <p class="lead">Mean rubric total per agent over every runnable scenario, computed from the benchmark data only.</p>
+  <p class="meta">Synthetic data · ${n} scenarios · <span class="mono">${esc(rubrics)}</span></p>
   ${status}
   <div class="pair">
    <div><div class="big" aria-label="Guarded score ${num(agents.guarded.score)} of 100">${num(agents.guarded.score)}</div><div class="cap">Guarded agent</div></div>
    <div><div class="big dim" aria-label="Baseline score ${num(agents.baseline.score)} of 100">${num(agents.baseline.score)}</div><div class="cap">Baseline agent</div></div>
-   <div><div class="big" aria-label="Mean delta ${formatDelta(score.meanDelta)}">${formatDelta(score.meanDelta)}</div><div class="cap">Mean delta per scenario</div></div>
+   <div><div class="big delta" aria-label="Mean delta ${formatDelta(score.meanDelta)}">${formatDelta(score.meanDelta)}</div><div class="cap">Mean delta per scenario</div></div>
   </div></div>
  <dl class="stats" aria-label="Per-agent results">
   <dt class="h">Across ${n} scenarios</dt><dd class="h">Baseline</dd><dd class="h">Guarded</dd>

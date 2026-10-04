@@ -22,6 +22,8 @@ describe('score page design system', () => {
   it('the published score page follows DESIGN.md', () => {
     expect(designRuleViolations(styles)).toEqual([])
     expect(html).not.toMatch(/class="eyebrow"/)
+    // No kicker above a heading: the heading opens its section.
+    expect(html).not.toMatch(/<(p|div|span)[^>]*>[^<]*(<\/span>)?[^<]*<\/\1>\s*<h[12]\b/)
     expect(html).not.toMatch(/content="#[0-9a-f]+"/i)
   })
 
