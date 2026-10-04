@@ -60,7 +60,7 @@ export default function Root() {
         </div>
       )}
       <div data-view="benchmark" hidden={view !== 'benchmark'}>
-        {/* Live mode exists only under `vite dev` (npm run dev:live); the deployed build never probes a server. */}
+        {/* Live mode exists only under `vite dev` (npm run dev); the deployed build never probes a server. */}
         <App onSwitchView={switchView} probeLive={import.meta.env.DEV ? probeLiveHealth : null} initialTab={initialTab()} onTabChange={rememberTab} />
       </div>
     </>

@@ -81,7 +81,7 @@ export function createLocalServer(config: ServerConfig, log: (line: string) => v
         configured: client !== null,
         provider: 'anthropic',
         model: config.model,
-        ...(client ? {} : { reason: 'No Anthropic API key in the local server environment (.env).' }),
+        ...(client ? {} : { reason: 'No Anthropic API key in the local server environment. Add ANTHROPIC_API_KEY to .env and restart npm run dev.' }),
       }
       return send(res, 200, health)
     }

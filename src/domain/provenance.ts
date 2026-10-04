@@ -64,7 +64,7 @@ export const SYNTHETIC_LABEL = 'Synthetic · hand-audited'
 export const SCRIPTED_FIXTURE_LABEL = 'Scripted benchmark fixture — not a live model run'
 export const PARTNER_UNAVAILABLE_REASON = 'Awaiting validated partner source.'
 export const LIVE_AGENT_UNAVAILABLE_REASON =
-  'Runs only on a local machine through the local server (npm run dev:live). This build has no server and no key, so no model is called.'
+  'Runs only on a local machine through the local server, which `npm run dev` starts. No server answered here, so no model is called.'
 
 /** Shown on a live baseline answer instead of `SCRIPTED_FIXTURE_LABEL`. */
 export const liveModelLabel = (model: string) => `Live model run — ${model} via the local server`

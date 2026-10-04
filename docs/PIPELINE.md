@@ -4,7 +4,7 @@ This page follows one benchmark run from its inputs to every way it can end: com
 
 In a scripted run (the default, and the only mode of the deployed static site) nothing goes over the network except the sealed evaluation chunk (same origin), and no model is called. Outside a run, the About view fetches the published `score/score.json`, also same origin.
 
-Live mode exists only on a local machine (`npm run dev:live`, README "Live mode (local only)"): the browser sends `POST /api/agents/baseline { scenarioId }` through the Vite dev proxy to the local server in `server/`, which reads the key from a gitignored `.env` and calls the Anthropic Messages API. Only the baseline is live; the guarded agent stays scripted until Step 4, and the rule grader scores the run. The deployed build never probes the server, so its Agent selector always reads `Live agent — unavailable`.
+Live mode exists only on a local machine (`npm run dev`, README "Live mode (local only)"; `npm run dev:live` remains an alias): the browser sends `POST /api/agents/baseline { scenarioId }` through the Vite dev proxy to the local server in `server/`, which reads the key from a gitignored `.env` and calls the Anthropic Messages API. Only the baseline is live; the guarded agent stays scripted until Step 4, and the rule grader scores the run. The deployed build never probes the server, so its Agent selector always reads `Live agent — unavailable`.
 
 ## Map
 
@@ -126,7 +126,7 @@ Facts added to `Guarded verdict` for the evidence basis and turn trace: `Decided
 | Pipeline | Input | Output |
 |---|---|---|
 | Dev checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` | Source | Pass/fail, local only (the repo has no CI). `postbuild` (`tools/check-dist-secrets.mjs`) fails the build if `dist/` contains `sk-ant` or the key's variable name |
-| Live mode: `npm run dev:live` (`tools/dev-live.mjs`) | `.env`, public fixtures | Local server on 127.0.0.1:8787 plus `vite dev` with the `/api` proxy. `npm run stub:anthropic` starts the Messages API stub used for the manual proof |
+| Live mode: `npm run dev` (`tools/dev-live.mjs`; `npm run dev:live` alias) | `.env`, public fixtures | Local server on 127.0.0.1:8787 plus `vite dev` with the `/api` proxy. `npm run stub:anthropic` starts the Messages API stub used for the manual proof |
 | Data benchmark score: `npm run score` (`docs/SCORE.md`) | Synthetic fixtures + sealed evaluations | `public/score/index.html`, `score.json`: `G × mean T`, safe-verdict and unsafe-approval rates, mean delta |
 
 ## Known gaps

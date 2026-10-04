@@ -13,7 +13,10 @@ export interface AgentSelection {
 
 function liveReason(health: LiveHealth | null): string {
   if (liveAvailable(health)) return `Baseline from ${health!.model} through the local server. ${LIVE_SCOPE_NOTE}`
-  if (health) return `The local server is running but ${health.reason ?? 'has no API key'}`
+  if (health) {
+    const reason = health.reason ?? 'has no API key'
+    return `The local server is running but ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`
+  }
   return LIVE_AGENT_UNAVAILABLE_REASON
 }
 

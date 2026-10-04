@@ -1,4 +1,4 @@
-// Manual proof only: `npm run stub:anthropic`, then start dev:live with ANTHROPIC_BASE_URL pointing here.
+// Manual proof only: `npm run stub:anthropic`, then start `npm run dev` with ANTHROPIC_BASE_URL pointing here.
 // Switch failure modes with: curl -X POST localhost:8788/__stub/mode -d '{"mode":"http-500"}'
 import { startAnthropicStub, STUB_MODES, type StubMode } from './anthropicStub'
 

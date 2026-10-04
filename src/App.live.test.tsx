@@ -1,9 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { scriptedAgentRunner } from './data/scriptedAgentRunner'
-import { LiveAgentError, type LiveHealth } from './domain/live'
+import { LIVE_HEALTH_RETRY_MS, LiveAgentError, type LiveHealth } from './domain/live'
 import { liveAnswer } from './domain/liveFixtures.test-helpers'
 import type { AgentResponse, AgentRunner } from './domain/types'
 
@@ -40,12 +40,60 @@ async function openLive(runner: AgentRunner, initialId = 'MAT-001') {
 }
 
 describe('Live agent selector', () => {
+  it('retries a null health probe until the server responds', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const probeLive = vi.fn((): Promise<LiveHealth | null> => Promise.resolve(null))
+      probeLive.mockResolvedValueOnce(null).mockResolvedValue(configured)
+      render(<App deps={deps} initialId="MAT-001" probeLive={probeLive} />)
+      await act(async () => {
+        await Promise.resolve()
+      })
+      await act(() => vi.advanceTimersByTimeAsync(LIVE_HEALTH_RETRY_MS))
+      expect(screen.getByRole('radio', { name: /live baseline — available/i })).toBeEnabled()
+      expect(probeLive).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops probing after the first non-null health response', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const probeLive = vi.fn(async () => configured)
+      render(<App deps={deps} initialId="MAT-001" probeLive={probeLive} />)
+      await act(async () => {
+        await Promise.resolve()
+      })
+      await act(() => vi.advanceTimersByTimeAsync(3 * LIVE_HEALTH_RETRY_MS))
+      expect(probeLive).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('cancels a pending health retry on unmount', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const probeLive = vi.fn((): Promise<LiveHealth | null> => Promise.resolve(null))
+      const { unmount } = render(<App deps={deps} initialId="MAT-001" probeLive={probeLive} />)
+      await act(async () => {
+        await Promise.resolve()
+      })
+      unmount()
+      await act(() => vi.advanceTimersByTimeAsync(3 * LIVE_HEALTH_RETRY_MS))
+      expect(probeLive).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('stays unavailable without a local server, and when the server has no key', async () => {
     const { unmount } = render(<App deps={deps} initialId="MAT-001" />)
     expect(await screen.findByRole('radio', { name: /live agent — unavailable/i })).toBeDisabled()
     unmount()
-    render(<App deps={deps} initialId="MAT-001" probeLive={async () => ({ ...configured, configured: false, reason: 'has no ANTHROPIC_API_KEY in .env' })} />)
-    await waitFor(() => expect(screen.getAllByText(/the local server is running but has no ANTHROPIC_API_KEY/i).length).toBeGreaterThan(0))
+    render(<App deps={deps} initialId="MAT-001" probeLive={async () => ({ ...configured, configured: false, reason: 'No Anthropic API key in the local server environment. Add ANTHROPIC_API_KEY to .env and restart npm run dev.' })} />)
+    await waitFor(() => expect(screen.getAllByText(/the local server is running but no Anthropic API key in the local server environment\. Add ANTHROPIC_API_KEY to \.env and restart npm run dev\./i).length).toBeGreaterThan(0))
     expect(screen.getByRole('radio', { name: /live agent — unavailable/i })).toBeDisabled()
   })
 })

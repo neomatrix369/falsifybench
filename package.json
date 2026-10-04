@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "predev": "node tools/check-deps.mjs",
-    "dev": "vite",
+    "dev": "node tools/dev-live.mjs",
     "dev:live": "node tools/dev-live.mjs",
+    "dev:vite": "vite",
     "prebuild": "npm run score:check",
     "build": "tsc -b && vite build",
     "postbuild": "node tools/check-dist-secrets.mjs",

@@ -3,6 +3,7 @@ import type { AgentResponse, LiveCall } from './types'
 /** Live model calls run only on a local machine, through the local server in `server/`. The deployed static site never makes one. */
 export const LIVE_HEALTH_ENDPOINT = '/api/health'
 export const LIVE_BASELINE_ENDPOINT = '/api/agents/baseline'
+export const LIVE_HEALTH_RETRY_MS = 2000
 /** How long the browser waits for the live baseline before it shows the timeout card. */
 export const LIVE_BASELINE_TIMEOUT_MS = 30_000
 /** How long the local server waits for the provider; shorter than the browser's wait so its own error arrives first. */

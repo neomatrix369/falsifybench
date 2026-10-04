@@ -10,7 +10,7 @@ Written when both answers are scripted fixtures and the fixture grader (hand sco
 
 ## v1.1: live baseline or another grader
 
-Written when the baseline came from a live model (local runs only, `npm run dev:live`) or a grader other than the fixture grader scored the run. Every v1.0 field keeps its name and meaning, with these changes:
+Written when the baseline came from a live model (local runs only, `npm run dev`) or a grader other than the fixture grader scored the run. Every v1.0 field keeps its name and meaning, with these changes:
 
 | Field | v1.1 |
 |---|---|
