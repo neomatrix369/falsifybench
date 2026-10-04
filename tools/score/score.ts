@@ -4,6 +4,9 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { RUNNABLE_BENCHMARKS, syntheticScenarioSource } from '../../src/data/scenarioSource'
+import { scriptedAgentRunner } from '../../src/data/scriptedAgentRunner'
+import { gradeRun, runAgents } from '../../src/domain/agentRun'
+import { fixtureGrader } from '../../src/domain/fixtureGrader'
 import { AGENT_PATHS, scoreBenchmark, type BenchmarkScore, type IntegrityCheck, type ScoredScenario } from '../../src/domain/benchmarkScore'
 import { METRIC_KEYS, METRIC_LABELS, formatDelta } from '../../src/domain/scoring'
 import { SCORE_EQUATIONS, scoreLegend, workedRun, workedTotal } from '../../src/domain/scoreMath'
@@ -44,6 +47,15 @@ function specGate(ids: readonly string[]): IntegrityCheck {
     label: 'Data matches the playbook spec',
     ok: run.status === 0 && r.numTotalTests > 0 && failed.length === 0 && unrun.length === 0,
     detail: `${r.numPassedTests}/${r.numTotalTests} fixture-vs-playbook checks pass${failed.length ? `; failing: ${failed.slice(0, 3).join('; ')}` : ''}${unrun.length ? `; no checks ran for ${unrun.join(', ')}` : ''}`,
+  }
+}
+
+/** Hashes the data in the layout it had before guarded/scoring left the evaluation, so the published fingerprint only moves when the data does. */
+function fingerprintShape({ scenario, evaluation, run }: ScoredScenario) {
+  const { hiddenTruth, narrative, findings, expectedSafeVerdict, sufficientNextAction, ...rest } = evaluation
+  return {
+    scenario: { ...scenario, evaluation: undefined },
+    evaluation: { hiddenTruth, narrative, findings, expectedSafeVerdict, sufficientNextAction, guarded: run.responses.guarded, ...rest, scoring: run.scores },
   }
 }
 
@@ -220,10 +232,12 @@ async function main() {
   const inputs: ScoredScenario[] = []
   for (const id of ids) {
     const scenario = await syntheticScenarioSource.loadScenario(id)
-    inputs.push({ scenario, evaluation: await scenario.evaluation.unseal() })
+    const evaluation = await scenario.evaluation.unseal()
+    const run = gradeRun(fixtureGrader, scenario, evaluation, await runAgents(scriptedAgentRunner, scenario))
+    inputs.push({ scenario, evaluation, run })
   }
   const fingerprint = createHash('sha256')
-    .update(JSON.stringify(inputs.map(({ scenario, evaluation }) => ({ scenario: { ...scenario, evaluation: undefined }, evaluation }))))
+    .update(JSON.stringify(inputs.map(fingerprintShape)))
     .digest('hex')
     .slice(0, 12)
 

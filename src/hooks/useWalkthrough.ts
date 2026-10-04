@@ -5,7 +5,8 @@ import { evaluationProblems, InvalidEvaluationError } from '../domain/evaluation
 import { abandonedEntry, type RunLogEntry, type UnsealTiming } from '../domain/runLog'
 import { UNSEAL_TIMEOUT_MS, UnsealTimeoutError, withTimeout } from '../domain/unsealTimeout'
 import { controlAvailability, initialWalkthroughState, walkthroughReducer, type ControlAvailability } from '../domain/walkthrough'
-import type { Scenario, ScenarioEvaluation } from '../domain/types'
+import { gradeRun, runAgents } from '../domain/agentRun'
+import type { AgentRunner, GradedRun, Grader, Scenario, ScenarioEvaluation } from '../domain/types'
 
 export const AUTOPLAY_INTERVAL_MS = 3000
 
@@ -14,32 +15,50 @@ export interface WalkthroughDeps {
   createRunId: RunIdFactory
 }
 
+/** Who answers and who grades. `grader` defaults to `fixtureGrader`, imported with the sealed evaluation so its hand scores stay out of the main bundle. */
+export interface AgentSeams {
+  runner: AgentRunner
+  grader?: Grader
+}
+
+const loadFixtureGrader = () => import('../domain/fixtureGrader').then((m) => m.fixtureGrader)
+
+interface Unsealed {
+  evaluation: ScenarioEvaluation
+  run: GradedRun
+}
+
 /** `nextPending`: Next step is held (not disabled) while the sealed evaluation loads, so it keeps focus. */
 export type WalkthroughControls = ControlAvailability & { nextPending: boolean }
 
-export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, carried: RunLogEntry | null = null) {
+export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, seams: AgentSeams, carried: RunLogEntry | null = null) {
   const [abandoned, setAbandoned] = useState<RunLogEntry | null>(carried)
   const [state, dispatch] = useReducer(walkthroughReducer, initialWalkthroughState)
-  const [evaluation, setEvaluation] = useState<ScenarioEvaluation | null>(null)
+  const [unsealed, setUnsealed] = useState<Unsealed | null>(null)
+  const evaluation = unsealed?.evaluation ?? null
+  const run = unsealed?.run ?? null
   const [error, setError] = useState<Error | null>(null)
   const [unseal, setUnseal] = useState<UnsealTiming | null>(null)
   const { clock, createRunId } = deps
+  const { runner, grader } = seams
   const now = useCallback(() => clock().toISOString(), [clock])
 
   const needsEvaluation = state.reached >= AUDIT_STAGE_INDEX
   useEffect(() => {
-    if (!needsEvaluation || evaluation) return
+    if (!needsEvaluation || unsealed) return
     let cancelled = false
     const requested = clock()
     setUnseal({ requestedAt: requested.toISOString() })
-    withTimeout(scenario.evaluation.unseal(), UNSEAL_TIMEOUT_MS, () => new UnsealTimeoutError(scenario.id, UNSEAL_TIMEOUT_MS))
-      .then((value) => {
+    const loading = Promise.all([scenario.evaluation.unseal(), runAgents(runner, scenario), grader ?? loadFixtureGrader()])
+    withTimeout(loading, UNSEAL_TIMEOUT_MS, () => new UnsealTimeoutError(scenario.id, UNSEAL_TIMEOUT_MS))
+      .then(([value, responses, grading]) => {
         if (cancelled) return
-        const problems = evaluationProblems(scenario, value)
+        const graded = gradeRun(grading, scenario, value, responses)
+        const problems = evaluationProblems(scenario, value, graded)
         if (problems.length) throw new InvalidEvaluationError(scenario.id, problems)
         const loaded = clock()
         setUnseal({ requestedAt: requested.toISOString(), loadedAt: loaded.toISOString(), ms: loaded.getTime() - requested.getTime() })
-        setEvaluation(value)
+        setUnsealed({ evaluation: value, run: graded })
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -49,9 +68,9 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, carrie
     return () => {
       cancelled = true
     }
-  }, [needsEvaluation, evaluation, scenario, clock])
+  }, [needsEvaluation, unsealed, scenario, clock, runner, grader])
 
-  const awaitingEvaluation = state.cursor === state.reached && needsEvaluation && !evaluation
+  const awaitingEvaluation = state.cursor === state.reached && needsEvaluation && !unsealed
   const blocked = awaitingEvaluation || error !== null
 
   useEffect(() => {
@@ -61,10 +80,11 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, carrie
   }, [state.autoplay, state.cursor, blocked, now])
 
   const receipt: BenchmarkReceipt | null = useMemo(() => {
-    if (state.reached < LAST_STAGE_INDEX || !evaluation || !state.runId || !state.startedAt) return null
+    if (state.reached < LAST_STAGE_INDEX || !evaluation || !run || !state.runId || !state.startedAt) return null
     return createReceipt({
       scenario,
       evaluation,
+      run,
       runId: state.runId,
       startedAt: state.startedAt,
       events: state.events,
@@ -72,7 +92,7 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, carrie
       clock,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.reached, state.runId, evaluation, scenario])
+  }, [state.reached, state.runId, unsealed, scenario])
 
   const actions = useMemo(
     () => ({
@@ -105,5 +125,5 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, carrie
     canAutoplay: base.canAutoplay && error === null,
     nextPending: base.canNext && awaitingEvaluation && error === null,
   }
-  return { state, evaluation, receipt, error, controls, actions, unseal, abandoned }
+  return { state, evaluation, run, receipt, error, controls, actions, unseal, abandoned }
 }

@@ -1,6 +1,6 @@
 # FalsifyBench score
 
-The FalsifyBench score measures **how the agents perform on the FalsifyBench synthetic data**. It is computed only from the benchmark data in `src/data`: each scenario's public fixture plus its sealed evaluation. It never scores the codebase, tests, bundle or commit history.
+The FalsifyBench score measures **how the agents perform on the FalsifyBench synthetic data**. It is computed only from the benchmark data in `src/data`: each scenario's public fixture plus its sealed evaluation, with the agents' answers from the `AgentRunner` (`scriptedAgentRunner`: the public baseline and `src/data/<id>.agents.ts`) and their metric inputs from the `Grader` (`fixtureGrader`: the hand-entered `src/data/<id>.scores.ts`). It never scores the codebase, tests, bundle or commit history.
 
 `npm run score` writes the published page `public/score/index.html` (served at `/score/index.html`) and the raw results `public/score/score.json`. It exits 1 if any data-integrity gate fails.
 
@@ -33,8 +33,8 @@ Any failure sets G = 0, so the score is not reported.
 | I3 | yes | Evidence IDs present and unique |
 | I4 | yes | Every audit finding cites at least one evidence ID, and every cited ID exists |
 | I5 | yes | Declared untrusted sources exist in the evidence |
-| I6 | yes | Both agents' four rubric metrics are integers 0–100, with no precomputed total |
-| I7 | yes | Baseline, guarded and expected verdicts are valid verdicts |
+| I6 | yes | Both agents' four rubric metrics, as returned by the grader, are integers 0–100, with no precomputed total |
+| I7 | yes | Baseline and guarded verdicts (from the runner) and the expected verdict are valid verdicts |
 | I8 | yes | The guarded response comes from the scenario's declared guarded agent |
 | I9 | yes | No sealed summary or finding text appears in the public fixture |
 | S1 | benchmark | The data matches the fixture specs in `docs/falsifybench-playbook.md` (`tools/score/spec.*.test.ts`) |
@@ -47,11 +47,12 @@ Any failure sets G = 0, so the score is not reported.
 | Score and gates (pure, unit-tested) | `src/domain/benchmarkScore.ts`, `src/domain/benchmarkScore.test.ts` |
 | Score equations and legend (MathML, shared by the score page and the stage-4 scorecard) | `src/domain/scoreMath.ts`, `src/components/ScoreMath.tsx` |
 | Data vs playbook spec (gate S1, also runs in `npm test`) | `tools/score/spec.mat001.test.ts`, `tools/score/spec.ei001.test.ts` |
+| Agent and grader seams (defaults used by the CLI and the app) | `src/data/scriptedAgentRunner.ts`, `src/domain/fixtureGrader.ts`, `src/domain/agentRun.ts` |
 | CLI, page and JSON | `tools/score/score.ts` |
 
 ## Adding a scenario
 
-Register its fixture and sealed evaluation (`src/data/<id>.ts`, `<id>.evaluation.ts`, `RUNNABLE_BENCHMARKS`), add its fixture section to the playbook and a `tools/score/spec.<id>.test.ts`, then run `npm run score`. It appears in the results automatically.
+Register its fixture and sealed evaluation (`src/data/<id>.ts`, `<id>.evaluation.ts`, `RUNNABLE_BENCHMARKS`), its scripted guarded answer (`<id>.agents.ts`, in `scriptedAgentRunner`) and hand scores (`<id>.scores.ts`, in `FIXTURE_SCORES`), add its fixture section to the playbook and a `tools/score/spec.<id>.test.ts`, then run `npm run score`. It appears in the results automatically.
 
 ## Not part of the score
 

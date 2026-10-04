@@ -1,5 +1,5 @@
 import { integrityChecks } from './benchmarkScore'
-import type { Scenario, ScenarioEvaluation } from './types'
+import type { GradedRun, Scenario, ScenarioEvaluation } from './types'
 import { UnsealTimeoutError } from './unsealTimeout'
 
 /** Data gates (see benchmarkScore.ts) that apply to one unsealed evaluation at runtime. */
@@ -18,8 +18,8 @@ const isText = (v: unknown) => typeof v === 'string' && v.trim() !== ''
 const isTextList = (v: unknown) => Array.isArray(v) && v.length > 0 && v.every(isText)
 
 /** Fields the walkthrough renders after Audit; a missing one would crash a panel mid-run. */
-function shapeProblems(e: ScenarioEvaluation): string[] {
-  const g = (e?.guarded ?? {}) as unknown as Partial<Record<string, unknown>>
+function shapeProblems(e: ScenarioEvaluation, run: GradedRun): string[] {
+  const g = (run?.responses?.guarded ?? {}) as unknown as Partial<Record<string, unknown>>
   const n = (e?.narrative ?? {}) as unknown as Partial<Record<string, unknown>>
   const fields: [string, unknown, (v: unknown) => boolean][] = [
     ['hiddenTruth.summary', e?.hiddenTruth?.summary, isText],
@@ -36,9 +36,9 @@ function shapeProblems(e: ScenarioEvaluation): string[] {
   return fields.filter(([, value, ok]) => !ok(value)).map(([name]) => `Malformed evaluation: ${name} is missing or empty`)
 }
 
-function gateProblems(scenario: Scenario, evaluation: ScenarioEvaluation): string[] {
+function gateProblems(scenario: Scenario, evaluation: ScenarioEvaluation, run: GradedRun): string[] {
   try {
-    return integrityChecks({ scenario, evaluation }, [scenario.id])
+    return integrityChecks({ scenario, evaluation, run }, [scenario.id])
       .filter((c) => RUNTIME_GATES.includes(c.id) && !c.ok)
       .map((c) => `${c.id} ${c.label}: ${c.detail}`)
   } catch (err) {
@@ -46,9 +46,9 @@ function gateProblems(scenario: Scenario, evaluation: ScenarioEvaluation): strin
   }
 }
 
-/** Why an unsealed evaluation can't be used; empty when it passes the shape check and every runtime gate. */
-export function evaluationProblems(scenario: Scenario, evaluation: ScenarioEvaluation): string[] {
-  return [...shapeProblems(evaluation), ...gateProblems(scenario, evaluation)]
+/** Why an unsealed evaluation and the graded run can't be used; empty when both pass the shape check and every runtime gate. */
+export function evaluationProblems(scenario: Scenario, evaluation: ScenarioEvaluation, run: GradedRun): string[] {
+  return [...shapeProblems(evaluation, run), ...gateProblems(scenario, evaluation, run)]
 }
 
 /** How a failed unseal can be recovered: a slow load can still arrive, so Reset retries it; a reload retries a failed import; bad data fails again whatever the user does. */

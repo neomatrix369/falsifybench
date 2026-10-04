@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BenchmarkPicker } from './components/BenchmarkPicker'
 import { ComingNextCards } from './components/ComingNextCards'
 import { UnavailableModesNote } from './components/DataModeSelector'
@@ -10,27 +10,29 @@ import { ResultSurface } from './components/ResultSurface'
 import { ScenarioCard } from './components/ScenarioCard'
 import { StageTrace } from './components/StageTrace'
 import { DEFAULT_BENCHMARK_ID, syntheticScenarioSource } from './data/scenarioSource'
+import { scriptedAgentRunner } from './data/scriptedAgentRunner'
 import { unsealRecovery } from './domain/evaluationCheck'
 import { isRunnableProvenance, PARTNER_UNAVAILABLE_REASON } from './domain/provenance'
 import { randomRunId, systemClock } from './domain/receipt'
 import { buildRunLog, type RunLogEntry } from './domain/runLog'
 import { AUDIT_STAGE_INDEX, LAST_STAGE_INDEX } from './domain/stages'
-import type { Scenario, ScenarioSource } from './domain/types'
-import { useWalkthrough, type WalkthroughDeps } from './hooks/useWalkthrough'
+import type { AgentRunner, Grader, Scenario, ScenarioSource } from './domain/types'
+import { useWalkthrough, type AgentSeams, type WalkthroughDeps } from './hooks/useWalkthrough'
 
 const DEFAULT_DEPS: WalkthroughDeps = { clock: systemClock, createRunId: randomRunId }
 
 interface BenchProps {
   scenario: Scenario
   deps: WalkthroughDeps
+  seams: AgentSeams
   onSelectBenchmark: (id: string, abandoned?: RunLogEntry | null) => void
   focusScenarioOnMount: boolean
   carried: RunLogEntry | null
   onSwitchView?: (view: View) => void
 }
 
-function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView }: BenchProps) {
-  const { state, evaluation, receipt, error, controls, actions, unseal, abandoned } = useWalkthrough(scenario, deps, carried)
+function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView }: BenchProps) {
+  const { state, evaluation, run: graded, receipt, error, controls, actions, unseal, abandoned } = useWalkthrough(scenario, deps, seams, carried)
   const resultHeading = useRef<HTMLHeadingElement>(null)
   const activeScenarioHeading = useRef<HTMLHeadingElement>(null)
   const [focusRequest, setFocusRequest] = useState(0)
@@ -101,7 +103,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carrie
             onReset={reset}
           />
           <RunLog
-            entries={buildRunLog({ state, scenario, evaluation, receipt, unseal, error, abandoned })}
+            entries={buildRunLog({ state, scenario, evaluation, run: graded, receipt, unseal, error, abandoned })}
             state={state}
             unsealing={controls.nextPending}
             failure={error ? unsealRecovery(error) : null}
@@ -119,6 +121,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carrie
                 state={state}
                 scenario={scenario}
                 evaluation={evaluation}
+                run={graded}
                 receipt={receipt}
                 onSelect={select}
                 onSelectTab={actions.select}
@@ -135,12 +138,17 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carrie
 export default function App({
   source = syntheticScenarioSource,
   deps = DEFAULT_DEPS,
+  runner = scriptedAgentRunner,
+  grader,
   onSwitchView,
   initialId = DEFAULT_BENCHMARK_ID,
 }: {
   initialId?: string
   source?: ScenarioSource
   deps?: WalkthroughDeps
+  runner?: AgentRunner
+  /** Defaults to `fixtureGrader`, loaded at Audit with the sealed evaluation. */
+  grader?: Grader
   onSwitchView?: (view: View) => void
 }) {
   const [scenario, setScenario] = useState<Scenario | null>(null)
@@ -149,6 +157,7 @@ export default function App({
   const [switched, setSwitched] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [carried, setCarried] = useState<RunLogEntry | null>(null)
+  const seams = useMemo(() => ({ runner, grader }), [runner, grader])
   const selectBenchmark = useCallback((id: string, abandoned: RunLogEntry | null = null) => {
     setCarried(abandoned)
     setSwitched(true)
@@ -194,6 +203,7 @@ export default function App({
         key={`${scenario.id}:${attempt}`}
         scenario={scenario}
         deps={deps}
+        seams={seams}
         onSelectBenchmark={selectBenchmark}
         focusScenarioOnMount={switched}
         carried={carried}
