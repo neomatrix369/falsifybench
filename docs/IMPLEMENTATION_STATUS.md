@@ -10,7 +10,7 @@ The app's machinery is real: the state machine, scoring maths, receipt validatio
 2. how they are graded,
 3. where the scenarios come from.
 
-The biggest structural issue: the **guarded agent's answer and both agents' rubric scores live inside the sealed evaluation**. In the PoC the grading truth and the thing being graded sit in one hand-written file. Before a real agent can plug in, those have to be split apart.
+The biggest structural issue was that the **guarded agent's answer and both agents' rubric scores lived inside the sealed evaluation**; Step 1 below has now split them out behind `AgentRunner` and `Grader` seams.
 
 Also, the PoC ships as a static site on devinapps.com with no server. Live agents need keys held on a server, so **a backend is the prerequisite** for most of what's below.
 
@@ -148,6 +148,7 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 | UI design system, a11y/focus handling, error boundary | `DESIGN.md`, `src/components/*`, `App.tsx` | Should |
 | Static build + deploy | `vite build`, devinapps.com | Must |
 | About (landing) view with honest coverage and roadmap | `src/Root.tsx`, `src/components/Landing.tsx`, `src/config/landing.ts` | Should |
+| Grading truth split from the graded answers: the sealed `*.evaluation.ts` keeps only grading truth, with scripted answers in `<id>.agents.ts` and hand scores in `<id>.scores.ts`; `AgentRunner` and `Grader` seams injected into `<App>` (defaults `scriptedAgentRunner`, `fixtureGrader`); receipts byte-identical to before (golden test) | `src/domain/types.ts`, `src/data/scriptedAgentRunner.ts`, `src/domain/fixtureGrader.ts`, `tools/receipt/receipt.golden.test.ts` | Must |
 
 ### Partially implemented (real code, mocked inputs or PoC-only)
 
@@ -169,7 +170,6 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 
 | Capability | MoSCoW | Note |
 |---|---|---|
-| Split `guarded` + `scoring` out of the sealed evaluation; `AgentRunner` and `Grader` seams | **Must** | Step 1; no secrets needed; unblocks everything else |
 | Rule-based grader reproducing today's +80/+84 | **Must** | Step 2; no secrets needed |
 | Backend service (holds keys, runs agents, optionally grades) | **Must** | Static hosting can't hold secrets |
 | Live baseline agent (model call → structured `AgentResponse`) | **Must** | Step 3 |
