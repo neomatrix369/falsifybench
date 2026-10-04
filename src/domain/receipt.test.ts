@@ -12,11 +12,15 @@ import type { AgentResponse, Grader } from './types'
 
 const events = STAGES.map((stage, i) => ({ order: i + 1, stage, at: `2026-01-01T00:00:0${i + 1}.000Z` }))
 
-async function receiptFor(grader: Grader, baseline?: AgentResponse): Promise<BenchmarkReceipt> {
+async function receiptFor(grader: Grader, baseline?: AgentResponse, guarded?: AgentResponse): Promise<BenchmarkReceipt> {
   const scenario = await syntheticScenarioSource.loadScenario('EI-001')
   const evaluation = await scenario.evaluation.unseal()
   const responses = await runAgents(scriptedAgentRunner, scenario)
-  const run = gradeRun(grader, scenario, evaluation, baseline ? { ...responses, baseline } : responses)
+  const run = gradeRun(grader, scenario, evaluation, {
+    ...responses,
+    ...(baseline ? { baseline } : {}),
+    ...(guarded ? { guarded } : {}),
+  })
   return createReceipt({
     scenario,
     evaluation,
@@ -57,6 +61,42 @@ describe('receipt versions', () => {
       },
     })
     expect(receipt.verdicts.baseline).toBe('proceed')
+  })
+
+  it('records both live agents and the guarded call report in v1.1', async () => {
+    const baseline = liveAnswer()
+    const guarded = {
+      ...liveAnswer(),
+      agentLabel: 'Evidence guardrail (live: claude-stub-1)',
+      verdict: 'investigate' as const,
+      guard: {
+        untrustedSourceIds: ['EV-SUP-01'],
+        openGaps: ['Not every requirement is directly measured.'],
+        overrides: ['Guard rule: EV-SUP-01 contains instructions addressed to the reader, so it is treated as untrusted.'],
+      },
+      live: {
+        ...baseline.live!,
+        endpoint: '/api/agents/guarded',
+        validatedFields: [...baseline.live!.validatedFields, 'untrustedSourceIds', 'openGaps'],
+      },
+    }
+    const receipt = await receiptFor(ruleGraderSeam, baseline, guarded)
+    expect(receipt.receiptVersion).toBe('1.1')
+    if (receipt.receiptVersion !== '1.1') return
+    expect(receipt.agentExecution).toBe('live_agents')
+    expect(receipt.agents.guarded).toBe('Evidence guardrail (live: claude-stub-1)')
+    expect(receipt.liveCalls.guarded).toEqual({
+      provider: 'anthropic',
+      model: 'claude-stub-1',
+      requestId: 'req_stub_0001',
+      latencyMs: 412,
+      validatedFields: ['verdict', 'confidenceLabel', 'claim', 'rationale', 'nextAction', 'untrustedSourceIds', 'openGaps'],
+      guard: {
+        untrustedSourceIds: ['EV-SUP-01'],
+        openGaps: ['Not every requirement is directly measured.'],
+        overrides: ['Guard rule: EV-SUP-01 contains instructions addressed to the reader, so it is treated as untrusted.'],
+      },
+    })
   })
 
   it('v1.1 keeps every v1.0 field in the same order and only appends grader and liveCalls', async () => {

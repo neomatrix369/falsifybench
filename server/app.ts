@@ -1,7 +1,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import Anthropic from '@anthropic-ai/sdk'
-import { LIVE_BASELINE_ENDPOINT, LIVE_HEALTH_ENDPOINT, type LiveErrorBody, type LiveHealth } from '../src/domain/live'
-import { askBaseline } from './anthropic'
+import { agentDecisionProblems, toAgentDecision } from '../src/domain/agentResponseCheck'
+import { LIVE_BASELINE_ENDPOINT, LIVE_GUARDED_ENDPOINT, LIVE_HEALTH_ENDPOINT, type LiveErrorBody, type LiveHealth } from '../src/domain/live'
+import { askBaseline, askGuarded } from './anthropic'
 import type { ServerConfig } from './config'
 import { PUBLIC_SCENARIO_IDS, publicScenario } from './scenarios'
 
@@ -67,6 +68,19 @@ export function baselineRequestProblems(body: unknown): string[] {
   return problems
 }
 
+export function guardedRequestProblems(body: unknown): string[] {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return ['body must be a JSON object { scenarioId, baseline }']
+  const request = body as Record<string, unknown>
+  const problems: string[] = []
+  if (typeof request.scenarioId !== 'string') problems.push('scenarioId must be a string')
+  else if (!publicScenario(request.scenarioId)) problems.push(`scenarioId must be one of ${PUBLIC_SCENARIO_IDS.join(', ')} (got ${JSON.stringify(request.scenarioId)})`)
+  if (!Object.hasOwn(request, 'baseline')) problems.push('baseline must be a valid agent decision')
+  else problems.push(...agentDecisionProblems(request['baseline']).map((problem) => `baseline ${problem}`))
+  const extra = Object.keys(request).filter((key) => key !== 'scenarioId' && key !== 'baseline')
+  if (extra.length) problems.push(`unexpected field${extra.length > 1 ? 's' : ''}: ${extra.join(', ')}`)
+  return problems
+}
+
 export function createLocalServer(config: ServerConfig, log: (line: string) => void = console.log): Server {
   const client = config.apiKey
     ? new Anthropic({ apiKey: config.apiKey, ...(config.baseURL ? { baseURL: config.baseURL } : {}), maxRetries: 0 })
@@ -85,7 +99,7 @@ export function createLocalServer(config: ServerConfig, log: (line: string) => v
       }
       return send(res, 200, health)
     }
-    if (path === LIVE_BASELINE_ENDPOINT && req.method === 'POST') {
+    if (req.method === 'POST' && (path === LIVE_BASELINE_ENDPOINT || path === LIVE_GUARDED_ENDPOINT)) {
       if (!client || !config.apiKey) return fail(res, 503, { kind: 'not-configured', message: 'The local server has no Anthropic API key (.env).' })
       let body: unknown
       try {
@@ -94,20 +108,23 @@ export function createLocalServer(config: ServerConfig, log: (line: string) => v
         if (err instanceof BadRequest) return fail(res, 400, { kind: 'bad-request', message: err.message, problems: [err.message] })
         throw err
       }
-      const problems = baselineRequestProblems(body)
-      if (problems.length) return fail(res, 400, { kind: 'bad-request', message: 'Invalid baseline request', problems })
-      const scenario = publicScenario((body as { scenarioId: string }).scenarioId)!
+      const guarded = path === LIVE_GUARDED_ENDPOINT
+      const problems = guarded ? guardedRequestProblems(body) : baselineRequestProblems(body)
+      if (problems.length) {
+        return fail(res, 400, { kind: 'bad-request', message: guarded ? 'Invalid guarded request' : 'Invalid baseline request', problems })
+      }
+      const request = body as Record<string, unknown>
+      const scenario = publicScenario(request.scenarioId as string)!
       const abandoned = new AbortController()
       res.on('close', () => {
         if (res.writableFinished) return
         abandoned.abort()
         log(`${req.method} ${req.url} cancelled: the browser closed the request`)
       })
-      const outcome = await askBaseline(
-        client,
-        { model: config.model, apiKey: config.apiKey, timeoutMs: config.upstreamTimeoutMs, signal: abandoned.signal },
-        scenario,
-      )
+      const options = { model: config.model, apiKey: config.apiKey, timeoutMs: config.upstreamTimeoutMs, signal: abandoned.signal }
+      const outcome = guarded
+        ? await askGuarded(client, options, scenario, toAgentDecision(request['baseline']))
+        : await askBaseline(client, options, scenario)
       return send(res, outcome.status, outcome.body)
     }
     return fail(res, 404, { kind: 'bad-request', message: `No route for ${req.method} ${path}` })

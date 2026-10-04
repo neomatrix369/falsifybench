@@ -4,13 +4,22 @@ import { request, type Server } from 'node:http'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createLocalServer } from './app'
 import { readConfig, describeConfig, DEFAULT_ANTHROPIC_MODEL } from './config'
+import { GUARDED_TOOL_NAME } from './prompt'
 import { startAnthropicStub, STUB_MODEL, type AnthropicStub } from './stub/anthropicStub'
+import { LIVE_GUARDED_ENDPOINT } from '../src/domain/live'
 
 const FAKE_KEY = 'sk-ant-test-not-a-real-key-0123456789'
 let stub: AnthropicStub
 let server: Server
 let base: string
 const logs: string[] = []
+const baselineDecision = {
+  verdict: 'proceed',
+  confidenceLabel: '80%',
+  claim: 'The evidence supports proceeding.',
+  rationale: ['EV-SALT-01 supports the claim.'],
+  nextAction: 'Check EV-SALT-01 against the specification.',
+}
 
 async function listen(s: Server): Promise<string> {
   await new Promise<void>((done) => s.listen(0, '127.0.0.1', done))
@@ -19,6 +28,8 @@ async function listen(s: Server): Promise<string> {
 const close = (s: Server) => new Promise<void>((done) => (s.closeAllConnections(), s.close(() => done())))
 const ask = (url: string, body: unknown = { scenarioId: 'EI-001' }) =>
   fetch(`${url}/api/agents/baseline`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+const askGuarded = (url: string, body: unknown = { scenarioId: 'EI-001', baseline: baselineDecision }) =>
+  fetch(`${url}${LIVE_GUARDED_ENDPOINT}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
 
 beforeAll(async () => {
   stub = await startAnthropicStub()
@@ -61,9 +72,71 @@ describe('GET /api/health', () => {
       const res = await ask(url)
       expect(res.status).toBe(503)
       expect((await res.json()).error.kind).toBe('not-configured')
+      expect((await askGuarded(url)).status).toBe(503)
     } finally {
       await close(keyless)
     }
+  })
+})
+
+describe('POST /api/agents/guarded against the Messages stub', () => {
+  it('returns a guarded decision with code-applied guard rules and live-call facts', async () => {
+    const res = await askGuarded(base)
+    expect(res.status).toBe(200)
+    const { response } = await res.json()
+    expect(response).toMatchObject({
+      agentLabel: `Evidence guardrail (${STUB_MODEL})`,
+      verdict: 'investigate',
+      confidenceLabel: '80%',
+      guard: {
+        untrustedSourceIds: ['EV-SUP-01'],
+        openGaps: ['Not every requirement is directly measured.'],
+        overrides: ['Guard rule: EV-SUP-01 contains instructions addressed to the reader, so it is treated as untrusted.'],
+      },
+      live: { provider: 'anthropic', model: STUB_MODEL, requestId: expect.stringMatching(/^req_stub_/), endpoint: LIVE_GUARDED_ENDPOINT },
+    })
+    expect(response.live.validatedFields).toEqual(['verdict', 'confidenceLabel', 'claim', 'rationale', 'nextAction', 'untrustedSourceIds', 'openGaps'])
+    expect(stub.calls.at(-1)).toMatchObject({ toolChoice: { type: 'tool', name: GUARDED_TOOL_NAME }, prompt: expect.stringContaining('Baseline agent decision:') })
+  })
+
+  it('uses the public fixture guarded-agent label for a live LAB-001 response', async () => {
+    const res = await askGuarded(base, { scenarioId: 'LAB-001', baseline: baselineDecision })
+    expect(res.status).toBe(200)
+    expect((await res.json()).response.agentLabel).toBe(`Action guard (${STUB_MODEL})`)
+  })
+
+  it('rejects a malformed baseline as a bad request before calling the provider', async () => {
+    const before = stub.calls.length
+    const res = await askGuarded(base, { scenarioId: 'EI-001', baseline: { ...baselineDecision, verdict: 'approve' } })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatchObject({
+      kind: 'bad-request',
+      message: 'Invalid guarded request',
+      problems: ['baseline verdict must be one of proceed, investigate, abstain (got "approve")'],
+    })
+    expect(stub.calls.length).toBe(before)
+  })
+
+  it('rejects an unknown untrusted ID as invalid model output', async () => {
+    stub.setMode('invalid-guard-id')
+    const res = await askGuarded(base)
+    expect(res.status).toBe(502)
+    expect((await res.json()).error).toMatchObject({
+      kind: 'validation',
+      problems: ['untrustedSourceIds[0] must be an evidence ID in this scenario'],
+    })
+  })
+
+  it('refuses a non-local Origin before calling the provider', async () => {
+    const before = stub.calls.length
+    const res = await fetch(`${base}${LIVE_GUARDED_ENDPOINT}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+      body: JSON.stringify({ scenarioId: 'EI-001', baseline: baselineDecision }),
+    })
+    expect(res.status).toBe(403)
+    expect((await res.json()).error.message).toMatch(/Origin "https:\/\/evil\.example" is not this machine/)
+    expect(stub.calls.length).toBe(before)
   })
 })
 
@@ -180,6 +253,6 @@ describe('POST /api/agents/baseline against the Messages stub', () => {
   })
 
   it('answers unknown routes with 404', async () => {
-    expect((await fetch(`${base}/api/agents/guarded`, { method: 'POST' })).status).toBe(404)
+    expect((await fetch(`${base}/api/agents/unknown`, { method: 'POST' })).status).toBe(404)
   })
 })

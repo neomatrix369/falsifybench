@@ -14,6 +14,7 @@ export interface PublicScenario {
   question: string
   task: string
   input: string
+  guardedAgentLabel: string
   evidence: Pick<EvidenceItem, 'id' | 'kind' | 'title' | 'finding' | 'excerpt'>[]
 }
 
@@ -26,6 +27,7 @@ function toPublic(s: Scenario): PublicScenario {
     question: s.question,
     task: s.brief.task,
     input: s.brief.input,
+    guardedAgentLabel: s.guardedAgentLabel,
     evidence: s.evidence.map(({ id, kind, title, finding, excerpt }) => ({ id, kind, title, finding, ...(excerpt ? { excerpt } : {}) })),
   }
 }

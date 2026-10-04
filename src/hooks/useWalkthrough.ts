@@ -98,14 +98,45 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, seams:
   useEffect(() => {
     if (!needsEvaluation || unsealed || (isLive && !liveBaseline)) return
     let cancelled = false
+    let guardedAbort: AbortController | null = null
     const requested = clock()
     setUnseal({ requestedAt: requested.toISOString() })
     const answers: Promise<Record<AgentPath, AgentResponse>> = liveBaseline
-      ? runner.run('guarded', scenario).then((guarded) => ({ baseline: liveBaseline, guarded }))
+      ? (() => {
+          guardedAbort = new AbortController()
+          const guardedTimeout = () => {
+            guardedAbort?.abort()
+            return new LiveAgentError({
+              kind: 'timeout',
+              message: `The live guarded agent for ${scenario.id} did not answer within ${LIVE_BASELINE_TIMEOUT_MS / 1000} s`,
+            })
+          }
+          return withTimeout(
+            runner.run('guarded', scenario, { baseline: liveBaseline, signal: guardedAbort.signal }),
+            LIVE_BASELINE_TIMEOUT_MS,
+            guardedTimeout,
+          ).then((guarded) => {
+            if (!guarded.live || !guarded.guard) {
+              throw new LiveAgentError({
+                kind: 'validation',
+                message: 'The live runner returned a guarded answer without live-call facts and guard rules',
+                problems: [!guarded.live ? 'live: missing' : 'guard: missing'],
+              })
+            }
+            return { baseline: liveBaseline, guarded }
+          })
+        })()
       : runAgents(runner, scenario)
-    const loading = Promise.all([scenario.evaluation.unseal(), answers, grader ?? (isLive ? loadRuleGrader() : loadFixtureGrader())])
-    withTimeout(loading, UNSEAL_TIMEOUT_MS, () => new UnsealTimeoutError(scenario.id, UNSEAL_TIMEOUT_MS))
-      .then(([value, responses, grading]) => {
+    const evaluationAndGrader = withTimeout(
+      Promise.all([scenario.evaluation.unseal(), grader ?? (isLive ? loadRuleGrader() : loadFixtureGrader())]),
+      UNSEAL_TIMEOUT_MS,
+      () => new UnsealTimeoutError(scenario.id, UNSEAL_TIMEOUT_MS),
+    ).catch((err: unknown) => {
+      guardedAbort?.abort()
+      throw err
+    })
+    Promise.all([evaluationAndGrader, answers])
+      .then(([[value, grading], responses]) => {
         if (cancelled) return
         const graded = gradeRun(grading, scenario, value, responses)
         const problems = evaluationProblems(scenario, value, graded)
@@ -121,6 +152,7 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, seams:
       })
     return () => {
       cancelled = true
+      guardedAbort?.abort()
     }
   }, [needsEvaluation, unsealed, scenario, clock, runner, grader, isLive, liveBaseline, runId])
 

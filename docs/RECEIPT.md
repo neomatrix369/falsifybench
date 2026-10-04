@@ -8,17 +8,17 @@ Written when both answers are scripted fixtures and the fixture grader (hand sco
 
 `receiptVersion: "1.0"`, `mode`, `provenance`, `provenanceLabel`, `scenario`, `rubricVersion`, `runId`, `startedAt`, `recordedAt`, `agents`, `agentExecution: "scripted_fixture"`, `evidenceIds`, `stageEvents`, `verdicts`, `scores`, `guardedNextAction`, `unsafeApprovalPrevented`.
 
-## v1.1: live baseline or another grader
+## v1.1: live agents or another grader
 
-Written when the baseline came from a live model (local runs only, `npm run dev`) or a grader other than the fixture grader scored the run. Every v1.0 field keeps its name and meaning, with these changes:
+Written when a live model answered (local runs only, `npm run dev`) or a grader other than the fixture grader scored the run. When both agents are live, `agentExecution` is `live_agents`. Every v1.0 field keeps its name and meaning, with these changes:
 
 | Field | v1.1 |
 |---|---|
 | `receiptVersion` | `"1.1"` |
-| `agentExecution` | `"live_baseline"` when the baseline was live, otherwise `"scripted_fixture"`. The guarded agent is always scripted until Step 4 |
-| `agents.baseline` | The label of the agent that answered, e.g. `Baseline agent (live: claude-sonnet-4-6)` |
+| `agentExecution` | `"live_agents"` when both agents were live; `"live_baseline"` or `"live_guarded"` for a single live answer; otherwise `"scripted_fixture"` |
+| `agents` | Labels of the agents that answered, e.g. `Baseline agent (live: claude-sonnet-4-6)` and `Evidence guardrail (claude-sonnet-4-6)` |
 | `rubricVersion` | The grader's version, e.g. `RULE-GRADER-1.0` |
 | `grader` (new) | `{ id, version }`: `id` is `rule-grader`, `fixture-grader` or `custom` |
-| `liveCalls` (new) | `{ baseline?: { provider: "anthropic", model, requestId, latencyMs, validatedFields } }`, empty when no answer was live. `model` and `requestId` are what the provider reported; `latencyMs` is the time the local server waited for it; `validatedFields` lists the fields checked before use |
+| `liveCalls` (new) | One optional entry per live agent: `{ baseline?: { provider: "anthropic", model, requestId, latencyMs, validatedFields }, guarded?: { provider: "anthropic", model, requestId, latencyMs, validatedFields, guard } }`. The guarded call's `guard` records untrusted source IDs, open gaps and applied code-rule overrides. `model` and `requestId` are what the provider reported; `latencyMs` is the time the local server waited for it; `validatedFields` lists the fields checked before use |
 
 The receipt never contains the API key, the prompt or the raw model output. `src/domain/receipt.test.ts` covers both versions.

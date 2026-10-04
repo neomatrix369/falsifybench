@@ -1,13 +1,17 @@
-import type { AgentResponse, LiveCall } from './types'
+import type { AgentResponse, GuardReport, LiveCall } from './types'
 
 /** Live model calls run only on a local machine, through the local server in `server/`. The deployed static site never makes one. */
 export const LIVE_HEALTH_ENDPOINT = '/api/health'
 export const LIVE_BASELINE_ENDPOINT = '/api/agents/baseline'
+export const LIVE_GUARDED_ENDPOINT = '/api/agents/guarded'
 export const LIVE_HEALTH_RETRY_MS = 2000
 /** How long the browser waits for the live baseline before it shows the timeout card. */
 export const LIVE_BASELINE_TIMEOUT_MS = 30_000
 /** How long the local server waits for the provider; shorter than the browser's wait so its own error arrives first. */
 export const LIVE_UPSTREAM_TIMEOUT_MS = 25_000
+
+export const liveGuardedAgentLabel = (declared: string, model: string) =>
+  `${declared.replace(/ \(simulated\)$/, '')} (${model})`
 
 export interface LiveHealth {
   configured: boolean
@@ -42,6 +46,13 @@ export interface LiveErrorBody {
 /** Success body of `POST /api/agents/baseline`. The browser adds `roundTripMs`. */
 export interface LiveBaselineBody {
   response: Omit<AgentResponse, 'live'> & { live: Omit<LiveCall, 'roundTripMs'> }
+}
+
+export interface LiveGuardedBody {
+  response: Omit<AgentResponse, 'live' | 'guard'> & {
+    guard: GuardReport
+    live: Omit<LiveCall, 'roundTripMs'>
+  }
 }
 
 export const LIVE_FAILURE_LABEL: Record<LiveFailureKind, string> = {

@@ -64,7 +64,7 @@ The Benchmark view splits into **Simple** and **Detailed** tabs (`TabBar` in `sr
 
 - **Tone mapping**: each column carries one of five tones — `pending` (rule/ink-3), `current` (primary), `done` (ok), `issue` (warn: audit findings, flagged steps) and `failure` (risk: the unsafe baseline). Status is always text as well as colour and icon (`Failed · unsafe`, `N issues found`, `Done`, `Now`, `Not yet`). `Failed · unsafe` (red) is reserved for an unsafe approval; any other wrong verdict shows `Failed` in amber.
 - **Sealed truth**: evaluation, graded run and receipt render only once the run reaches Audit (`state.reached >= AUDIT_STAGE_INDEX`), so Reset and tab switches cannot leak them early.
-- **Live baseline**: when the Agent selector is on Live, the Baseline column waits on the model call (`Waiting for the live baseline model…`), then shows that answer with a `Live: <model>` note until Audit replaces it with the graded answer; the score footer names the grader (`Graded by <label>`).
+- **Live agents**: when the Agent selector is on Live, the Baseline column waits on the baseline call (`Waiting for the live baseline model…`), and the Guarded column shows the guarded model and any applied code rules; the score footer names the grader (`Graded by <label>`).
 - **Details links**: every reached column ends with a `Details: <step>` link that opens the same stage in the Detailed tab; the final column also links the full receipt and the generated score page.
 - **Score**: the Score column reads `baseline → guarded` totals plus the `formatDelta` delta; below the journey a ruled table breaks the score into the four rubric metrics, with values under 50 in `risk` (plus an sr-only `(failing)`).
 

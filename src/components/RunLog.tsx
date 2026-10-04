@@ -45,7 +45,7 @@ interface Props {
 
 function nowLine({ state, unsealing, failure, awaitingLive }: Omit<Props, 'entries'>, countdown: number | null): string | null {
   if (state.status === 'idle') return null
-  if (failure === 'retry-live') return 'Stopped: the live baseline call failed and no answer was used. Retry asks the model again; Reset starts a new run.'
+  if (failure === 'retry-live') return 'Stopped: a live agent call failed and no answer was used. Retry reruns both live agents; Reset starts a new run.'
   if (failure === 'fix-data') return 'Stopped: the sealed evaluation failed its data checks and was not used. Reload and Reset load the same data.'
   if (failure === 'retry') return 'Stopped: the sealed evaluation timed out. Reset retries it; reload the page if it keeps timing out.'
   if (failure) return 'Stopped: the sealed evaluation failed to load. Reload the page to retry; Reset alone repeats the cached failure.'

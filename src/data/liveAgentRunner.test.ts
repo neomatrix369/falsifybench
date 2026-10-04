@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
+import { toAgentDecision } from '../domain/agentResponseCheck'
 import { LiveAgentError } from '../domain/live'
 import { liveAnswer } from '../domain/liveFixtures.test-helpers'
 import { ei001 } from './ei001'
-import { createLiveAgentRunner, liveBaselineProblems, probeLiveHealth } from './liveAgentRunner'
+import { LIVE_GUARDED_ENDPOINT } from '../domain/live'
+import { createLiveAgentRunner, liveBaselineProblems, liveGuardedProblems, probeLiveHealth } from './liveAgentRunner'
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 const serverBody = () => {
@@ -10,6 +12,21 @@ const serverBody = () => {
   const wire: Partial<NonNullable<typeof live>> = { ...live! }
   delete wire.roundTripMs
   return { response: { ...rest, live: wire } }
+}
+const guardedServerBody = () => {
+  const { response } = serverBody()
+  return {
+    response: {
+      ...response,
+      agentLabel: 'Evidence guardrail (claude-stub-1)',
+      guard: { untrustedSourceIds: ['EV-SUP-01'], openGaps: [], overrides: [] },
+      live: {
+        ...response.live,
+        endpoint: LIVE_GUARDED_ENDPOINT,
+        validatedFields: [...(response.live!.validatedFields ?? []), 'untrustedSourceIds', 'openGaps'],
+      },
+    },
+  }
 }
 function runnerWith(reply: Response | Error) {
   const fetch = vi.fn(async () => {
@@ -45,12 +62,36 @@ describe('liveAgentRunner', () => {
     expect(fetch).toHaveBeenCalledWith('/api/agents/baseline', expect.objectContaining({ signal: abandon.signal }))
   })
 
-  it('keeps the guarded agent scripted: no request', async () => {
+  it('requires a baseline decision before calling the guarded endpoint', async () => {
     const { runner, fetch } = runnerWith(json(500, {}))
-    const guarded = await runner.run('guarded', ei001)
+    const err = await failure(runner.run('guarded', ei001))
+    expect(err).toMatchObject({ kind: 'bad-request', message: 'The guarded live agent requires the live baseline decision.' })
     expect(fetch).not.toHaveBeenCalled()
-    expect(guarded.agentLabel).toBe('Evidence guardrail (simulated)')
-    expect(guarded.live).toBeUndefined()
+  })
+
+  it('posts only the scenario ID and normalized baseline decision, then returns validated guard facts', async () => {
+    const baseline = liveAnswer({ claim: '  The baseline claim.  ', rationale: [' EV-SALT-01 supports this. '] })
+    const { runner, fetch } = runnerWith(json(200, guardedServerBody()))
+    const guarded = await runner.run('guarded', ei001, { baseline })
+    expect(fetch).toHaveBeenCalledWith(LIVE_GUARDED_ENDPOINT, expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ scenarioId: 'EI-001', baseline: toAgentDecision(baseline) }),
+    }))
+    expect(guarded).toMatchObject({
+      agentLabel: 'Evidence guardrail (claude-stub-1)',
+      guard: { untrustedSourceIds: ['EV-SUP-01'], openGaps: [], overrides: [] },
+      live: { endpoint: LIVE_GUARDED_ENDPOINT, model: 'claude-stub-1' },
+    })
+  })
+
+  it('rejects invalid guard data in the guarded response', async () => {
+    const body = guardedServerBody()
+    body.response.guard.untrustedSourceIds = ['EV-UNKNOWN-01']
+    const { runner } = runnerWith(json(200, body))
+    const err = await failure(runner.run('guarded', ei001, { baseline: liveAnswer() }))
+    expect(err.kind).toBe('validation')
+    expect(err.problems).toContain('guard.untrustedSourceIds[0] must be an evidence ID in this scenario')
+    expect(liveGuardedProblems(body, ei001)).toContain('guard.untrustedSourceIds[0] must be an evidence ID in this scenario')
   })
 
   it('turns a server error body into a LiveAgentError with its kind, statuses and request ID', async () => {

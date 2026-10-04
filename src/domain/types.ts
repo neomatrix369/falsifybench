@@ -53,8 +53,15 @@ export interface AgentResponse {
   claim: string
   rationale: string[]
   nextAction: string
+  guard?: GuardReport
   /** Present only when a live model produced this answer; scripted fixtures never carry it. */
   live?: LiveCall
+}
+
+export interface GuardReport {
+  untrustedSourceIds: string[]
+  openGaps: string[]
+  overrides: string[]
 }
 
 /** What actually happened on one live model call, as reported by the local server and measured by the browser. */
@@ -201,13 +208,13 @@ export type AgentPath = 'baseline' | 'guarded'
 
 /**
  * Produces one agent's answer for a scenario from its public evidence. `scriptedAgentRunner` replays fixed answers;
- * `liveAgentRunner` asks a model for the baseline through the local server (local runs only).
+ * `liveAgentRunner` asks a model for both answers through the local server (local runs only).
  */
 export interface AgentRunner {
-  /** `live` runners call a model: the walkthrough asks for the baseline at the Baseline stage and holds Next step until it answers. Default `scripted`. */
+  /** `live` runners call a model: the walkthrough asks for the baseline and guarded answers at their stages. Default `scripted`. */
   readonly execution?: 'scripted' | 'live'
   /** `signal` aborts an abandoned call (reset, scenario switch, timeout); scripted runners can ignore it. */
-  run(agent: 'baseline' | 'guarded', scenario: Scenario, options?: { signal?: AbortSignal }): Promise<AgentResponse>
+  run(agent: 'baseline' | 'guarded', scenario: Scenario, options?: { baseline?: AgentResponse; signal?: AbortSignal }): Promise<AgentResponse>
 }
 
 export type GraderId = 'fixture-grader' | 'rule-grader' | 'custom'

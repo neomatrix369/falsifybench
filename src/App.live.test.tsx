@@ -5,7 +5,7 @@ import App from './App'
 import { scriptedAgentRunner } from './data/scriptedAgentRunner'
 import { LIVE_HEALTH_RETRY_MS, LiveAgentError, type LiveHealth } from './domain/live'
 import { liveAnswer } from './domain/liveFixtures.test-helpers'
-import type { AgentResponse, AgentRunner } from './domain/types'
+import type { AgentResponse, AgentRunner, ScenarioSource } from './domain/types'
 
 const deps = { clock: () => new Date('2026-01-01T12:00:00.000Z'), createRunId: () => 'RUN-LIVE' }
 const HIDDEN = [/highest-stress/i, /zero ultrasonic/i]
@@ -14,6 +14,24 @@ const btn = (name: RegExp) => screen.getByRole('button', { name })
 const log = () => screen.getByRole('log', { name: /run log entries/i })
 const configured: LiveHealth = { configured: true, provider: 'anthropic', model: 'claude-sonnet-4-6' }
 
+function liveGuardAnswer(): AgentResponse {
+  const answer = liveAnswer()
+  return {
+    ...answer,
+    agentLabel: 'Evidence guardrail (claude-stub-1)',
+    guard: {
+      untrustedSourceIds: ['EV-SUP-01'],
+      openGaps: ['Not every requirement is directly measured.'],
+      overrides: ['Guard rule: EV-SUP-01 contains instructions addressed to the reader, so it is treated as untrusted.'],
+    },
+    live: {
+      ...answer.live!,
+      endpoint: '/api/agents/guarded',
+      validatedFields: [...answer.live!.validatedFields, 'untrustedSourceIds', 'openGaps'],
+    },
+  }
+}
+
 function liveRunnerReplying(...replies: (AgentResponse | Error)[]) {
   const baseline = vi.fn(async () => {
     const reply = replies.shift()
@@ -21,21 +39,30 @@ function liveRunnerReplying(...replies: (AgentResponse | Error)[]) {
     if (reply instanceof Error) throw reply
     return reply
   })
+  const guarded = vi.fn(async () => liveGuardAnswer())
   const runner: AgentRunner = {
     execution: 'live',
-    run: (agent, scenario) => (agent === 'guarded' ? scriptedAgentRunner.run('guarded', scenario) : baseline()),
+    run: (agent) => (agent === 'guarded' ? guarded() : baseline()),
   }
-  return { runner, baseline }
+  return { runner, baseline, guarded }
 }
 
-async function openLive(runner: AgentRunner, initialId = 'MAT-001') {
+async function openLive(runner: AgentRunner, initialId = 'MAT-001', source?: ScenarioSource) {
   const user = userEvent.setup()
-  render(<App deps={deps} initialId={initialId} liveRunner={runner} probeLive={async () => configured} />)
+  render(
+    <App
+      deps={deps}
+      initialId={initialId}
+      {...(source ? { source } : {})}
+      liveRunner={runner}
+      probeLive={async () => configured}
+    />,
+  )
   await screen.findByRole('button', { name: /run benchmark/i })
-  const live = await screen.findByRole('radio', { name: /live baseline — available/i })
+  const live = await screen.findByRole('radio', { name: /live agents — available/i })
   expect(live).toBeEnabled()
   await user.click(live)
-  await screen.findByRole('radio', { name: /live baseline — active/i })
+  await screen.findByRole('radio', { name: /live agents — active/i })
   return user
 }
 
@@ -50,7 +77,7 @@ describe('Live agent selector', () => {
         await Promise.resolve()
       })
       await act(() => vi.advanceTimersByTimeAsync(LIVE_HEALTH_RETRY_MS))
-      expect(screen.getByRole('radio', { name: /live baseline — available/i })).toBeEnabled()
+      expect(screen.getByRole('radio', { name: /live agents — available/i })).toBeEnabled()
       expect(probeLive).toHaveBeenCalledTimes(2)
     } finally {
       vi.useRealTimers()
@@ -90,38 +117,39 @@ describe('Live agent selector', () => {
 
   it('stays unavailable without a local server, and when the server has no key', async () => {
     const { unmount } = render(<App deps={deps} initialId="MAT-001" />)
-    expect(await screen.findByRole('radio', { name: /live agent — unavailable/i })).toBeDisabled()
+    expect(await screen.findByRole('radio', { name: /live agents — unavailable/i })).toBeDisabled()
     unmount()
     render(<App deps={deps} initialId="MAT-001" probeLive={async () => ({ ...configured, configured: false, reason: 'No Anthropic API key in the local server environment. Add ANTHROPIC_API_KEY to .env and restart npm run dev.' })} />)
     await waitFor(() => expect(screen.getAllByText(/the local server is running but no Anthropic API key in the local server environment\. Add ANTHROPIC_API_KEY to \.env and restart npm run dev\./i).length).toBeGreaterThan(0))
-    expect(screen.getByRole('radio', { name: /live agent — unavailable/i })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: /live agents — unavailable/i })).toBeDisabled()
   })
 })
 
-describe('Live baseline run (injected runner)', () => {
-  it('shows a failure with Retry, then the live answer, graded by the rule grader, in a v1.1 receipt', async () => {
-    const { runner, baseline } = liveRunnerReplying(
+describe('Live agent run (injected runner)', () => {
+  it('shows a failure with Retry, then both live answers, graded by the rule grader, in a v1.1 receipt', async () => {
+    const { runner, baseline, guarded } = liveRunnerReplying(
       new LiveAgentError({ kind: 'upstream', message: 'Anthropic returned HTTP 500: stub', httpStatus: 502, upstreamStatus: 500, requestId: 'req_err_1' }),
       liveAnswer(),
     )
     const user = await openLive(runner)
     await user.click(btn(/run benchmark/i))
-    expect(within(log()).getByText(/live baseline \(claude-sonnet-4-6\) via the local server; guarded scripted/i)).toBeInTheDocument()
+    expect(within(log()).getByText(/both agents live via the local server \(claude-sonnet-4-6\)/i)).toBeInTheDocument()
     await user.click(btn(/next step/i))
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Anthropic returned HTTP 500: stub')
-    expect(alert).toHaveTextContent(/the live baseline call failed, so no answer was used/i)
-    expect(within(log()).getByText('Live baseline call failed')).toBeInTheDocument()
+    expect(alert).toHaveTextContent(/a live agent call failed, so no answer was used/i)
+    expect(within(log()).getByText('Live agent call failed')).toBeInTheDocument()
     expect(log()).toHaveTextContent(/req_err_1/)
-    expect(screen.getByText(/^Stopped: the live baseline call failed/)).toBeInTheDocument()
+    expect(screen.getByText(/^Stopped: a live agent call failed/)).toBeInTheDocument()
     expect(leaked()).toBe(false)
 
     await user.click(within(alert).getByRole('button', { name: /retry live call/i }))
     expect(await screen.findByText('Live model run — claude-stub-1 via the local server')).toBeInTheDocument()
     expect(baseline).toHaveBeenCalledTimes(2)
+    expect(guarded).not.toHaveBeenCalled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getAllByText(/only the baseline is live; the guarded agent stays a scripted fixture until step 4/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/both agents are live through the local server; the sealed answer key remains hand-written/i).length).toBeGreaterThan(0)
     expect(log()).toHaveTextContent(/Request IDreq_stub_0001/)
     expect(log()).toHaveTextContent(/412 ms at the provider; 431 ms browser round trip/)
     expect(log()).not.toHaveTextContent(/scripted fixture, no model called/)
@@ -131,9 +159,15 @@ describe('Live baseline run (injected runner)', () => {
     await waitFor(() => expect(btn(/next step/i)).not.toHaveAttribute('aria-disabled', 'true'))
     await user.click(btn(/next step/i))
     await waitFor(() => expect(screen.getAllByText(/graded by rule grader RULE-GRADER-1\.0/i).length).toBeGreaterThan(0))
+    expect(screen.getAllByText('Live model run — claude-stub-1 via the local server').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Guard rules applied').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/EV-SUP-01 contains instructions addressed to the reader/).length).toBeGreaterThan(0)
+    expect(log()).toHaveTextContent(/Guard rules applied/)
+    expect(guarded).toHaveBeenCalledTimes(1)
     expect(log()).toHaveTextContent(/Graded byRule grader RULE-GRADER-1\.0/)
     await user.click(btn(/next step/i))
-    expect(await screen.findByText(/live baseline \(claude-stub-1\); guarded scripted fixture/i)).toBeInTheDocument()
+    expect(await screen.findByText(/live agents \(claude-stub-1; claude-stub-1\)/i)).toBeInTheDocument()
+    expect(screen.getByText('Guard report')).toBeInTheDocument()
     expect(screen.getByText(/rule-grader · RULE-GRADER-1\.0/)).toBeInTheDocument()
     expect(baseline).toHaveBeenCalledTimes(2)
   })
@@ -155,6 +189,72 @@ describe('Live baseline run (injected runner)', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('times out a guarded call separately and retry reruns both live agents', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const baselineAnswers = [liveAnswer(), liveAnswer()]
+      const retriedBaseline = baselineAnswers[1]
+      const baseline = vi.fn(async () => baselineAnswers.shift()!)
+      const signals: AbortSignal[] = []
+      let guardedAttempts = 0
+      const guarded = vi.fn((options?: { baseline?: AgentResponse; signal?: AbortSignal }) => {
+        guardedAttempts += 1
+        if (options?.signal) signals.push(options.signal)
+        return guardedAttempts === 1 ? new Promise<AgentResponse>(() => {}) : Promise.resolve(liveGuardAnswer())
+      })
+      const runner: AgentRunner = {
+        execution: 'live',
+        run: (agent, _scenario, options) => (agent === 'guarded' ? guarded(options) : baseline()),
+      }
+      const user = await openLive(runner)
+      await user.click(btn(/run benchmark/i))
+      await user.click(btn(/next step/i))
+      await waitFor(() => expect(baseline).toHaveBeenCalledTimes(1))
+      await user.click(btn(/next step/i))
+      await waitFor(() => expect(guarded).toHaveBeenCalledTimes(1))
+      await vi.advanceTimersByTimeAsync(30_000)
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent(/live guarded agent.*did not answer within 30 s/i)
+      expect(within(alert).getByRole('button', { name: /retry live call/i })).toBeInTheDocument()
+      expect(signals[0].aborted).toBe(true)
+      expect(log()).toHaveTextContent(/Live guarded agent call failed/)
+
+      await user.click(within(alert).getByRole('button', { name: /retry live call/i }))
+      await waitFor(() => expect(baseline).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(guarded).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+      expect(guarded.mock.calls[1][0]?.baseline).toBe(retriedBaseline)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('aborts the guarded call when evaluation unsealing rejects', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const failing = { ...mat001, evaluation: { unseal: () => Promise.reject(new Error('chunk failed')) } }
+    const baseline = vi.fn(async () => liveAnswer())
+    let guardedSignal: AbortSignal | undefined
+    const guarded = vi.fn((options?: { signal?: AbortSignal }) => {
+      guardedSignal = options?.signal
+      return new Promise<AgentResponse>(() => {})
+    })
+    const runner: AgentRunner = {
+      execution: 'live',
+      run: (agent, _scenario, options) => (agent === 'guarded' ? guarded(options) : baseline()),
+    }
+    const source: ScenarioSource = { loadScenario: async () => failing }
+    const user = await openLive(runner, 'MAT-001', source)
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    await waitFor(() => expect(baseline).toHaveBeenCalledTimes(1))
+    await user.click(btn(/next step/i))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('chunk failed')
+    expect(guarded).toHaveBeenCalledTimes(1)
+    expect(guardedSignal?.aborted).toBe(true)
   })
 
   it('cancels an abandoned live call when the walkthrough is reset', async () => {

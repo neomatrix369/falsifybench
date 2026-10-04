@@ -1,6 +1,6 @@
 import { STAGES } from './stages'
 import { compareScores } from './scoring'
-import type { DataMode, GradedRun, GraderId, MetricScores, ProvenanceStatus, Scenario, ScenarioEvaluation, StageEvent, Verdict } from './types'
+import type { DataMode, GradedRun, GraderId, GuardReport, MetricScores, ProvenanceStatus, Scenario, ScenarioEvaluation, StageEvent, Verdict } from './types'
 
 export type Clock = () => Date
 export type RunIdFactory = () => string
@@ -49,18 +49,19 @@ export interface ReceiptLiveCall {
   requestId: string | null
   latencyMs: number
   validatedFields: string[]
+  guard?: GuardReport
 }
 
 /**
  * v1.1 = v1.0 plus two fields, written when a live model answered (local runs only) or a grader other than the fixture
- * grader scored the run. `agentExecution` says which agent was live, `grader` names who scored, and `liveCalls` holds
- * one entry per live answer. Every v1.0 field keeps its meaning; `agents.baseline` is the label of the agent that answered.
+ * grader scored the run. `agentExecution` says which agents were live, `grader` names who scored, and `liveCalls` holds
+ * one entry per live answer. Every v1.0 field keeps its meaning; `agents` names the agents that answered.
  */
 export interface BenchmarkReceiptV11 extends ReceiptCore {
   receiptVersion: '1.1'
-  agentExecution: 'scripted_fixture' | 'live_baseline'
+  agentExecution: 'scripted_fixture' | 'live_baseline' | 'live_guarded' | 'live_agents'
   grader: { id: GraderId; version: string }
-  liveCalls: { baseline?: ReceiptLiveCall }
+  liveCalls: { baseline?: ReceiptLiveCall; guarded?: ReceiptLiveCall & { guard: GuardReport } }
 }
 
 export type BenchmarkReceipt = BenchmarkReceiptV1 | BenchmarkReceiptV11
@@ -137,16 +138,36 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
     guardedNextAction: answers.guarded.nextAction,
     unsafeApprovalPrevented: unsafeApprovalPrevented(answers, evaluation),
   }
-  const live = answers.baseline.live
-  if (!live && run.grader.id === 'fixture-grader') return v1
+  const baselineLive = answers.baseline.live
+  const guardedLive = answers.guarded.live
+  if (!baselineLive && !guardedLive && run.grader.id === 'fixture-grader') return v1
+  if (guardedLive && !answers.guarded.guard) throw new IncompleteRunError('A live guarded answer is missing its guard report.')
   return {
     ...v1,
     receiptVersion: '1.1',
-    agents: { baseline: answers.baseline.agentLabel, guarded: scenario.guardedAgentLabel },
-    agentExecution: live ? 'live_baseline' : 'scripted_fixture',
+    agents: { baseline: answers.baseline.agentLabel, guarded: answers.guarded.agentLabel },
+    agentExecution: baselineLive && guardedLive ? 'live_agents' : baselineLive ? 'live_baseline' : guardedLive ? 'live_guarded' : 'scripted_fixture',
     grader: { id: run.grader.id, version: rubricVersion },
-    liveCalls: live
-      ? { baseline: { provider: live.provider, model: live.model, requestId: live.requestId, latencyMs: live.latencyMs, validatedFields: [...live.validatedFields] } }
-      : {},
+    liveCalls: {
+      ...(baselineLive
+        ? { baseline: { provider: baselineLive.provider, model: baselineLive.model, requestId: baselineLive.requestId, latencyMs: baselineLive.latencyMs, validatedFields: [...baselineLive.validatedFields] } }
+        : {}),
+      ...(guardedLive
+        ? {
+            guarded: {
+              provider: guardedLive.provider,
+              model: guardedLive.model,
+              requestId: guardedLive.requestId,
+              latencyMs: guardedLive.latencyMs,
+              validatedFields: [...guardedLive.validatedFields],
+              guard: {
+                untrustedSourceIds: [...answers.guarded.guard!.untrustedSourceIds],
+                openGaps: [...answers.guarded.guard!.openGaps],
+                overrides: [...answers.guarded.guard!.overrides],
+              },
+            },
+          }
+        : {}),
+    },
   }
 }

@@ -23,7 +23,7 @@ Also, the PoC ships as a static site on devinapps.com with no server. Live agent
 | # | What | Where | How it's faked today | Real version |
 |---|---|---|---|---|
 | M1 | **Baseline agent response** | `src/data/mat001.ts:73`, `src/data/ei001.ts:65` (`baseline`) | Hand-written `AgentResponse` (verdict, confidence, claim, rationale, next action). Labelled `Baseline agent (simulated)` | A server-side model call: render the evidence into a prompt, then parse the output into a structured `AgentResponse` |
-| M2 | **Guarded agent / evidence guardrail** | `src/data/*.evaluation.ts:46-58` (`guarded`), plus `guardedAgentLabel` in the fixtures | Hand-written answer stored *inside the sealed truth*. No guardrail logic exists | A guardrail pipeline that runs over the evidence and the baseline answer: coverage check (MAT), excluding instruction-like sources (EI), and a falsification next-action. It must **not** read the sealed truth |
+| M2 | **Guarded agent / evidence guardrail** | `src/data/*.evaluation.ts:46-58` (`guarded`), plus `guardedAgentLabel` in the fixtures | Scripted runs retain the hand-written answer; local live runs use a guarded model call constrained by code rules R1–R3. The guard must not read the sealed truth | Server-side sealing and a deployed live backend; broader high-stress coverage rules |
 | M3 | **Rubric scores** (4 metrics × 2 agents) | `src/data/*.evaluation.ts:58-63` (`scoring.baseline/guarded`) | Integers assigned by hand. Only `total = round(mean)` and the delta are computed (`scoring.ts`) | A grader that computes each metric from the response against `findings`, `expectedSafeVerdict`, `sufficientNextAction` and `untrustedEvidenceIds`. Use deterministic rules where possible (e.g. `safeAction` = verdict match) and an LLM judge with a fixed rubric for the free-text metrics |
 | M4 | **Scenario source** | `src/data/scenarioSource.ts` (`syntheticScenarioSource`) | Returns objects bundled into the JS. No fetch | A `ScenarioSource` that loads from an API, file store or partner feed, with runtime schema validation of the whole `Scenario` |
 | M5 | **Partner validator** | `src/domain/provenance.ts:22-57` (`partnerScenarioValidator`) | A pure stub that checks only source metadata and provenance fields, and always returns `runnable: false` | A full schema check plus attestation. `runnable: true` for `partner_validated`. Must report all problems at once (existing rule) |
@@ -85,8 +85,9 @@ Also, the PoC ships as a static site on devinapps.com with no server. Live agent
 - Non-determinism: the walkthrough shows one sample, and the score aggregates N.
 
 ### Step 4: Real guardrail (the guarded agent)
-- Implement the guardrail as code and/or a second model pass over evidence plus the baseline answer: a high-stress coverage check (MAT pattern), detection and exclusion of instruction-like evidence (EI pattern), and a forced falsifying next action.
-- It must not import the sealed evaluation, because that would be leakage. Add a test or lint rule for this.
+- **Status: Partial: live guard + code rules, local only.** The guarded model call runs on the local server; R1–R3 rules constrain its response without reading the sealed evaluation. The deployed static site remains scripted.
+- The local implementation makes a second model pass over public evidence and the live baseline decision. R3 detects instruction-like evidence; R1 prevents `proceed` when evidence is untrusted; R2 prevents `proceed` while gaps remain. The guarded prompt also requests a falsifying next action.
+- The server import-graph test forbids evaluation, score and agent-answer fixture modules. Server-side sealing and a deployed live backend remain future work.
 
 ### Step 5: Server-side sealing
 - Move `*.evaluation.ts` out of the client bundle and serve it from `GET /evaluations/:id` only after the run reaches Audit. Better still, grade on the server and return the `ScenarioEvaluation` plus `MetricScores`.
@@ -150,13 +151,14 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 | About (landing) view with honest coverage and roadmap | `src/Root.tsx`, `src/components/Landing.tsx`, `src/config/landing.ts` | Should |
 | Grading truth split from the graded answers: the sealed `*.evaluation.ts` keeps only grading truth, with scripted answers in `<id>.agents.ts` and hand scores in `<id>.scores.ts`; `AgentRunner` and `Grader` seams injected into `<App>` (defaults `scriptedAgentRunner`, `fixtureGrader`); receipts byte-identical to before (golden test) | `src/domain/types.ts`, `src/data/scriptedAgentRunner.ts`, `src/domain/fixtureGrader.ts`, `tools/receipt/receipt.golden.test.ts` | Must |
 | Rule grader for the four rubric metrics, calibrated against the hand scores (±10 per metric, ±5 total, exact safe/unsafe flags), adapted to the `Grader` seam and used for live runs | `src/domain/grader.ts`, `src/domain/ruleGraderSeam.ts`, `docs/GRADER.md` | Must |
-| Live baseline agent, local only: `server/` builds the prompt from public scenario data only (import-graph test forbids evaluation/score/answer modules), calls Claude via `@anthropic-ai/sdk`, validates the tool output into an `AgentResponse`; `liveAgentRunner` reaches it through the Vite `/api` proxy, and Live is selectable only when `/api/health` reports a key. Guarded agent stays scripted | `server/*`, `src/data/liveAgentRunner.ts`, `src/domain/live.ts`, `tools/dev-live.mjs` | Must |
+| Live baseline and guarded agents, local only: `server/` builds prompts from public scenario data only (import-graph test forbids evaluation/score/answer modules), calls Claude via `@anthropic-ai/sdk`, validates both tool outputs, and applies hard R1–R3 guard rules in code. `liveAgentRunner` reaches the endpoints through the Vite `/api` proxy; Live is selectable only when `/api/health` reports a key. The sealed answer key remains hand-written | `server/*`, `src/data/liveAgentRunner.ts`, `src/domain/live.ts`, `src/domain/guardRules.ts`, `tools/dev-live.mjs` | Must |
 | Agent-call failure path: 30 s timeout, HTTP / server / validation failures shown in the error card with Retry, `Now` line and Run log entry; post-build check fails if `sk-ant` or `ANTHROPIC_API_KEY` reaches `dist/` | `src/domain/live.ts`, `ErrorCard.tsx`, `RunLog.tsx`, `tools/check-dist-secrets.mjs` | Must |
 
 ### Partially implemented (real code, mocked inputs or PoC-only)
 
 | Capability | What's real | What's missing | MoSCoW |
 |---|---|---|---|
+| Real guardrail / guarded agent (Step 4) | Local guarded model call over public evidence and the baseline decision; R1–R3 code rules; import-graph protection | Local only; model behavior remains nondeterministic, and the sealed evaluation is still client-bundled | **Must** |
 | Rubric grading (M3) | Totals, delta, safe-verdict / unsafe-approval flags are computed; live runs are scored by the rule grader | Scripted runs and the published score still use the hand-entered metrics (`fixtureGrader`) | **Must** |
 | Sealed evaluation (M7) | Lazy load, never in the pre-Audit DOM, data-checked, timeout | Shipped in `dist/`, so anyone can fetch it; not server-held | **Must** |
 | Receipt mode/execution (M9) | Receipt v1.0 is complete for synthetic runs | `mode`/`agentExecution` are literals; no model, prompt or grader metadata; non-synthetic modes throw | **Must** |
@@ -173,8 +175,7 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 
 | Capability | MoSCoW | Note |
 |---|---|---|
-| Backend service (holds keys, runs agents, optionally grades) | **Must** | Partial: local-only `server/` (`npm run dev`) reads `ANTHROPIC_API_KEY` from a gitignored `.env` and calls Claude for the baseline; the deployed static site has no backend |
-| Real guardrail / guarded agent that never reads the sealed evaluation | **Must** | Step 4; core claim of the benchmark |
+| Backend service (holds keys, runs agents, optionally grades) | **Must** | Partial: local-only `server/` (`npm run dev`) reads `ANTHROPIC_API_KEY` from a gitignored `.env` and calls Claude for both agents; the deployed static site has no backend |
 | Server-side sealing or grading | **Must** | Step 5 |
 | Receipt v2 schema | **Must** | Live runs emit receipt v1.1 (model, request id, latency, grader); scripted runs stay byte-identical v1.0. v2 still pending |
 | Persistence of runs/receipts | **Should** | Needed to score live runs across N samples |
