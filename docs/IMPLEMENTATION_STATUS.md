@@ -149,15 +149,18 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 | Static build + deploy | `vite build`, devinapps.com | Must |
 | About (landing) view with honest coverage and roadmap | `src/Root.tsx`, `src/components/Landing.tsx`, `src/config/landing.ts` | Should |
 | Grading truth split from the graded answers: the sealed `*.evaluation.ts` keeps only grading truth, with scripted answers in `<id>.agents.ts` and hand scores in `<id>.scores.ts`; `AgentRunner` and `Grader` seams injected into `<App>` (defaults `scriptedAgentRunner`, `fixtureGrader`); receipts byte-identical to before (golden test) | `src/domain/types.ts`, `src/data/scriptedAgentRunner.ts`, `src/domain/fixtureGrader.ts`, `tools/receipt/receipt.golden.test.ts` | Must |
+| Rule grader for the four rubric metrics, calibrated against the hand scores (±10 per metric, ±5 total, exact safe/unsafe flags), adapted to the `Grader` seam and used for live runs | `src/domain/grader.ts`, `src/domain/ruleGraderSeam.ts`, `docs/GRADER.md` | Must |
+| Live baseline agent, local only: `server/` builds the prompt from public scenario data only (import-graph test forbids evaluation/score/answer modules), calls Claude via `@anthropic-ai/sdk`, validates the tool output into an `AgentResponse`; `liveAgentRunner` reaches it through the Vite `/api` proxy, and Live is selectable only when `/api/health` reports a key. Guarded agent stays scripted | `server/*`, `src/data/liveAgentRunner.ts`, `src/domain/live.ts`, `tools/dev-live.mjs` | Must |
+| Agent-call failure path: 30 s timeout, HTTP / server / validation failures shown in the error card with Retry, `Now` line and Run log entry; post-build check fails if `sk-ant` or `ANTHROPIC_API_KEY` reaches `dist/` | `src/domain/live.ts`, `ErrorCard.tsx`, `RunLog.tsx`, `tools/check-dist-secrets.mjs` | Must |
 
 ### Partially implemented (real code, mocked inputs or PoC-only)
 
 | Capability | What's real | What's missing | MoSCoW |
 |---|---|---|---|
-| Rubric grading (M3) | Totals, delta, safe-verdict / unsafe-approval flags are computed | The four metric values are entered by hand; there is no grader | **Must** |
+| Rubric grading (M3) | Totals, delta, safe-verdict / unsafe-approval flags are computed; live runs are scored by the rule grader | Scripted runs and the published score still use the hand-entered metrics (`fixtureGrader`) | **Must** |
 | Sealed evaluation (M7) | Lazy load, never in the pre-Audit DOM, data-checked, timeout | Shipped in `dist/`, so anyone can fetch it; not server-held | **Must** |
 | Receipt mode/execution (M9) | Receipt v1.0 is complete for synthetic runs | `mode`/`agentExecution` are literals; no model, prompt or grader metadata; non-synthetic modes throw | **Must** |
-| Run log agent facts (M10) | Structure and trigger facts are derived from the run | Agent/source lines are fixed "no model called / no fetch" text | **Must** (once agents are live) |
+| Run log agent facts (M10) | Structure and trigger facts are derived from the run; live runs record model, request id, latency and validation | Scripted runs keep the fixed "no model called / no fetch" text, which is true for them | **Should** |
 | Copy and contract docs (M14) | Truthful for the PoC | Labels, README, SCORE/PIPELINE docs and playbook non-goals assume scripted-only | **Must** |
 | Benchmark score on live data (M11) | Formula and gates are real | Scores only fixed answers: one sample, no variance, no per-model view | **Should** |
 | Data mode / Agent selectors (M8) | Visible, accessible, truthful "unavailable" text | Hard-coded; not bound to state or wired to a source/runner | **Should** |
@@ -170,13 +173,10 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 
 | Capability | MoSCoW | Note |
 |---|---|---|
-| Rule-based grader reproducing today's +80/+84 | **Must** | Step 2; no secrets needed |
-| Backend service (holds keys, runs agents, optionally grades) | **Must** | Static hosting can't hold secrets |
-| Live baseline agent (model call → structured `AgentResponse`) | **Must** | Step 3 |
+| Backend service (holds keys, runs agents, optionally grades) | **Must** | Partial: local-only `server/` (`npm run dev:live`) reads `ANTHROPIC_API_KEY` from a gitignored `.env` and calls Claude for the baseline; the deployed static site has no backend |
 | Real guardrail / guarded agent that never reads the sealed evaluation | **Must** | Step 4; core claim of the benchmark |
-| Agent-call failure path (timeout, Retry, Run log facts) | **Must** | Mirrors the unseal paths |
 | Server-side sealing or grading | **Must** | Step 5 |
-| Receipt v2 schema | **Must** | Needed for live receipts to be honest |
+| Receipt v2 schema | **Must** | Live runs emit receipt v1.1 (model, request id, latency, grader); scripted runs stay byte-identical v1.0. v2 still pending |
 | Persistence of runs/receipts | **Should** | Needed to score live runs across N samples |
 | Multi-sample live scoring with confidence intervals, per model | **Should** | Step 7 |
 | Full runtime schema (e.g. zod) for `Scenario` + `ScenarioEvaluation` | **Should** | Shared by the partner validator and remote sources |
