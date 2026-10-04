@@ -9,6 +9,9 @@ import { join } from 'node:path'
 if (existsSync('.env')) process.loadEnvFile('.env')
 
 const port = Number(process.env.FALSIFYBENCH_SERVER_PORT) || 8787
+// server/index.ts exits with this code when the port is taken (e.g. two npm run dev started together).
+const PORT_BUSY_EXIT = 98
+const portBusyMessage = `Port ${port} is already in use (another npm run dev or FalsifyBench server?). Stop it, or set FALSIFYBENCH_SERVER_PORT in .env, then rerun npm run dev.`
 try {
   await new Promise((resolve, reject) => {
     const probe = createServer()
@@ -19,7 +22,7 @@ try {
   })
 } catch (error) {
   if (error?.code !== 'EADDRINUSE') throw error
-  console.error(`Port ${port} is already in use (another npm run dev or FalsifyBench server?). Stop it, or set FALSIFYBENCH_SERVER_PORT in .env, then rerun npm run dev.`)
+  console.error(portBusyMessage)
   process.exit(1)
 }
 
@@ -46,7 +49,12 @@ function reportServerExit(status) {
 }
 
 server.on('error', (error) => reportServerExit(`could not start: ${error.message}`))
-server.on('exit', (code, signal) => reportServerExit(code ?? signal ?? 'signal'))
+server.on('exit', (code, signal) => {
+  if (code !== PORT_BUSY_EXIT) return reportServerExit(code ?? signal ?? 'signal')
+  if (stopping) return
+  console.error(portBusyMessage)
+  stop(1)
+})
 vite.on('error', (error) => {
   if (stopping) return
   console.error(`[vite] failed to start: ${error.message}`)
