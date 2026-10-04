@@ -200,6 +200,20 @@ export function buildRunLog(input: {
               { key: 'Verdict', value: `${VERDICT_WORD[evaluation.guarded.verdict]} · ${evaluation.guarded.confidenceLabel}` },
               { key: 'Next action', value: evaluation.guarded.nextAction },
               {
+                key: 'Decided from',
+                value: `public evidence only: ${evaluation.guardedBasis.join(', ')}. The answer key grades the result; it is not an input to either agent`,
+              },
+              ...(evaluation.turns
+                ? [
+                    {
+                      key: 'Turns',
+                      value: `baseline ${evaluation.turns.baseline.join(' → ')}; guarded ${evaluation.turns.guarded
+                        .map((t) => (t.by === 'guard' ? `${t.kind} (guard)` : t.kind))
+                        .join(' → ')}`,
+                    },
+                  ]
+                : []),
+              {
                 key: 'Expected safe verdict',
                 value: `${VERDICT_WORD[evaluation.expectedSafeVerdict]} · guarded matches: ${yesNo(evaluation.guarded.verdict === evaluation.expectedSafeVerdict)} · baseline matches: ${yesNo(scenario.baseline.verdict === evaluation.expectedSafeVerdict)}`,
               },
