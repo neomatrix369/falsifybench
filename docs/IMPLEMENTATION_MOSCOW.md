@@ -14,6 +14,7 @@ Newest first. Each entry names the items it moved; the snapshot tables below sta
 
 | Date (UTC) | PR | Items | Status change | What landed |
 |---|---|---|---|---|
+| 2026-10-04 | [#42](https://github.com/neomatrix369/falsifybench/pull/42) | FB-26 | Partial → Full (on merge) | The score page's CSS is built by `tools/score/style.ts` from the `:root` tokens in `src/index.css` and the type scale, fonts, radii and shadows in `tailwind.config.js`; labels use the app's sentence-case `.label`. `tools/score/style.test.ts` fails on uppercase or tracked labels and raw hex. `score.json` is byte-identical. |
 | 2026-10-04 | [#41](https://github.com/neomatrix369/falsifybench/pull/41) | FB-38 | Not implemented → Full (on merge) | `npm run score:check` regenerates `public/score`, restores it and exits 1 naming any stale file; it runs as `prebuild`, so `npm run build` cannot ship a stale score report. Local only; no hosted CI. |
 | 2026-10-04 | this PR | FB-25 | Partial → Full | `main` @ `7c805a7` redeployed; the live bundle matches a local build, and `tools/qa/acceptance.py` passes 72/72 against the deployed site (recorded in `docs/QA.md`). |
 | 2026-10-04 | — | FB-37, FB-39 | Should / Could → Won’t (for now) | Skipped by the user: no hosted CI and no Run-log export in this window. |
@@ -28,12 +29,12 @@ Counts after these entries (snapshot counts in the matrix below):
 | Priority | Full | Partial | Not implemented | Total |
 |---|---:|---:|---:|---:|
 | Must | 25 | 0 | 0 | 25 |
-| Should | 2 | 1 | 0 | 3 |
+| Should | 3 | 0 | 0 | 3 |
 | Could | 1 | 0 | 0 | 1 |
 | Won’t | 0 | 2 | 9 | 11 |
-| **Total** | **28** | **3** | **9** | **40** |
+| **Total** | **29** | **2** | **9** | **40** |
 
-Open: FB-26 (Should, score page design tokens), in progress in its own PR.
+Open: none in Must, Should or Could once #41 and #42 merge. What's left is Won't for now (FB-37 hosted CI, FB-39 Run log export, live agents, backend, receipt v2).
 
 ## Scope and method
 
