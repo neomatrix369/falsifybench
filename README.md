@@ -55,8 +55,12 @@ Mock mode needs no secrets and no network access.
 
 [`docs/PIPELINE.md`](docs/PIPELINE.md) follows a run from its inputs through each stage to every way it can end (complete, interrupted, failed or errored), with the known gaps.
 
+[`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) lists what is real and what is mocked or stubbed, gives each capability a status (fully, partially or not implemented) and a MoSCoW priority, and sets out the steps to replace the mocks with real agents, grading and data.
+
 ## Deferred seams (not in this PoC)
 
 - Live agent calls. Any future integration must run server-side and read its keys from environment variables. Mock mode must never require a secret.
 - A partner-data adapter. Validation is a pure stub, and partner benchmarks are never runnable until a validated source exists.
 - Editable evidence, persistence, and the full research-validity walkthrough.
+
+What each seam needs to become real, in priority order: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md).
