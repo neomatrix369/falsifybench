@@ -8,6 +8,7 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 - **Result:** all items pass on both targets; no open failures.
 - **Run-log trace pass (PRs #14–#17):** browser checks on a local Vite build of PR #15 (`e1cc7e4`), then a spot-check of the #16 fixes on `main` @ `3d84f56`, desktop Chrome at 1280 CSS px. `main` @ `c76a92c`: lint, typecheck, 48/48 tests, build, `npm run frs` SHIP 0.9913 (no gate, acceptance or alignment failures). Results are in [Run log trace](#run-log-trace); F6–F7 are below.
 - **After #18 (`npm run frs` replaced by `npm run score`):** `main` @ `97662b7` merged with this branch: lint, typecheck, 84/84 tests, build and `npm run score` pass (G = 1; guarded 94.5, baseline 12.5, mean delta +82).
+- **EI-001 default and LAB-001 pass (PR #39 branch @ `98ecb13`):** `tools/qa/acceptance.py` on a local `vite preview` build, desktop Chrome over CDP at 1280 CSS px: 72/72 pass. Not run against a deployed preview. The benchmark now opens on EI-001, so row 1 below records the earlier MAT-001 default. Results are in [Acceptance script](#acceptance-script) and [LAB-001](#lab-001-stale-robot-arm-state).
 
 ## Checklist
 
@@ -40,6 +41,19 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 | E3 | Switching benchmarks mid-run resets to Not started and focuses the new scenario heading | Pass | Pass |
 | E4 | The `EV-SUP-01` verbatim quote is visible at every stage; `Excluded · instruction` appears only from Audit on and is cleared by Reset | Pass | Pass |
 
+### LAB-001 (stale robot-arm state)
+
+| # | Check | Deployed | Local |
+|---|---|---|---|
+| M1 | LAB-001 selectable; its `What’s being tested` brief is shown | — | Pass |
+| M2 | `stale state`, `−78`, `never acknowledged` and `Decided from public evidence` absent from DOM and accessibility tree at idle, Evidence and Baseline | — | Pass |
+| M3 | Baseline `Proceed` 92% | — | Pass |
+| M4 | At Audit the source audit marks `EV-OP-01` `Excluded · stale state` | — | Pass |
+| M5 | Guarded `Investigate`, `95% confidence the commanded move is unsafe`, `Retract to Z = +5 mm`; `Decided from public evidence` with `EV-TEL-01 · EV-PROT-04 · EV-LOG-01 · EV-DECK-01`; turn tags `Rectification` and `Unsafe` | — | Pass |
+| M6 | Receipt has `LAB-001`, `MAT-RUBRIC-1.0` and EV-PROT-04, EV-OP-01, EV-TEL-01, EV-LOG-01, EV-DECK-01 | — | Pass |
+| M7 | Run log Guarded entry records `Decided from` with `EV-TEL-01, EV-PROT-04, EV-LOG-01, EV-DECK-01` and `not an input`, and `Turns` with `unsafe` and `rectification (guard)` | — | Pass |
+| M8 | Reset re-seals the audit truth | — | Pass |
+
 ### Run log trace
 
 | # | Check | MAT-001 | EI-001 |
@@ -61,6 +75,17 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 |---|---|---|
 | T1 | `predev` (`tools/check-deps.mjs`) passes on a clean install, fails fast with a reinstall hint when a package is missing or its `main` entry is missing, and `npm run dev` then starts | Pass |
 
+### Acceptance script
+
+`tools/qa/acceptance.py` drives the existing Chrome over CDP. Run `npm run build && npx vite preview --port 4173`, then `QA_URL=http://localhost:4173/ python3 tools/qa/acceptance.py`.
+
+- Every page it opens sets sessionStorage `falsifybench-intro-dismissed`, so the benchmark view opens instead of the About intro.
+- **A0 / A0b:** the benchmark view opens on EI-001 (`aria-pressed`) with its `What’s being tested` brief, and the picker order is EI-001, LAB-001, MAT-001.
+- **A–K (MAT-001):** the script then selects MAT-001 for the initial screen (A1–A11), manual run (B), trace focus (C), tab arrow keys (D), Reset (E), Auto-play timing and identical receipts (F), manual navigation stopping Auto-play (G), reduced motion (H), the Coming next card (I), a keyboard-only run (J), 1440 px overflow (K), and no third-party requests (N).
+- **L (EI-001):** the EI-001 checks above (E1–E4). Set `QA_EI=0` to skip; default `1`.
+- **M (LAB-001):** the LAB-001 checks above (M1–M8). Set `QA_LAB=0` to skip; default `1`.
+- Other env: `QA_CDP` (default `http://localhost:29229`), `QA_SHOTS` (screenshots, default `qa-shots`), `QA_OUT` (results JSON, default `qa-accept.json`). It prints `TOTAL <n> FAIL <n>`.
+
 ## Failures found and fixed during review
 
 | ID | Severity | Finding | Resolution |
@@ -78,4 +103,5 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 - Accessibility was checked with Playwright accessibility snapshots, not a real screen reader.
 - `@testing-library/jest-dom@7.0.1` prints an `EBADENGINE` warning (wants Node ≥ 22) on `npm install`; tests pass on Node 20.
 - Back / Next step keep focus while stepping (Next step is held with `aria-disabled` while the sealed evaluation loads). Focus moves to the stage heading only when the focused control disables itself: Back at Evidence, Next step at Receipt.
+- LAB-001 and the EI-001 default were checked on a local preview build only, not on a deployed preview.
 - Receipt outcomes the fixtures can't produce (a non-Proceed baseline) and the #17 Reload page button are covered by unit tests only, not a browser run.
