@@ -6,6 +6,8 @@ const EXPLANATION: Record<'reset' | UnsealRecovery, string> = {
   reset: 'No receipt was recorded and this run is not marked complete. Reset to start a fresh, deterministic run.',
   reload:
     'No receipt was recorded and this run is not marked complete. The browser caches a failed module import for this page, so reload the page to retry; Reset alone repeats the failure.',
+  retry:
+    'No receipt was recorded and this run is not marked complete. The sealed evaluation was too slow to load, but it may still arrive: Reset retries it. Reload the page if it keeps timing out.',
   'fix-data':
     'No receipt was recorded and this run is not marked complete. The sealed evaluation failed its data checks, so it was not used. Reload and Reset load the same data; fix the scenario data (npm run score lists every failed gate).',
 }
@@ -32,7 +34,7 @@ export function ErrorCard({
       </div>
       <p className="mt-2 text-body text-ink-2">{EXPLANATION[recovery]}</p>
       <p className="mt-2 font-mono text-meta text-ink-3">{message}</p>
-      {recovery === 'reload' ? (
+      {recovery === 'reload' || recovery === 'retry' ? (
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
             <RefreshCw aria-hidden className="h-4 w-4" /> Reload page

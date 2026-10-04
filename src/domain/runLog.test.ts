@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { mat001 } from '../data/mat001'
 import { mat001Evaluation } from '../data/mat001.evaluation'
+import { lab001 } from '../data/lab001'
+import { lab001Evaluation } from '../data/lab001.evaluation'
 import { createReceipt } from './receipt'
 import { buildRunLog } from './runLog'
 import { initialWalkthroughState, type WalkthroughState } from './walkthrough'
@@ -152,5 +154,35 @@ describe('abandonedEntry', () => {
     for (let i = 0; i < 4; i++) s = walkthroughReducer(s, { type: 'NEXT', source: 'manual', at })
     expect(s.status).toBe('complete')
     expect(abandonedEntry(s, mat001, 'Reset', at)).toBeNull()
+  })
+})
+
+describe('buildRunLog guarded entry transparency', () => {
+  const atGuarded: WalkthroughState = {
+    ...atAudit,
+    reached: 3,
+    cursor: 3,
+    triggers: ['run', 'manual', 'manual', 'manual'],
+    events: [...atAudit.events, { order: 4, stage: 'guarded', at: at(13) }],
+  }
+  const guardedFacts = (scenario: typeof mat001, evaluation: typeof mat001Evaluation) => {
+    const log = buildRunLog({ state: atGuarded, scenario, evaluation, receipt: null, unseal: { requestedAt: at(12), loadedAt: at(12), ms: 3 } })
+    return Object.fromEntries((log.find((e) => /^Guarded/.test(e.label))?.facts ?? []).map((f) => [f.key, f.value]))
+  }
+
+  it('records the public evidence the guard decided from, and that the answer key only grades', () => {
+    const facts = guardedFacts(mat001, mat001Evaluation)
+    expect(facts['Decided from']).toBe(
+      `public evidence only: ${mat001Evaluation.guardedBasis.join(', ')}. The answer key grades the result; it is not an input to either agent`,
+    )
+    expect(facts.Turns).toBeUndefined()
+  })
+
+  it('records per-turn tags for a multi-turn scenario, marking guard turns', () => {
+    const facts = guardedFacts(lab001, lab001Evaluation)
+    expect(facts['Decided from']).toMatch(/^public evidence only: EV-TEL-01, EV-PROT-04, EV-LOG-01, EV-DECK-01\./)
+    expect(facts.Turns).toBe(
+      'baseline productive → productive → wasted → unsafe; guarded productive → productive → rectification (guard) → rectification → productive',
+    )
   })
 })

@@ -1,5 +1,6 @@
 import { integrityChecks } from './benchmarkScore'
 import type { Scenario, ScenarioEvaluation } from './types'
+import { UnsealTimeoutError } from './unsealTimeout'
 
 /** Data gates (see benchmarkScore.ts) that apply to one unsealed evaluation at runtime. */
 const RUNTIME_GATES = ['I3', 'I4', 'I5', 'I6', 'I7', 'I8']
@@ -50,9 +51,10 @@ export function evaluationProblems(scenario: Scenario, evaluation: ScenarioEvalu
   return [...shapeProblems(evaluation), ...gateProblems(scenario, evaluation)]
 }
 
-/** How a failed unseal can be recovered: a reload retries a failed import; bad data fails again whatever the user does. */
-export type UnsealRecovery = 'reload' | 'fix-data'
+/** How a failed unseal can be recovered: a slow load can still arrive, so Reset retries it; a reload retries a failed import; bad data fails again whatever the user does. */
+export type UnsealRecovery = 'retry' | 'reload' | 'fix-data'
 
 export function unsealRecovery(error: Error): UnsealRecovery {
-  return error instanceof InvalidEvaluationError ? 'fix-data' : 'reload'
+  if (error instanceof InvalidEvaluationError) return 'fix-data'
+  return error instanceof UnsealTimeoutError ? 'retry' : 'reload'
 }

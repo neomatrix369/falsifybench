@@ -3,6 +3,7 @@ import { ei001 } from '../data/ei001'
 import { mat001 } from '../data/mat001'
 import { lab001 } from '../data/lab001'
 import { evaluationProblems, InvalidEvaluationError, unsealRecovery } from './evaluationCheck'
+import { UnsealTimeoutError } from './unsealTimeout'
 import type { ScenarioEvaluation } from './types'
 
 describe('evaluationProblems', () => {
@@ -68,5 +69,6 @@ describe('unsealRecovery', () => {
   it('asks for a reload after a failed import, and for a data fix after failed checks', () => {
     expect(unsealRecovery(new Error('chunk failed'))).toBe('reload')
     expect(unsealRecovery(new InvalidEvaluationError('MAT-001', ['I6']))).toBe('fix-data')
+    expect(unsealRecovery(new UnsealTimeoutError('MAT-001', 15_000))).toBe('retry')
   })
 })
