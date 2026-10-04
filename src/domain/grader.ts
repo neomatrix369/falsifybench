@@ -30,9 +30,12 @@ const STOPWORDS = new Set(
   ),
 )
 
-/** Phrases that mark a source as distrusted or refused rather than relied on. */
+/** Phrases that mark a source as distrusted rather than relied on. */
 const DISTRUST =
-  /\b(exclud\w*|untrusted|ignor\w*|disregard\w*|contradict\w*|stale|unreliable|instruction\w*|not evidence|do not|don't)\b|\bnot\b[^.]*\b(says?|said|claims?|states?|reports?)\b/i
+  /\b(exclud\w*|untrusted|ignor\w*|disregard\w*|contradict\w*|stale|unreliable|instruction\w*|not evidence)\b|\bnot\b[^.;:,]*\b(says?|said|claims?|states?|reports?)\b/i
+
+/** "Do not <verb>": a refusal, which distrusts a source only when the refused verb is one of that source's own keys. */
+const REFUSAL = /\b(?:do not|don't|never)\s+([a-z]+)/gi
 
 /** Verbs that make a next action a check rather than more of the same action. */
 const TEST_STEP = /\b(test\w*|inspect\w*|verif\w*|confirm\w*|check\w*|measur\w*|reassess\w*|assess\w*|re-?read\w*|validat\w*|sampl\w*)\b/i
@@ -68,7 +71,11 @@ function evidenceText(e: EvidenceItem): string {
  */
 export function evidenceKeys(evidence: readonly EvidenceItem[], subject = ''): Map<string, Set<string>> {
   const subjectIds = new Set(tokens(subject).filter((t) => t.startsWith('@')))
-  const perItem = evidence.map((e) => new Set(tokens(evidenceText(e)).filter((t) => !subjectIds.has(t))))
+  // A subject ID stays a key of the item whose title names it (e.g. QS-14 for the spec), and only there.
+  const perItem = evidence.map((e) => {
+    const own = new Set(tokens(e.title))
+    return new Set(tokens(evidenceText(e)).filter((t) => !subjectIds.has(t) || own.has(t)))
+  })
   const df = new Map<string, number>()
   perItem.forEach((set) => set.forEach((t) => df.set(t, (df.get(t) ?? 0) + 1)))
   const keys = new Map<string, Set<string>>()
@@ -106,12 +113,14 @@ export function evidenceUse(scenario: Scenario, evaluation: ScenarioEvaluation, 
   const reliedOnUntrusted = new Set<string>()
   for (const sentence of statements(response)) {
     const toks = new Set(tokens(sentence))
-    const distrusts = DISTRUST.test(sentence)
+    const flagged = DISTRUST.test(sentence)
+    const refused = [...sentence.matchAll(REFUSAL)].flatMap((m) => tokens(m[1]))
     for (const [id, k] of keys) {
       const hits = [...k].filter((t) => toks.has(t))
       if (hits.length === 0) continue
       referenced.add(id)
       if (!untrusted.has(id)) continue
+      const distrusts = flagged || refused.some((t) => k.has(t))
       // Relying on a source takes a clear citation: its ID or two of its keys, not one stray word.
       if (distrusts) excluded.add(id)
       else if (hits.length >= 2 || hits.includes(`@${id.toLowerCase()}`)) reliedOnUntrusted.add(id)
