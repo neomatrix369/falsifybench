@@ -1,9 +1,12 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import App from '../App'
 import { mat001Scores } from '../data/mat001.scores'
+import { scriptedAgentRunner } from '../data/scriptedAgentRunner'
+import { LiveAgentError, type LiveHealth } from '../domain/live'
 import { compareScores, formatDelta } from '../domain/scoring'
+import type { AgentResponse, AgentRunner } from '../domain/types'
 
 const deps = { clock: () => new Date('2026-01-01T12:00:00.000Z'), createRunId: () => 'RUN-FIXED' }
 const HIDDEN = [/highest-stress/i, /zero ultrasonic/i]
@@ -121,5 +124,52 @@ describe('Simple tab', () => {
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(/reload the page to retry/i)
     expect(within(alert).getByRole('button', { name: /reset walkthrough/i })).toBeInTheDocument()
+  })
+})
+
+describe('Simple tab with a live baseline', () => {
+  const configured: LiveHealth = { configured: true, provider: 'anthropic', model: 'claude-sonnet-4-6' }
+
+  async function setupLive(run: AgentRunner['run']) {
+    const runner: AgentRunner = {
+      execution: 'live',
+      run: (agent, scenario, options) => (agent === 'guarded' ? scriptedAgentRunner.run('guarded', scenario, options) : run(agent, scenario, options)),
+    }
+    const user = userEvent.setup()
+    render(<App deps={deps} initialId="MAT-001" initialTab="simple" liveRunner={runner} probeLive={async () => configured} />)
+    await screen.findByRole('button', { name: /run benchmark/i })
+    await user.click(await screen.findByRole('radio', { name: /live baseline — available/i }))
+    await screen.findByRole('radio', { name: /live baseline — active/i })
+    return user
+  }
+
+  it('waits for the live model, then shows its answer without unsealing the truth', async () => {
+    const { liveAnswer } = await import('../domain/liveFixtures.test-helpers')
+    let release: (answer: AgentResponse) => void = () => {}
+    const pending = new Promise<AgentResponse>((resolve) => (release = resolve))
+    const user = await setupLive(() => pending)
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    expect(await screen.findByRole('status')).toHaveTextContent(/waiting for the live baseline model/i)
+    expect(domContainsHidden()).toBe(false)
+
+    const answer = liveAnswer()
+    await act(async () => release(answer))
+    const baseline = journeySteps()[1]
+    expect(within(baseline as HTMLElement).getByText(/proceed/i)).toBeInTheDocument()
+    expect(baseline).toHaveTextContent(`Live: ${answer.live?.model}`)
+    expect(domContainsHidden()).toBe(false)
+  })
+
+  it('shows Retry live call in Simple when the model call fails', async () => {
+    const user = await setupLive(async () => {
+      throw new LiveAgentError({ kind: 'upstream', message: 'Anthropic returned HTTP 500: stub', httpStatus: 502, upstreamStatus: 500 })
+    })
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/the live baseline call failed/i)
+    expect(within(alert).getByRole('button', { name: /retry live call/i })).toBeInTheDocument()
+    expect(domContainsHidden()).toBe(false)
   })
 })
