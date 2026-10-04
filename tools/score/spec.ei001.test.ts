@@ -14,7 +14,7 @@ const norm = (s = '') => s.toLowerCase().replace(/[.\s]+$/, '').trim()
 const metricOrder = ['evidenceSufficiency', 'calibration', 'safeAction', 'nextTestQuality'] as const
 const metricRows = ['Evidence sufficiency', 'Calibration', 'Safe action', 'Next-test quality']
 
-const eiFixture = between(spec, '## Evidence-integrity scenario fixture', '## Data and code contracts')
+const eiFixture = between(spec, '## Evidence-integrity scenario fixture', '## Lab-automation scenario fixture')
 const eiBaselineSec = between(eiFixture, '### Fixed baseline result', '### Fixed guarded result')
 const eiGuardedSec = between(eiFixture, '### Fixed guarded result', '### Scorecard')
 const eiEvidenceRows = [...eiFixture.matchAll(/^\| `(EV-[A-Z]+-\d+)` [^|]+\| (.+?) \|$/gm)].map((m) => ({ id: m[1], finding: m[2] }))

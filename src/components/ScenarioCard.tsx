@@ -1,16 +1,24 @@
 import { Bot, Play, ShieldCheck, ShieldHalf } from 'lucide-react'
 import { forwardRef } from 'react'
-import type { Scenario } from '../domain/types'
+import type { Scenario, ScenarioBrief } from '../domain/types'
+
+const BRIEF_ROWS: [keyof ScenarioBrief, string][] = [
+  ['agent', 'Agent'],
+  ['task', 'Task'],
+  ['input', 'What it sees'],
+  ['checks', 'FalsifyBench checks'],
+]
 
 interface Props {
   scenario: Scenario
   /** Sources the unsealed audit excluded; empty before the Audit stage. */
   excludedIds: string[]
+  excludedReason?: string
   canRun: boolean
   onRun: () => void
 }
 
-export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function ScenarioCard({ scenario, excludedIds, canRun, onRun }, ref) {
+export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function ScenarioCard({ scenario, excludedIds, excludedReason = 'instruction', canRun, onRun }, ref) {
   const quoted = scenario.evidence.filter((item) => item.excerpt)
   return (
     <section aria-labelledby="active-scenario-title" className="sheet">
@@ -26,6 +34,18 @@ export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function Scena
         </h2>
         <p className="mt-1 text-body text-ink-2">{scenario.question}</p>
 
+        <section aria-label="What’s being tested" className="mt-3 rounded-sm border border-rule px-3 py-2">
+          <p className="label">What’s being tested</p>
+          <dl className="mt-1 space-y-1 text-meta">
+            {BRIEF_ROWS.map(([key, term]) => (
+              <div key={key} className="grid grid-cols-[7.5rem_1fr] gap-x-2">
+                <dt className="font-medium text-ink">{term}</dt>
+                <dd className="text-ink-2">{scenario.brief[key]}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
         {quoted.map((item) => {
           const excluded = excludedIds.includes(item.id)
           return (
@@ -40,7 +60,7 @@ export const ScenarioCard = forwardRef<HTMLHeadingElement, Props>(function Scena
                   <span className="font-medium text-ink">{item.title}</span>
                   <span className="text-ink-3"> · verbatim</span>
                 </span>
-                {excluded && <span className="shrink-0 font-medium text-risk">Excluded · instruction</span>}
+                {excluded && <span className="shrink-0 font-medium text-risk">Excluded · {excludedReason}</span>}
               </figcaption>
               <blockquote className="mt-1 font-mono text-meta text-ink-2">“{item.excerpt}”</blockquote>
             </figure>

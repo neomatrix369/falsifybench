@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ei001 } from '../data/ei001'
 import { mat001 } from '../data/mat001'
+import { lab001 } from '../data/lab001'
 import { evaluationProblems, InvalidEvaluationError, unsealRecovery } from './evaluationCheck'
 import type { ScenarioEvaluation } from './types'
 
@@ -8,6 +9,7 @@ describe('evaluationProblems', () => {
   it('passes the shipped evaluations', async () => {
     expect(evaluationProblems(mat001, await mat001.evaluation.unseal())).toEqual([])
     expect(evaluationProblems(ei001, await ei001.evaluation.unseal())).toEqual([])
+    expect(evaluationProblems(lab001, await lab001.evaluation.unseal())).toEqual([])
   })
 
   it('flags an out-of-range metric', async () => {
@@ -31,6 +33,14 @@ describe('evaluationProblems', () => {
     const problems = evaluationProblems(mat001, {} as ScenarioEvaluation)
     expect(problems.length).toBeGreaterThan(0)
     for (const p of problems) expect(p).toMatch(/^Malformed evaluation: /)
+  })
+
+  it('flags a missing guarded evidence basis, which the Guarded panel lists', async () => {
+    const { guardedBasis: _omit, ...rest } = await lab001.evaluation.unseal()
+    void _omit
+    expect(evaluationProblems(lab001, rest as ScenarioEvaluation)).toEqual([
+      'Malformed evaluation: guardedBasis is missing or empty',
+    ])
   })
 
   it('flags a guarded response with no rationale, which the Guarded panel needs', async () => {

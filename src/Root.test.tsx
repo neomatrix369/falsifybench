@@ -97,13 +97,13 @@ describe('About page content', () => {
     expect(ticker).toHaveAttribute('data-paused', 'true')
   })
 
-  it('maps science-agent themes to honest coverage, with lab hardware marked not yet', async () => {
+  it('maps science-agent themes to honest coverage, with lab hardware marked partly covered', async () => {
     render(<Root />)
     const table = within(aboutView()!).getByRole('table', { name: /science-agent themes/i })
     const row = (name: RegExp) => within(table).getByRole('rowheader', { name })
     expect(row(/benchmark science agents/i)).toHaveTextContent('Covered')
     expect(row(/epistemological agents/i)).toHaveTextContent('Partly covered')
-    expect(row(/lab hardware/i)).toHaveTextContent('Not yet')
+    expect(row(/lab hardware/i)).toHaveTextContent('Partly covered')
     await within(aboutView()!).findByText(/MAT-001 · v1.0/)
   })
 
@@ -114,7 +114,7 @@ describe('About page content', () => {
     const later = within(about.getByRole('list', { name: /not covered yet/i })).getAllByRole('listitem')
     expect(tested[0]).toHaveTextContent(/recognise when they are wrong/i)
     tested.forEach((li) => expect(li.textContent).toMatch(/(Covered|Partly covered)$/))
-    expect(later.map((li) => li.textContent).join(' ')).toMatch(/lab-automation.*bio/i)
+    expect(later.map((li) => li.textContent).join(' ')).toMatch(/multi-agent.*bio.*traceability/i)
     expect(tested.length + later.length).toBe(16)
   })
 

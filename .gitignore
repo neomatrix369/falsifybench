@@ -28,3 +28,6 @@ dist-ssr
 # tools/qa/acceptance.py output
 qa-shots
 qa-accept.json
+
+# Private submission notes (not for the repo)
+docs/SUBMISSION.md

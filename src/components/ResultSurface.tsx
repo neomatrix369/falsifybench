@@ -13,6 +13,7 @@ import { Disclosure } from './Disclosure'
 import { ReceiptView } from './ReceiptView'
 import { ScoreCard } from './ScoreCard'
 import { SourceAudit } from './SourceAudit'
+import { TurnTrace } from './TurnTrace'
 
 const FINAL_TABS: { label: string; stage: WalkthroughStage }[] = [
   { label: 'Verdict', stage: 'guarded' },
@@ -125,6 +126,9 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
       <>
         <p className="max-w-[72ch] text-body text-ink-2">{scenario.narrative.baselineIntro}</p>
         <AgentResponseCard response={scenario.baseline} />
+        {scenario.baselineTurns && (
+          <TurnTrace label="Baseline run, turn by turn" turns={scenario.baselineTurns.map((action) => ({ by: 'agent', action }))} />
+        )}
         <Why>{scenario.narrative.baselineWhy}</Why>
         <Disclosure>
           <p>The baseline response is a fixed, scripted fixture. No model was called; it represents a common failure pattern.</p>
@@ -157,7 +161,11 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
           {scenario.regions && evaluation.hiddenTruth.regionId ? (
             <BracketSchematic regions={scenario.regions} gapRegionId={evaluation.hiddenTruth.regionId} />
           ) : (
-            <SourceAudit evidence={scenario.evidence} untrustedIds={evaluation.hiddenTruth.untrustedEvidenceIds ?? []} />
+            <SourceAudit
+              evidence={scenario.evidence}
+              untrustedIds={evaluation.hiddenTruth.untrustedEvidenceIds ?? []}
+              reason={evaluation.hiddenTruth.untrustedReason}
+            />
           )}
           <Why>{evaluation.hiddenTruth.summary}</Why>
           <Disclosure>
@@ -188,6 +196,26 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
             <AgentResponseCard response={scenario.baseline} unsafe />
             <AgentResponseCard response={evaluation.guarded} emphasis />
           </div>
+          <p className="rounded-sm border border-rule bg-sunken px-3 py-2 text-body text-ink-2">
+            <span className="font-semibold text-ink">Decided from public evidence: </span>
+            <span className="font-mono text-meta">{evaluation.guardedBasis.join(' · ')}</span>. The answer key is used only to grade
+            the two runs, never as input to either.
+          </p>
+          {evaluation.turns && scenario.baselineTurns && (
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="label mb-1">Baseline run · turns graded</p>
+                <TurnTrace
+                  label="Baseline run, graded"
+                  turns={scenario.baselineTurns.map((action, i) => ({ by: 'agent', action, kind: evaluation.turns?.baseline[i] }))}
+                />
+              </div>
+              <div>
+                <p className="label mb-1">Guarded run · stop, advise, resume</p>
+                <TurnTrace label="Guarded run, graded" turns={evaluation.turns.guarded} />
+              </div>
+            </div>
+          )}
           <ScoreCard evaluation={evaluation} />
           <Why>{evaluation.narrative.guardedWhy}</Why>
           <Disclosure>

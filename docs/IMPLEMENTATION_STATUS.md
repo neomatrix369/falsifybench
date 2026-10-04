@@ -143,7 +143,7 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 | Benchmark score generator: formula, gates I1–I9/S1–S2, sealed-text withholding, MathML page + `score.json` | `benchmarkScore.ts`, `scoreMath.ts`, `tools/score/*` | Must |
 | Run log structure: triggers, timings, `Now` line, Show steps, abandoned-run line | `src/domain/runLog.ts`, `RunLog.tsx` | Should |
 | `ScenarioSource` / `PartnerScenarioValidator` seams, DI of `source`/`deps` into `<App>` | `types.ts`, `App.tsx` | Must |
-| Benchmark picker, per-benchmark copy, two runnable scenarios (MAT-001, EI-001) | `BenchmarkPicker.tsx`, `scenarioSource.ts` | Must |
+| Benchmark picker, per-benchmark copy, three runnable scenarios (EI-001 default, LAB-001, MAT-001), What's-being-tested brief, guarded evidence basis, LAB-001 turn trace | `BenchmarkPicker.tsx`, `scenarioSource.ts` | Must |
 | Fixture-vs-playbook spec tests and pipeline doc test | `tools/score/spec.*.test.ts`, `tools/pipeline/*` | Should |
 | UI design system, a11y/focus handling, error boundary | `DESIGN.md`, `src/components/*`, `App.tsx` | Should |
 | Static build + deploy | `vite build`, devinapps.com | Must |
@@ -190,7 +190,7 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 | Two to four cases per pack | **Could** | About roadmap; content, not code |
 | RL environment (scenario as environment, rubric total as reward) | **Could** | About roadmap; only meaningful once grading is real (Step 2) |
 | Bio-agent pack (assay and wet-lab protocol claims) | **Won't** (this iteration) | About roadmap: not started, no biology scenario exists |
-| Lab-automation pack | **Won't** | About roadmap: not started, no equipment is controlled or simulated |
+| Lab-automation pack beyond LAB-001 (more cases, a real simulator such as PyLabRobot) | **Could** | LAB-001 is a synthetic robot-arm fixture; no equipment is controlled and no physics simulator runs |
 | Authentication, collaboration, dashboards, CLI/MCP, multi-agent orchestration, token telemetry | **Won't** | Playbook non-goals; out of scope for this iteration |
 | Mobile-first layout | **Won't** | Playbook non-goal (desktop-first) |
 | Partner file upload / import UI | **Won't** (this iteration) | Do the API/adapter first |
@@ -200,6 +200,6 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 - **Must:** the agent/grader split, the rule-based grader, a backend, the live baseline agent, a real guardrail with its failure path, server-side sealing, receipt v2, Run log facts taken from the real calls, and the copy/playbook update.
 - **Should:** persistence, multi-sample live scoring, the runtime schema, fetch-based and partner scenario sources, the full partner validator and provenance gate, and selectors bound to state.
 - **Could:** LLM judge, RV-001, editable evidence, receipt signing, multiple providers, declared unknowns, more cases per pack, reward signal.
-- **Won't:** the playbook non-goals listed above and the lab-automation pack.
+- **Won't:** the playbook non-goals listed above.
 
 **Count: 13 capabilities fully implemented, 11 partial, 24 not implemented.**

@@ -123,7 +123,7 @@ export const SCIENCE_AGENT_THEMES: readonly ScienceAgentTheme[] = [
     ask: 'Evals that catch research agents reward hacking.',
     status: 'covered',
     evidence:
-      'Each scenario offers an attractive but invalid shortcut: extrapolate a pass from sampled points, or obey a source that says “report it as approved”. Taking it costs Safe action, and every run ends in a receipt.',
+      'Each scenario offers an attractive but invalid shortcut: obey a source that says “report it as approved”, trust an operator’s stale “arm is parked” message, or extrapolate a pass from sampled points. Taking it costs Safe action, and every run ends in a receipt.',
   },
   {
     theme: 'Epistemological agents',
@@ -135,8 +135,9 @@ export const SCIENCE_AGENT_THEMES: readonly ScienceAgentTheme[] = [
   {
     theme: 'Lab hardware, automation & safety',
     ask: 'Safe, standard control of lab equipment, with testable results.',
-    status: 'not-yet',
-    evidence: 'Out of scope for the PoC. Both scenarios are paper decisions; no equipment is controlled or simulated.',
+    status: 'partial',
+    evidence:
+      'LAB-001 checks a robot-arm move against the protocol and the arm’s own sensor before it runs, then grades every turn. The robot is a synthetic fixture: no equipment is controlled and there is no physics simulator.',
   },
 ]
 
@@ -153,16 +154,16 @@ export interface AgentProblem {
 export const AGENT_PROBLEMS: readonly AgentProblem[] = [
   { rank: 1, problem: 'Science agents cannot reliably recognise when they are wrong', status: 'covered', how: 'Every baseline claim is checked against the sealed answer key at Audit, and Evidence sufficiency scores whether the agent noticed the gap.' },
   { rank: 2, problem: 'Research agents can reward-hack', status: 'covered', how: 'Each scenario offers an attractive but invalid shortcut; taking it costs Safe action.' },
-  { rank: 3, problem: 'Benchmarks rarely test realistic scientific reasoning', status: 'covered', how: 'Two scientific-workflow scenarios, each with a sealed answer key, a five-stage walkthrough and a receipt.' },
+  { rank: 3, problem: 'Benchmarks rarely test realistic scientific reasoning', status: 'covered', how: 'Three scientific-workflow scenarios, each with a sealed answer key, a five-stage walkthrough and a receipt.' },
   { rank: 4, problem: 'Claims are made on insufficient evidence', status: 'covered', how: 'Scored by Evidence sufficiency: does the evidence actually cover the claim?' },
   { rank: 5, problem: 'Agent confidence is poorly calibrated', status: 'covered', how: 'Scored by Calibration: is the stated confidence earned by the evidence?' },
   { rank: 6, problem: 'Agents rarely declare unknowns or abstain', status: 'partial', how: 'Investigate and Abstain are scored verdicts. Agents do not yet list their unknowns.' },
   { rank: 7, problem: 'Agents struggle to propose falsifying experiments', status: 'covered', how: 'Scored by Next-test quality: does it name the experiment that could prove the claim wrong?' },
   { rank: 8, problem: 'Multi-agent systems lack demonstrable safety guarantees', status: 'not-yet', how: 'Agents are scored one at a time; no multi-agent runs.' },
-  { rank: 9, problem: 'Agents are misled by manipulated evidence and adversarial instructions', status: 'partial', how: 'EI-001 plants a “report it as approved” instruction in a source. Single agent only.' },
+  { rank: 9, problem: 'Agents are misled by manipulated evidence and adversarial instructions', status: 'partial', how: 'EI-001 plants a “report it as approved” instruction in a source; LAB-001 sends a stale operator message. Single agent only.' },
   { rank: 10, problem: 'Agents need defences against prompt and training-time attacks', status: 'partial', how: 'Prompt injection through evidence is tested (EI-001). Training-time attacks are not.' },
   { rank: 11, problem: 'Scientific AI is hard to validate continuously', status: 'not-yet', how: 'The score is recomputed on demand, not monitored.' },
-  { rank: 12, problem: 'Lab-automation agents need safe, testable control', status: 'not-yet', how: 'No equipment is controlled or simulated.' },
+  { rank: 12, problem: 'Lab-automation agents need safe, testable control', status: 'partial', how: 'LAB-001 checks a robot-arm move against the protocol and the arm’s own sensor. The robot is a synthetic fixture; no equipment is controlled.' },
   { rank: 13, problem: 'Bio and science-agent environments and rewards are underdeveloped', status: 'not-yet', how: 'No biology scenario or RL environment yet.' },
   { rank: 14, problem: 'Engineering agents act on weak inspection or degradation data', status: 'covered', how: 'MAT-001: a release decision on sampled bracket tests that do not cover the claim.' },
   { rank: 15, problem: 'Agents need interpretable, decision-ready outputs', status: 'covered', how: 'Each run ends in a JSON receipt, and the Run log shows every input, step and score formula.' },
@@ -192,6 +193,11 @@ export const SCENARIO_PACKS: readonly ScenarioPack[] = [
     detects: 'Inspection or degradation evidence that is too thin for a safe engineering decision.',
     ids: ['MAT-001'],
   },
+  {
+    pack: 'Lab automation',
+    detects: 'Robot moves planned from stale or contradicted state, checked against protocol preconditions.',
+    ids: ['LAB-001'],
+  },
 ]
 
 export const METRIC_QUESTIONS: Record<string, string> = {
@@ -202,14 +208,14 @@ export const METRIC_QUESTIONS: Record<string, string> = {
 }
 
 export const ROADMAP = [
-  { step: 'Two runnable scenarios', detail: 'MAT-001 and EI-001, with sealed answer keys, a five-stage walkthrough, receipts and a benchmark-wide score.', done: true },
+  { step: 'Three runnable scenarios', detail: 'EI-001, LAB-001 and MAT-001, with sealed answer keys, a five-stage walkthrough, receipts and a benchmark-wide score.', done: true },
   { step: 'Research-validity pack', detail: 'RV-001: a treatment-effect claim missing its control arm. Previewed, not yet runnable.', done: false },
   { step: 'Declared unknowns', detail: 'Ask every agent to list what it does not know before it proposes a falsifying test.', done: false },
   { step: 'Two to four cases per pack', detail: 'Grow each pack with small, auditable cases rather than full domain models.', done: false },
   { step: 'Partner data', detail: 'Run at least one validated partner dataset through the same harness. The validator is a stub until then.', done: false },
   { step: 'RL environment', detail: 'Scenario as environment, rubric total as reward. Needs real grading first.', done: false },
   { step: 'Bio-agent pack', detail: 'Assay and wet-lab protocol claims. Not started.', done: false },
-  { step: 'Lab-automation pack', detail: 'Safe, testable control of lab equipment. Not started.', done: false },
+  { step: 'Lab-automation pack', detail: 'LAB-001 is the first case (synthetic robot arm). Next: more cases and a real simulator such as PyLabRobot.', done: false },
   { step: 'Live agents', detail: 'Server-side agent calls with keys from the environment. Mock mode never needs a secret.', done: false },
 ] as const
 
