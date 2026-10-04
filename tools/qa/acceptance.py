@@ -18,8 +18,17 @@ with sync_playwright() as p:
     b=p.chromium.connect_over_cdp(os.environ.get('QA_CDP','http://localhost:29229')); ctx=b.contexts[0]
     def page(w=1280,h=800):
         pg=ctx.new_page(); pg.set_viewport_size({'width':w,'height':h})
+        pg.add_init_script("try{sessionStorage.setItem('falsifybench-intro-dismissed','1');sessionStorage.setItem('falsifybench-bench-tab','detailed')}catch(e){}")
+        return pg
+    def page_simple(w=1280,h=800):
+        pg=ctx.new_page(); pg.set_viewport_size({'width':w,'height':h})
         pg.add_init_script("try{sessionStorage.setItem('falsifybench-intro-dismissed','1')}catch(e){}")
         return pg
+    def simple_run(pg):
+        btn(pg,'Run benchmark').click(); pg.wait_for_timeout(500)
+        for _ in range(4): btn(pg,'Next step').click(); pg.wait_for_timeout(900)
+    def panel_overflow(pg):
+        return pg.evaluate("(()=>{const e=document.getElementById('bench-panel');return e?e.scrollWidth-e.clientWidth:null})()")
     PICK={'mat':'Turbine support bracket','ei':'Coating qualification','lab':'Liquid-handling robot arm'}
     def go(pg,pick='mat'):
         pg.goto(URL, wait_until='networkidle')
@@ -238,6 +247,46 @@ with sync_playwright() as p:
         btn(pg,'Reset').click(); pg.wait_for_timeout(400)
         rec('M4 LAB Reset re-seals audit truth', lab_leaks(pg)==[], str(lab_leaks(pg)))
         pg.close()
+    # S. Simple tab (bench-tab key unset: Root defaults to Simple)
+    if os.environ.get('QA_SIMPLE','1')=='1':
+        pg=page_simple(); pg.goto(URL, wait_until='networkidle'); t=txt(pg)
+        tab=lambda n: pg.get_by_role('tab', name=n, exact=True)
+        rec('S1 Simple tab selected by default', tab('Simple').get_attribute('aria-selected')=='true' and tab('Detailed').get_attribute('aria-selected')=='false', '')
+        jour=pg.get_by_role('list', name='Benchmark journey')
+        rec('S2 journey has 5 steps', jour.locator(':scope > li').count()==5, str(jour.locator(':scope > li').count()))
+        pg.get_by_role('button', name=re.compile('Turbine support bracket|Insufficient evidence')).click(); pg.wait_for_timeout(500)
+        btn(pg,'Run benchmark').click(); pg.wait_for_timeout(500)
+        btn(pg,'Next step').click(); pg.wait_for_timeout(700)
+        rec('S3 no hidden truth at baseline (DOM+a11y)', leaks(pg)==[], str(leaks(pg)))
+        for _ in range(3): btn(pg,'Next step').click(); pg.wait_for_timeout(900)
+        t=txt(pg)
+        rec('S4 issues found + final score + prevented approval', pg.get_by_role('list', name='Issues found').count()==1 and 'Unsafe approval prevented' in t and 'How the score breaks down' in t, '')
+        ov=panel_overflow(pg)
+        rec('S5 #bench-panel no horizontal overflow at 1280', ov is not None and ov<=0, str(ov))
+        for _ in range(30):
+            pg.keyboard.press('Tab'); pg.wait_for_timeout(60)
+            if pg.evaluate("(document.activeElement||{}).id||''").startswith('bench-tab'): break
+        pg.keyboard.press('ArrowRight'); pg.wait_for_timeout(400)
+        aid=pg.evaluate("document.activeElement.id")
+        rec('S6 ArrowRight switches to Detailed with focus on a tab', tab('Detailed').get_attribute('aria-selected')=='true' and aid=='bench-tab-detailed', aid)
+        pg.keyboard.press('ArrowLeft'); pg.wait_for_timeout(400)
+        rec('S6b ArrowLeft back to Simple, focus on tab', tab('Simple').get_attribute('aria-selected')=='true' and pg.evaluate("document.activeElement.id")=='bench-tab-simple', pg.evaluate("document.activeElement.id"))
+        btn(pg,'Reset').click(); pg.wait_for_timeout(400)
+        btn(pg,'Run benchmark').click(); pg.wait_for_timeout(400)
+        for _ in range(40):
+            pg.keyboard.press('Tab'); pg.wait_for_timeout(60)
+            if active(pg).startswith('BUTTON|Next step'): break
+        log=[]
+        for _ in range(4):
+            pg.keyboard.press('Enter'); pg.wait_for_timeout(900); log.append(active(pg))
+        rec('S7 Enter steps with focus kept; not stranded on BODY at completion', not any(x.startswith('BODY') for x in log) and log[-1].startswith('H'), str(log))
+        pg.screenshot(path=SHOTS+'/16-simple-complete.png'); pg.close()
+        pg=page_simple(390,844); pg.goto(URL, wait_until='networkidle')
+        pg.get_by_role('button', name=re.compile('Turbine support bracket|Insufficient evidence')).click(); pg.wait_for_timeout(500)
+        simple_run(pg); pg.wait_for_timeout(400)
+        ov=panel_overflow(pg)
+        rec('S8 #bench-panel no horizontal overflow at 390', ov is not None and ov<=0, str(ov))
+        pg.screenshot(path=SHOTS+'/17-simple-390.png'); pg.close()
 fails=[k for k,(ok,_) in R.items() if not ok]
 print('\nTOTAL', len(R), 'FAIL', len(fails), fails)
 sys.exit(1 if fails else 0)

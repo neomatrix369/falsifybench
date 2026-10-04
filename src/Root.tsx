@@ -1,10 +1,27 @@
 import { useCallback, useState } from 'react'
-import App from './App'
+import App, { type BenchTab } from './App'
 import { probeLiveHealth } from './data/liveAgentRunner'
 import { Landing } from './components/Landing'
 import type { View } from './components/Header'
 
 export const INTRO_DISMISSED_KEY = 'falsifybench-intro-dismissed'
+export const BENCH_TAB_KEY = 'falsifybench-bench-tab'
+
+function initialTab(): BenchTab {
+  try {
+    return window.sessionStorage.getItem(BENCH_TAB_KEY) === 'detailed' ? 'detailed' : 'simple'
+  } catch {
+    return 'simple'
+  }
+}
+
+function rememberTab(tab: BenchTab) {
+  try {
+    window.sessionStorage.setItem(BENCH_TAB_KEY, tab)
+  } catch {
+    // Storage unavailable: the tab still switches for this page view.
+  }
+}
 
 function initialView(): View {
   if (window.location.hash === '#about') return 'about'
@@ -44,7 +61,7 @@ export default function Root() {
       )}
       <div data-view="benchmark" hidden={view !== 'benchmark'}>
         {/* Live mode exists only under `vite dev` (npm run dev:live); the deployed build never probes a server. */}
-        <App onSwitchView={switchView} probeLive={import.meta.env.DEV ? probeLiveHealth : null} />
+        <App onSwitchView={switchView} probeLive={import.meta.env.DEV ? probeLiveHealth : null} initialTab={initialTab()} onTabChange={rememberTab} />
       </div>
     </>
   )

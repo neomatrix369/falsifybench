@@ -59,6 +59,15 @@ The generated score page (`public/score/index.html`, `npm run score`) takes the 
 - About page only: a 70 s linear ticker of the quoted figures (pauses on hover, focus or its Pause button); a falsification strip where a risk-red baseline dot is caught at the check node and an ok-green guarded dot runs through (7 s loop, flat, no glow); sheets rise in on scroll via `animation-timeline: view()` where supported. All three stop under reduced motion, leaving a static strip and a horizontally scrollable ticker.
 - `prefers-reduced-motion: reduce` collapses all animation/transition durations and disables smooth scroll.
 
+## Simple tab
+The Benchmark view splits into **Simple** and **Detailed** tabs (`TabBar` in `src/App.tsx`); Detailed is the original two-column walkthrough, unchanged. Simple (`src/components/SimpleJourney.tsx`) is the low-load path: a benchmark picker strip, the scenario question beside one row of controls, then a left-to-right `Benchmark journey` of five ruled columns (Evidence → Baseline agent → Falsification check → Guarded agent → Score). Below md the columns stack with hairline separators instead of the chevron spine.
+
+- **Tone mapping**: each column carries one of five tones — `pending` (rule/ink-3), `current` (primary), `done` (ok), `issue` (warn: audit findings, flagged steps) and `failure` (risk: the unsafe baseline). Status is always text as well as colour and icon (`Failed · unsafe`, `N issues found`, `Done`, `Now`, `Not yet`). `Failed · unsafe` (red) is reserved for an unsafe approval; any other wrong verdict shows `Failed` in amber.
+- **Sealed truth**: evaluation, graded run and receipt render only once the run reaches Audit (`state.reached >= AUDIT_STAGE_INDEX`), so Reset and tab switches cannot leak them early.
+- **Live baseline**: when the Agent selector is on Live, the Baseline column waits on the model call (`Waiting for the live baseline model…`), then shows that answer with a `Live: <model>` note until Audit replaces it with the graded answer; the score footer names the grader (`Graded by <label>`).
+- **Details links**: every reached column ends with a `Details: <step>` link that opens the same stage in the Detailed tab; the final column also links the full receipt and the generated score page.
+- **Score**: the Score column reads `baseline → guarded` totals plus the `formatDelta` delta; below the journey a ruled table breaks the score into the four rubric metrics, with values under 50 in `risk` (plus an sr-only `(failing)`).
+
 ## Agent tells avoided
 - No purple/indigo gradients, glow, glassmorphism/backdrop blur, emoji, or icon-in-a-tile logo.
 - No uppercase tracked "eyebrow" labels; section names are real headings at body/title size.
