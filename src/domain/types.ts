@@ -102,16 +102,10 @@ export interface ScenarioEvaluation {
   findings: AuditFinding[]
   expectedSafeVerdict: Verdict
   sufficientNextAction: string
-  guarded: AgentResponse
   /** Public evidence IDs the guarded decision relies on. The answer key itself is used only for grading. */
   guardedBasis: string[]
   /** Turn-level trace: tags for each public baseline turn, and the guarded run (guard stops, advises, agent resumes). */
   turns?: { baseline: TurnKind[]; guarded: AgentTurn[] }
-  scoring: {
-    rubricVersion: string
-    baseline: MetricScores
-    guarded: MetricScores
-  }
 }
 
 /** Presenter copy that may be shown before Audit. */
@@ -183,6 +177,32 @@ export interface PartnerValidationResult {
 
 export interface ScenarioSource {
   loadScenario(id: string): Promise<Scenario>
+}
+
+export type AgentPath = 'baseline' | 'guarded'
+
+/** Produces one agent's answer for a scenario from its public evidence. Today: `scriptedAgentRunner` replays fixed answers. */
+export interface AgentRunner {
+  run(agent: 'baseline' | 'guarded', scenario: Scenario): Promise<AgentResponse>
+}
+
+/** Scores one agent's answer against the sealed grading truth. Today: `fixtureGrader` looks up hand-entered scores. */
+export interface Grader {
+  rubricVersion(scenario: Scenario): string
+  grade(scenario: Scenario, evaluation: ScenarioEvaluation, agent: 'baseline' | 'guarded', response: AgentResponse): MetricScores
+}
+
+/** Rubric scores for both agents on one scenario. Totals are computed, never stored. */
+export interface RubricScores {
+  rubricVersion: string
+  baseline: MetricScores
+  guarded: MetricScores
+}
+
+/** What both agents answered on one run, and how the grader scored those answers. */
+export interface GradedRun {
+  responses: Record<AgentPath, AgentResponse>
+  scores: RubricScores
 }
 
 export interface PartnerScenarioValidator {

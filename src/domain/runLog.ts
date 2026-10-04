@@ -4,7 +4,7 @@ import { UnsealTimeoutError } from './unsealTimeout'
 import type { BenchmarkReceipt } from './receipt'
 import { STAGES, STAGE_LABELS } from './stages'
 import type { StageTrigger, WalkthroughState } from './walkthrough'
-import type { MetricScores, Scenario, ScenarioEvaluation, WalkthroughStage } from './types'
+import type { GradedRun, MetricScores, Scenario, ScenarioEvaluation, WalkthroughStage } from './types'
 
 export interface UnsealTiming {
   requestedAt: string
@@ -63,12 +63,14 @@ export function buildRunLog(input: {
   state: WalkthroughState
   scenario: Scenario
   evaluation: ScenarioEvaluation | null
+  /** The agents' answers and grades, available with the evaluation. */
+  run: GradedRun | null
   receipt: BenchmarkReceipt | null
   unseal: UnsealTiming | null
   error?: Error | null
   abandoned?: RunLogEntry | null
 }): RunLogEntry[] {
-  const { state, scenario, evaluation, receipt, unseal } = input
+  const { state, scenario, evaluation, run, receipt, unseal } = input
   if (!state.runId) return input.abandoned ? [input.abandoned] : []
   const log: RunLogEntry[] = [
     {
@@ -193,19 +195,20 @@ export function buildRunLog(input: {
         break
       }
       case 'guarded':
-        if (evaluation) {
-          const { baseline, guarded, rubricVersion } = evaluation.scoring
+        if (evaluation && run) {
+          const { baseline, guarded, rubricVersion } = run.scores
+          const answer = run.responses.guarded
           const { baselineTotal, guardedTotal, delta } = compareScores(baseline, guarded)
           log.push({
             at: event.at,
             stage: 'guarded',
-            label: `Guarded verdict: ${VERDICT_WORD[evaluation.guarded.verdict]}`,
+            label: `Guarded verdict: ${VERDICT_WORD[answer.verdict]}`,
             detail: `Scored on ${rubricVersion}: baseline ${meanFormula(baseline)} = ${baselineTotal}; guarded ${meanFormula(guarded)} = ${guardedTotal}; delta ${delta >= 0 ? '+' : ''}${delta}`,
             facts: [
               trigger,
-              { key: 'Agent', value: `${evaluation.guarded.agentLabel} (scripted fixture, no model called)` },
-              { key: 'Verdict', value: `${VERDICT_WORD[evaluation.guarded.verdict]} · ${evaluation.guarded.confidenceLabel}` },
-              { key: 'Next action', value: evaluation.guarded.nextAction },
+              { key: 'Agent', value: `${answer.agentLabel} (scripted fixture, no model called)` },
+              { key: 'Verdict', value: `${VERDICT_WORD[answer.verdict]} · ${answer.confidenceLabel}` },
+              { key: 'Next action', value: answer.nextAction },
               {
                 key: 'Decided from',
                 value: `public evidence only: ${evaluation.guardedBasis.join(', ')}. The answer key grades the result; it is not an input to either agent`,
@@ -222,7 +225,7 @@ export function buildRunLog(input: {
                 : []),
               {
                 key: 'Expected safe verdict',
-                value: `${VERDICT_WORD[evaluation.expectedSafeVerdict]} · guarded matches: ${yesNo(evaluation.guarded.verdict === evaluation.expectedSafeVerdict)} · baseline matches: ${yesNo(scenario.baseline.verdict === evaluation.expectedSafeVerdict)}`,
+                value: `${VERDICT_WORD[evaluation.expectedSafeVerdict]} · guarded matches: ${yesNo(answer.verdict === evaluation.expectedSafeVerdict)} · baseline matches: ${yesNo(run.responses.baseline.verdict === evaluation.expectedSafeVerdict)}`,
               },
               { key: 'Rubric', value: `${rubricVersion}: each metric is an integer 0–100; total = round(mean of the 4 metrics)` },
               ...METRIC_KEYS.map((k) => ({ key: METRIC_LABELS[k], value: `baseline ${baseline[k]} → guarded ${guarded[k]}` })),

@@ -1,6 +1,6 @@
 import { STAGES } from './stages'
 import { compareScores } from './scoring'
-import type { DataMode, MetricScores, ProvenanceStatus, Scenario, ScenarioEvaluation, StageEvent, Verdict } from './types'
+import type { DataMode, GradedRun, MetricScores, ProvenanceStatus, Scenario, ScenarioEvaluation, StageEvent, Verdict } from './types'
 
 export type Clock = () => Date
 export type RunIdFactory = () => string
@@ -48,6 +48,8 @@ export class IncompleteRunError extends Error {
 export interface ReceiptInput {
   scenario: Scenario
   evaluation: ScenarioEvaluation
+  /** The agents' answers and their grades on this run (AgentRunner + Grader). */
+  run: GradedRun
   runId: string
   startedAt: string
   events: StageEvent[]
@@ -57,7 +59,7 @@ export interface ReceiptInput {
 
 /** Builds a receipt only for a complete, correctly ordered five-stage run. */
 export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
-  const { scenario, evaluation, runId, startedAt, events, mode, clock } = input
+  const { scenario, evaluation, run, runId, startedAt, events, mode, clock } = input
   if (mode !== 'synthetic') throw new IncompleteRunError('Only synthetic runs can produce a receipt in this PoC.')
   if (events.length !== STAGES.length) {
     throw new IncompleteRunError(`Run has ${events.length} of ${STAGES.length} stage events.`)
@@ -68,7 +70,8 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
     }
   })
 
-  const { baseline, guarded, rubricVersion } = evaluation.scoring
+  const { baseline, guarded, rubricVersion } = run.scores
+  const answers = run.responses
   const comparison = compareScores(baseline, guarded)
 
   return {
@@ -81,13 +84,13 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
     runId,
     startedAt,
     recordedAt: clock().toISOString(),
-    agents: { baseline: scenario.baseline.agentLabel, guarded: scenario.guardedAgentLabel },
+    agents: { baseline: answers.baseline.agentLabel, guarded: scenario.guardedAgentLabel },
     agentExecution: 'scripted_fixture',
     evidenceIds: scenario.evidence.map((item) => item.id),
     stageEvents: events.map((event) => ({ ...event })),
     verdicts: {
-      baseline: scenario.baseline.verdict,
-      guarded: evaluation.guarded.verdict,
+      baseline: answers.baseline.verdict,
+      guarded: answers.guarded.verdict,
       expectedSafe: evaluation.expectedSafeVerdict,
     },
     scores: {
@@ -95,10 +98,10 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
       guarded: { ...guarded, total: comparison.guardedTotal },
       delta: comparison.delta,
     },
-    guardedNextAction: evaluation.guarded.nextAction,
+    guardedNextAction: answers.guarded.nextAction,
     unsafeApprovalPrevented:
-      scenario.baseline.verdict === 'proceed' &&
+      answers.baseline.verdict === 'proceed' &&
       evaluation.expectedSafeVerdict !== 'proceed' &&
-      evaluation.guarded.verdict === evaluation.expectedSafeVerdict,
+      answers.guarded.verdict === evaluation.expectedSafeVerdict,
   }
 }

@@ -4,51 +4,57 @@ import { mat001 } from '../data/mat001'
 import { lab001 } from '../data/lab001'
 import { evaluationProblems, InvalidEvaluationError, unsealRecovery } from './evaluationCheck'
 import { UnsealTimeoutError } from './unsealTimeout'
-import type { ScenarioEvaluation } from './types'
+import type { GradedRun, ScenarioEvaluation } from './types'
+import { scriptedRun } from '../test/scriptedRun'
+
+const withGuardedSafeAction = (run: GradedRun, safeAction: number): GradedRun => ({
+  ...run,
+  scores: { ...run.scores, guarded: { ...run.scores.guarded, safeAction } },
+})
 
 describe('evaluationProblems', () => {
   it('passes the shipped evaluations', async () => {
-    expect(evaluationProblems(mat001, await mat001.evaluation.unseal())).toEqual([])
-    expect(evaluationProblems(ei001, await ei001.evaluation.unseal())).toEqual([])
-    expect(evaluationProblems(lab001, await lab001.evaluation.unseal())).toEqual([])
+    for (const scenario of [mat001, ei001, lab001]) {
+      const evaluation = await scenario.evaluation.unseal()
+      expect(evaluationProblems(scenario, evaluation, scriptedRun(scenario, evaluation))).toEqual([])
+    }
   })
 
   it('flags an out-of-range metric', async () => {
     const good = await mat001.evaluation.unseal()
-    const bad = { ...good, scoring: { ...good.scoring, guarded: { ...good.scoring.guarded, safeAction: 101 } } }
-    expect(evaluationProblems(mat001, bad)).toEqual([expect.stringMatching(/^I6 Rubric metrics are integers 0–100: guarded out of range/)])
+    const bad = withGuardedSafeAction(scriptedRun(mat001, good), 101)
+    expect(evaluationProblems(mat001, good, bad)).toEqual([expect.stringMatching(/^I6 Rubric metrics are integers 0–100: guarded out of range/)])
   })
 
   it('flags a finding that cites missing evidence and a wrong guarded agent', async () => {
     const good = await mat001.evaluation.unseal()
-    const bad = {
-      ...good,
-      findings: [{ id: 'F-X', statement: 'x', evidenceIds: ['EV-NOPE'] }],
-      guarded: { ...good.guarded, agentLabel: 'Someone else' },
-    }
-    const problems = evaluationProblems(mat001, bad)
+    const bad = { ...good, findings: [{ id: 'F-X', statement: 'x', evidenceIds: ['EV-NOPE'] }] }
+    const problems = evaluationProblems(mat001, bad, scriptedRun(mat001, bad, { agentLabel: 'Someone else' }))
     expect(problems.map((p) => p.slice(0, 2))).toEqual(['I4', 'I8'])
   })
 
   it('reports a malformed shape instead of throwing', () => {
-    const problems = evaluationProblems(mat001, {} as ScenarioEvaluation)
+    const problems = evaluationProblems(mat001, {} as ScenarioEvaluation, {} as GradedRun)
     expect(problems.length).toBeGreaterThan(0)
     for (const p of problems) expect(p).toMatch(/^Malformed evaluation: /)
   })
 
   it('flags a missing guarded evidence basis, which the Guarded panel lists', async () => {
-    const { guardedBasis: _omit, ...rest } = await lab001.evaluation.unseal()
+    const good = await lab001.evaluation.unseal()
+    const { guardedBasis: _omit, ...rest } = good
     void _omit
-    expect(evaluationProblems(lab001, rest as ScenarioEvaluation)).toEqual([
+    expect(evaluationProblems(lab001, rest as ScenarioEvaluation, scriptedRun(lab001, good))).toEqual([
       'Malformed evaluation: guardedBasis is missing or empty',
     ])
   })
 
   it('flags a guarded response with no rationale, which the Guarded panel needs', async () => {
     const good = await mat001.evaluation.unseal()
-    const { rationale: _omit, ...guarded } = good.guarded
+    const run = scriptedRun(mat001, good)
+    const { rationale: _omit, ...guarded } = run.responses.guarded
     void _omit
-    expect(evaluationProblems(mat001, { ...good, guarded } as ScenarioEvaluation)).toEqual([
+    const bad = { ...run, responses: { ...run.responses, guarded } } as GradedRun
+    expect(evaluationProblems(mat001, good, bad)).toEqual([
       'Malformed evaluation: guarded.rationale is missing or empty',
     ])
   })
@@ -56,10 +62,11 @@ describe('evaluationProblems', () => {
 
 it('reports a missing field and a failed gate together', async () => {
   const good = await mat001.evaluation.unseal()
-  const { rationale: _omit, ...guarded } = good.guarded
+  const run = withGuardedSafeAction(scriptedRun(mat001, good), 101)
+  const { rationale: _omit, ...guarded } = run.responses.guarded
   void _omit
-  const bad = { ...good, guarded, scoring: { ...good.scoring, guarded: { ...good.scoring.guarded, safeAction: 101 } } }
-  expect(evaluationProblems(mat001, bad as ScenarioEvaluation).map((p) => p.split(':')[0])).toEqual([
+  const bad = { ...run, responses: { ...run.responses, guarded } } as GradedRun
+  expect(evaluationProblems(mat001, good, bad).map((p) => p.split(':')[0])).toEqual([
     'Malformed evaluation',
     'I6 Rubric metrics are integers 0–100',
   ])

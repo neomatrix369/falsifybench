@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { syntheticScenarioSource } from './data/scenarioSource'
+import type { AgentRunner, Grader } from './domain/types'
 
 const deps = { clock: () => new Date('2026-01-01T12:00:00.000Z'), createRunId: () => 'RUN-FIXED' }
 const HIDDEN = [/highest-stress/i, /zero ultrasonic/i]
@@ -192,13 +193,34 @@ describe('FalsifyBench guards', () => {
     expect(screen.queryByText(/waiting for sealed evaluation/i)).not.toBeInTheDocument()
   })
 
+  it('shows the guarded answer from an injected AgentRunner', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const { scriptedAgentRunner } = await import('./data/scriptedAgentRunner')
+    const runner: AgentRunner = {
+      run: async (agent, scenario) => {
+        const answer = await scriptedAgentRunner.run(agent, scenario)
+        return agent === 'guarded' ? { ...answer, claim: 'Injected runner claim.' } : answer
+      },
+    }
+    const user = userEvent.setup()
+    render(<App deps={deps} source={{ loadScenario: async () => mat001 }} runner={runner} />)
+    await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
+    await user.click(btn(/next step/i))
+    await user.click(btn(/next step/i))
+    await screen.findAllByText(/highest-stress attachment interface/i)
+    await user.click(btn(/next step/i))
+    expect(await screen.findByText('Injected runner claim.')).toBeInTheDocument()
+  })
+
   it('shows an error card, not a blank page, when the sealed evaluation fails its data checks', async () => {
     const { mat001 } = await import('./data/mat001')
-    const good = await mat001.evaluation.unseal()
-    const bad = { ...good, scoring: { ...good.scoring, guarded: { ...good.scoring.guarded, safeAction: 101 } } }
-    const broken = { ...mat001, evaluation: { unseal: async () => bad } }
+    const { fixtureGrader } = await import('./domain/fixtureGrader')
+    const grader: Grader = {
+      rubricVersion: fixtureGrader.rubricVersion,
+      grade: (s, e, agent, r) => ({ ...fixtureGrader.grade(s, e, agent, r), ...(agent === 'guarded' ? { safeAction: 101 } : {}) }),
+    }
     const user = userEvent.setup()
-    render(<App deps={deps} source={{ loadScenario: async () => broken }} />)
+    render(<App deps={deps} source={{ loadScenario: async () => mat001 }} grader={grader} />)
     await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
     await user.click(btn(/next step/i))
     await user.click(btn(/next step/i))

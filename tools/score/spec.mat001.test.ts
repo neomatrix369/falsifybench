@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest'
 import { mat001 } from '../../src/data/mat001'
 import { comingNextPreviews } from '../../src/data/previews'
 import { RUNNABLE_BENCHMARKS } from '../../src/data/scenarioSource'
+import { scriptedAgentRunner } from '../../src/data/scriptedAgentRunner'
+import { gradeRun, runAgents } from '../../src/domain/agentRun'
+import { fixtureGrader } from '../../src/domain/fixtureGrader'
 import { compareScores, totalScore } from '../../src/domain/scoring'
 
 const spec = readFileSync(process.env.SCORE_PLAYBOOK ?? new URL('../../docs/falsifybench-playbook.md', import.meta.url), 'utf8')
@@ -23,6 +26,8 @@ const metricOrder = ['evidenceSufficiency', 'calibration', 'safeAction', 'nextTe
 const metricRows = ['Evidence sufficiency', 'Calibration', 'Safe action', 'Next-test quality']
 const HIDDEN = ['highest-stress', 'zero ultrasonic']
 const loadEval = () => mat001.evaluation.unseal()
+const loadGuarded = () => scriptedAgentRunner.run('guarded', mat001)
+const loadScores = async () => gradeRun(fixtureGrader, mat001, await loadEval(), await runAgents(scriptedAgentRunner, mat001)).scores
 
 describe('Spec: MAT-001 identity and provenance', () => {
   it('id/version/title/question match spec', () => {
@@ -63,10 +68,10 @@ describe('Spec: fixed agent results', () => {
     expect(norm(mat001.baseline.nextAction)).toBe(norm(plain(baselineSec, 'Next action')))
   })
   it('guarded verdict/confidence/next action match spec', async () => {
-    const ev = await loadEval()
-    expect(ev.guarded.verdict).toBe(norm(tick(guardedSec, 'Verdict')))
-    expect(ev.guarded.confidenceLabel).toBe(tick(guardedSec, 'Confidence'))
-    expect(norm(ev.guarded.nextAction)).toBe(norm(plain(guardedSec, 'Next action')))
+    const guarded = await loadGuarded()
+    expect(guarded.verdict).toBe(norm(tick(guardedSec, 'Verdict')))
+    expect(guarded.confidenceLabel).toBe(tick(guardedSec, 'Confidence'))
+    expect(norm(guarded.nextAction)).toBe(norm(plain(guardedSec, 'Next action')))
   })
   it('sealed evaluation truth matches spec (R4, readings, expected verdict, next action)', async () => {
     const ev = await loadEval()
@@ -80,24 +85,24 @@ describe('Spec: fixed agent results', () => {
 
 describe('Spec: scorecard', () => {
   it('rubric version matches spec', async () => {
-    expect((await loadEval()).scoring.rubricVersion).toBe(/Rubric version: `([^`]+)`/.exec(fixture)?.[1])
+    expect((await loadScores()).rubricVersion).toBe(/Rubric version: `([^`]+)`/.exec(fixture)?.[1])
   })
   it('baseline metric inputs match spec', async () => {
-    const s = (await loadEval()).scoring.baseline
+    const s = (await loadScores()).baseline
     metricOrder.forEach((k, i) => expect(s[k]).toBe(scoreRows[metricRows[i]][0]))
   })
   it('guarded metric inputs match spec', async () => {
-    const s = (await loadEval()).scoring.guarded
+    const s = (await loadScores()).guarded
     metricOrder.forEach((k, i) => expect(s[k]).toBe(scoreRows[metricRows[i]][1]))
   })
   it('computed totals and delta equal spec totals', async () => {
-    const { baseline, guarded } = (await loadEval()).scoring
+    const { baseline, guarded } = (await loadScores())
     expect(totalScore(baseline)).toBe(scoreRows.Total[0])
     expect(totalScore(guarded)).toBe(scoreRows.Total[1])
     expect(compareScores(baseline, guarded).delta).toBe(Number(/`\+(\d+) release-readiness points`/.exec(fixture)?.[1]))
   })
   it('fixture supplies no precomputed total or delta', async () => {
-    const sc = JSON.stringify((await loadEval()).scoring)
+    const sc = JSON.stringify((await loadScores()))
     expect(sc).not.toMatch(/"total"|"delta"/)
   })
 })

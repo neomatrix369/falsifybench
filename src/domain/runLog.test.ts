@@ -4,6 +4,7 @@ import { mat001Evaluation } from '../data/mat001.evaluation'
 import { lab001 } from '../data/lab001'
 import { lab001Evaluation } from '../data/lab001.evaluation'
 import { createReceipt } from './receipt'
+import { scriptedRun } from '../test/scriptedRun'
 import { buildRunLog } from './runLog'
 import { initialWalkthroughState, type WalkthroughState } from './walkthrough'
 
@@ -25,11 +26,11 @@ const atAudit: WalkthroughState = {
 
 describe('buildRunLog', () => {
   it('is empty before a run starts', () => {
-    expect(buildRunLog({ state: initialWalkthroughState, scenario: mat001, evaluation: null, receipt: null, unseal: null })).toEqual([])
+    expect(buildRunLog({ state: initialWalkthroughState, scenario: mat001, evaluation: null, run: null, receipt: null, unseal: null })).toEqual([])
   })
 
   it('shows a pending entry while the sealed evaluation loads, with no hidden terms', () => {
-    const log = buildRunLog({ state: atAudit, scenario: mat001, evaluation: null, receipt: null, unseal: { requestedAt: at(12) } })
+    const log = buildRunLog({ state: atAudit, scenario: mat001, evaluation: null, run: null, receipt: null, unseal: { requestedAt: at(12) } })
     expect(log[log.length - 1]).toMatchObject({ pending: true, label: 'Waiting for sealed evaluation…' })
     expect(JSON.stringify(log)).not.toMatch(/highest-stress|zero ultrasonic/i)
   })
@@ -39,6 +40,7 @@ describe('buildRunLog', () => {
       state: atAudit,
       scenario: mat001,
       evaluation: mat001Evaluation,
+      run: scriptedRun(mat001, mat001Evaluation),
       receipt: null,
       unseal: { requestedAt: at(12), loadedAt: at(13), ms: 42 },
     })
@@ -47,6 +49,7 @@ describe('buildRunLog', () => {
       state: atAudit,
       scenario: mat001,
       evaluation: mat001Evaluation,
+      run: scriptedRun(mat001, mat001Evaluation),
       receipt: null,
       unseal: { requestedAt: at(1), loadedAt: at(2), ms: 5 },
     })
@@ -60,7 +63,7 @@ describe('buildRunLog', () => {
     const log = buildRunLog({
       state: atAudit,
       scenario: mat001,
-      evaluation: null,
+      evaluation: null, run: null,
       receipt: null,
       unseal: { requestedAt: at(12) },
       error: new Error('chunk failed'),
@@ -80,8 +83,8 @@ describe('buildRunLog', () => {
       events: [...atAudit.events, { order: 4, stage: 'guarded', at: at(13) }, { order: 5, stage: 'receipt', at: at(14) }],
     }
     const cautious = { ...mat001, baseline: { ...mat001.baseline, verdict: 'investigate' as const } }
-    const receipt = createReceipt({ scenario: cautious, evaluation: mat001Evaluation, runId: 'RUN-1', startedAt: at(10), events: done.events, mode: 'synthetic', clock: () => new Date(at(15)) })
-    const log = buildRunLog({ state: done, scenario: cautious, evaluation: mat001Evaluation, receipt, unseal: { requestedAt: at(12), loadedAt: at(12), ms: 3 } })
+    const receipt = createReceipt({ scenario: cautious, evaluation: mat001Evaluation, run: scriptedRun(cautious, mat001Evaluation), runId: 'RUN-1', startedAt: at(10), events: done.events, mode: 'synthetic', clock: () => new Date(at(15)) })
+    const log = buildRunLog({ state: done, scenario: cautious, evaluation: mat001Evaluation, run: scriptedRun(cautious, mat001Evaluation), receipt, unseal: { requestedAt: at(12), loadedAt: at(12), ms: 3 } })
     const rule = log[log.length - 1]?.facts?.find((f) => f.key === 'Unsafe approval prevented')?.value
     expect(rule).toMatch(/^baseline is Proceed\? Investigate → no;/)
     expect(rule).toMatch(/all three → no$/)
@@ -99,13 +102,14 @@ describe('buildRunLog', () => {
     const receipt = createReceipt({
       scenario: mat001,
       evaluation: mat001Evaluation,
+      run: scriptedRun(mat001, mat001Evaluation),
       runId: 'RUN-1',
       startedAt: at(10),
       events: done.events,
       mode: 'synthetic',
       clock: () => new Date(at(15)),
     })
-    const log = buildRunLog({ state: done, scenario: mat001, evaluation: mat001Evaluation, receipt, unseal: { requestedAt: at(12), loadedAt: at(12), ms: 3 } })
+    const log = buildRunLog({ state: done, scenario: mat001, evaluation: mat001Evaluation, run: scriptedRun(mat001, mat001Evaluation), receipt, unseal: { requestedAt: at(12), loadedAt: at(12), ms: 3 } })
     const facts = (label: RegExp) => Object.fromEntries((log.find((e) => label.test(e.label))?.facts ?? []).map((f) => [f.key, f.value]))
     expect(facts(/started/)['Triggered by']).toBe('Run benchmark button')
     expect(facts(/^Audit started/)['Triggered by']).toBe('Auto-play (3 s tick)')
@@ -122,7 +126,7 @@ describe('buildRunLog', () => {
 
   it('keeps sealed terms out of every step before the sealed evaluation loads', () => {
     const preAudit: WalkthroughState = { ...atAudit, reached: 1, cursor: 1, events: atAudit.events.slice(0, 2), triggers: ['run', 'manual'] }
-    const log = buildRunLog({ state: preAudit, scenario: mat001, evaluation: null, receipt: null, unseal: null })
+    const log = buildRunLog({ state: preAudit, scenario: mat001, evaluation: null, run: null, receipt: null, unseal: null })
     expect(log.every((e) => e.facts && e.facts.length > 0)).toBe(true)
     expect(JSON.stringify(log)).not.toMatch(/highest-stress|zero ultrasonic|F-1|expected safe/i)
   })
@@ -140,7 +144,7 @@ describe('abandonedEntry', () => {
     const entry = abandonedEntry(s, mat001, 'Reset', at)
     expect(entry).toMatchObject({ label: 'Run RUN-1 abandoned at stage 3 Evidence audit', detail: 'MAT-001 · Reset · no receipt recorded' })
     expect(abandonedEntry(initialWalkthroughState, mat001, 'Reset', at)).toBeNull()
-    const idle = { state: initialWalkthroughState, scenario: mat001, evaluation: null, receipt: null, unseal: null }
+    const idle = { state: initialWalkthroughState, scenario: mat001, evaluation: null, run: null, receipt: null, unseal: null }
     expect(buildRunLog({ ...idle, abandoned: entry })).toEqual([entry])
     expect(buildRunLog(idle)).toEqual([])
   })
@@ -166,7 +170,7 @@ describe('buildRunLog guarded entry transparency', () => {
     events: [...atAudit.events, { order: 4, stage: 'guarded', at: at(13) }],
   }
   const guardedFacts = (scenario: typeof mat001, evaluation: typeof mat001Evaluation) => {
-    const log = buildRunLog({ state: atGuarded, scenario, evaluation, receipt: null, unseal: { requestedAt: at(12), loadedAt: at(12), ms: 3 } })
+    const log = buildRunLog({ state: atGuarded, scenario, evaluation, run: scriptedRun(scenario, evaluation), receipt: null, unseal: { requestedAt: at(12), loadedAt: at(12), ms: 3 } })
     return Object.fromEntries((log.find((e) => /^Guarded/.test(e.label))?.facts ?? []).map((f) => [f.key, f.value]))
   }
 

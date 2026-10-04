@@ -4,11 +4,12 @@ import { ei001Evaluation } from '../data/ei001.evaluation'
 import { mat001 } from '../data/mat001'
 import { mat001Evaluation } from '../data/mat001.evaluation'
 import { scoreBenchmark, type ScoredScenario } from './benchmarkScore'
+import { scriptedRun } from '../test/scriptedRun'
 
 const IDS = [mat001.id, ei001.id]
 const data: ScoredScenario[] = [
-  { scenario: mat001, evaluation: mat001Evaluation },
-  { scenario: ei001, evaluation: ei001Evaluation },
+  { scenario: mat001, evaluation: mat001Evaluation, run: scriptedRun(mat001, mat001Evaluation) },
+  { scenario: ei001, evaluation: ei001Evaluation, run: scriptedRun(ei001, ei001Evaluation) },
 ]
 
 describe('benchmark data score', () => {
@@ -34,7 +35,7 @@ describe('benchmark data score', () => {
 
   it('a finding citing unknown evidence fails the gate and zeroes the score', () => {
     const broken = { ...ei001Evaluation, findings: [{ id: 'F-X', statement: 'Cites a record that does not exist.', evidenceIds: ['EV-NOPE'] }] }
-    const s = scoreBenchmark([{ scenario: ei001, evaluation: broken }], IDS)
+    const s = scoreBenchmark([{ scenario: ei001, evaluation: broken, run: scriptedRun(ei001, broken) }], IDS)
     expect(s.gate).toBe(0)
     expect(s.failedGates).toEqual(['EI-001 I4 Every finding cites existing evidence'])
     expect(s.agents.guarded.score).toBe(0)
@@ -43,21 +44,22 @@ describe('benchmark data score', () => {
   it('a blank evidence ID fails the gate even when a finding cites it', () => {
     const evidence = [{ ...mat001.evidence[0], id: ' ' }, ...mat001.evidence.slice(1)]
     const findings = [{ ...mat001Evaluation.findings[0], evidenceIds: [' '] }, ...mat001Evaluation.findings.slice(1)]
-    const s = scoreBenchmark([{ scenario: { ...mat001, evidence }, evaluation: { ...mat001Evaluation, findings } }], IDS)
+    const s = scoreBenchmark([{ scenario: { ...mat001, evidence }, evaluation: { ...mat001Evaluation, findings }, run: scriptedRun(mat001, mat001Evaluation) }], IDS)
     const failed = s.scenarios[0].integrity.filter((c) => !c.ok).map((c) => c.id)
     expect(failed).toEqual(['I3', 'I4'])
     expect(s.gate).toBe(0)
   })
 
   it('an out-of-range rubric value fails the gate', () => {
-    const scoring = { ...mat001Evaluation.scoring, guarded: { ...mat001Evaluation.scoring.guarded, safeAction: 120 } }
-    const s = scoreBenchmark([{ scenario: mat001, evaluation: { ...mat001Evaluation, scoring } }], IDS)
+    const run = scriptedRun(mat001, mat001Evaluation)
+    const scores = { ...run.scores, guarded: { ...run.scores.guarded, safeAction: 120 } }
+    const s = scoreBenchmark([{ scenario: mat001, evaluation: mat001Evaluation, run: { ...run, scores } }], IDS)
     expect(s.failedGates).toEqual(['MAT-001 I6 Rubric metrics are integers 0–100'])
   })
 
   it('sealed truth copied into the public fixture fails the gate', () => {
     const leaky = { ...mat001, title: mat001Evaluation.hiddenTruth.summary }
-    const s = scoreBenchmark([{ scenario: leaky, evaluation: mat001Evaluation }], IDS)
+    const s = scoreBenchmark([{ scenario: leaky, evaluation: mat001Evaluation, run: scriptedRun(mat001, mat001Evaluation) }], IDS)
     expect(s.failedGates).toEqual(['MAT-001 I9 Sealed truth absent from the public fixture'])
   })
 
@@ -68,8 +70,8 @@ describe('benchmark data score', () => {
   })
 
   it('a guarded Proceed on an unsafe case counts as an unsafe approval, not prevented', () => {
-    const guarded = { ...mat001Evaluation.guarded, verdict: 'proceed' as const }
-    const r = scoreBenchmark([{ scenario: mat001, evaluation: { ...mat001Evaluation, guarded } }], IDS)
+    const run = scriptedRun(mat001, mat001Evaluation, { verdict: 'proceed' })
+    const r = scoreBenchmark([{ scenario: mat001, evaluation: mat001Evaluation, run }], IDS)
     expect(r.agents.guarded.unsafeApprovals).toBe(1)
     expect(r.unsafeApprovalsPrevented).toBe(0)
   })
