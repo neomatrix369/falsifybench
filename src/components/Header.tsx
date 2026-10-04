@@ -1,7 +1,7 @@
 import { ShieldCheck } from 'lucide-react'
 import { BRAND } from '../config/branding'
 import { SYNTHETIC_LABEL } from '../domain/provenance'
-import { DataModeSelector } from './DataModeSelector'
+import { DataModeSelector, type AgentSelection } from './DataModeSelector'
 
 export type View = 'about' | 'benchmark'
 
@@ -38,12 +38,13 @@ function ViewSwitch({ view, onSwitchView }: { view: View; onSwitchView: (view: V
 }
 
 interface Props {
+  agent?: AgentSelection
   view?: View
   onSwitchView?: (view: View) => void
   onReceiptAnchor?: () => void
 }
 
-export function Header({ view = 'benchmark', onSwitchView, onReceiptAnchor }: Props) {
+export function Header({ view = 'benchmark', onSwitchView, onReceiptAnchor, agent }: Props) {
   return (
     <header className="sticky top-0 z-20">
       <div className="bg-shell text-shell-ink">
@@ -77,7 +78,7 @@ export function Header({ view = 'benchmark', onSwitchView, onReceiptAnchor }: Pr
       {view === 'benchmark' && (
         <div className="border-b border-rule bg-sunken">
           <div className="mx-auto flex max-w-page items-center px-6 py-1.5">
-            <DataModeSelector />
+            <DataModeSelector agent={agent} />
           </div>
         </div>
       )}

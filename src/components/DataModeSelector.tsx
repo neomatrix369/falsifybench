@@ -1,5 +1,21 @@
 import { Bot, Database, Lock } from 'lucide-react'
-import { LIVE_AGENT_UNAVAILABLE_REASON, PARTNER_UNAVAILABLE_REASON } from '../domain/provenance'
+import { LIVE_AGENT_UNAVAILABLE_REASON, LIVE_SCOPE_NOTE, PARTNER_UNAVAILABLE_REASON } from '../domain/provenance'
+import { liveAvailable, type LiveHealth } from '../domain/live'
+
+export type AgentMode = 'scripted' | 'live'
+
+/** `health` is null until (or unless) a local server answers `/api/health`; the deployed static site never has one. */
+export interface AgentSelection {
+  mode: AgentMode
+  health: LiveHealth | null
+  onSelect?: (mode: AgentMode) => void
+}
+
+function liveReason(health: LiveHealth | null): string {
+  if (liveAvailable(health)) return `Baseline from ${health!.model} through the local server. ${LIVE_SCOPE_NOTE}`
+  if (health) return `The local server is running but ${health.reason ?? 'has no API key'}`
+  return LIVE_AGENT_UNAVAILABLE_REASON
+}
 
 function Option({
   name,
@@ -8,6 +24,7 @@ function Option({
   checked,
   disabled,
   reason,
+  onSelect,
 }: {
   name: string
   value: string
@@ -15,6 +32,7 @@ function Option({
   checked: boolean
   disabled?: boolean
   reason?: string
+  onSelect?: () => void
 }) {
   const reasonId = reason ? `${name}-${value}-reason` : undefined
   return (
@@ -31,7 +49,7 @@ function Option({
         checked={checked}
         disabled={disabled}
         aria-describedby={reasonId}
-        readOnly
+        {...(onSelect ? { onChange: onSelect } : { readOnly: true })}
         className="h-3 w-3 accent-primary focus-visible:outline-none"
       />
       {disabled && <Lock aria-hidden className="h-3 w-3" />}
@@ -45,7 +63,9 @@ function Option({
   )
 }
 
-export function DataModeSelector() {
+export function DataModeSelector({ agent = { mode: 'scripted', health: null } }: { agent?: AgentSelection }) {
+  const available = liveAvailable(agent.health)
+  const live = agent.mode === 'live'
   return (
     <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
       <fieldset className="flex items-center gap-2">
@@ -73,14 +93,21 @@ export function DataModeSelector() {
           Agent
         </span>
         <div className="flex items-center gap-0.5 rounded bg-ground p-0.5 ring-1 ring-inset ring-rule">
-          <Option name="agent-execution" value="scripted" label="Scripted fixture — active" checked />
+          <Option
+            name="agent-execution"
+            value="scripted"
+            label={live ? 'Scripted fixture' : 'Scripted fixture — active'}
+            checked={!live}
+            onSelect={available ? () => agent.onSelect?.('scripted') : undefined}
+          />
           <Option
             name="agent-execution"
             value="live"
-            label="Live agent — unavailable"
-            checked={false}
-            disabled
-            reason={LIVE_AGENT_UNAVAILABLE_REASON}
+            label={!available ? 'Live agent — unavailable' : live ? 'Live baseline — active' : 'Live baseline — available'}
+            checked={live}
+            disabled={!available}
+            reason={liveReason(agent.health)}
+            onSelect={available ? () => agent.onSelect?.('live') : undefined}
           />
         </div>
       </fieldset>
@@ -88,11 +115,11 @@ export function DataModeSelector() {
   )
 }
 
-export function UnavailableModesNote() {
+export function UnavailableModesNote({ health = null }: { health?: LiveHealth | null }) {
   return (
     <p className="px-1 text-meta text-ink-3">
       <Lock aria-hidden className="mr-1 inline h-3 w-3 align-[-2px]" />
-      Partner data: {PARTNER_UNAVAILABLE_REASON} Live agent: {LIVE_AGENT_UNAVAILABLE_REASON}
+      Partner data: {PARTNER_UNAVAILABLE_REASON} Live agent: {liveReason(health)}
     </p>
   )
 }

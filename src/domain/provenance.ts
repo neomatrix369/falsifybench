@@ -64,4 +64,10 @@ export const SYNTHETIC_LABEL = 'Synthetic · hand-audited'
 export const SCRIPTED_FIXTURE_LABEL = 'Scripted benchmark fixture — not a live model run'
 export const PARTNER_UNAVAILABLE_REASON = 'Awaiting validated partner source.'
 export const LIVE_AGENT_UNAVAILABLE_REASON =
-  'Reserved for a later server-side integration. No inference runs in this PoC.'
+  'Runs only on a local machine through the local server (npm run dev:live). This build has no server and no key, so no model is called.'
+
+/** Shown on a live baseline answer instead of `SCRIPTED_FIXTURE_LABEL`. */
+export const liveModelLabel = (model: string) => `Live model run — ${model} via the local server`
+
+/** Plain statement of what a live run is: the baseline is live, the guarded agent is not. */
+export const LIVE_SCOPE_NOTE = 'Only the baseline is live; the guarded agent stays a scripted fixture until Step 4.'

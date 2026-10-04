@@ -1,4 +1,4 @@
-import { SCRIPTED_FIXTURE_LABEL } from '../domain/provenance'
+import { SCRIPTED_FIXTURE_LABEL, liveModelLabel } from '../domain/provenance'
 import type { AgentResponse } from '../domain/types'
 import { VerdictBadge } from './VerdictBadge'
 
@@ -8,7 +8,7 @@ export function AgentResponseCard({ response, unsafe, emphasis }: { response: Ag
     <article aria-label={`${response.agentLabel} response`} className={`border-t-2 pt-3 ${rule}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <p className="text-body font-semibold text-ink">{response.agentLabel}</p>
-        <p className="label">{SCRIPTED_FIXTURE_LABEL}</p>
+        <p className="label">{response.live ? liveModelLabel(response.live.model) : SCRIPTED_FIXTURE_LABEL}</p>
       </div>
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
         <VerdictBadge verdict={response.verdict} unsafe={unsafe} />

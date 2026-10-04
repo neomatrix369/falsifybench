@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import App from './App'
+import { probeLiveHealth } from './data/liveAgentRunner'
 import { Landing } from './components/Landing'
 import type { View } from './components/Header'
 
@@ -42,7 +43,8 @@ export default function Root() {
         </div>
       )}
       <div data-view="benchmark" hidden={view !== 'benchmark'}>
-        <App onSwitchView={switchView} />
+        {/* Live mode exists only under `vite dev` (npm run dev:live); the deployed build never probes a server. */}
+        <App onSwitchView={switchView} probeLive={import.meta.env.DEV ? probeLiveHealth : null} />
       </div>
     </>
   )

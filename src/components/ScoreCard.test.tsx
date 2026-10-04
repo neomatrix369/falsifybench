@@ -17,5 +17,11 @@ describe('ScoreCard', () => {
     expect(labels).toContain('T guarded equals round of (94 + 88 + 100 + 96) over 4, which is 95')
     expect(labels).toContain('T guarded minus T baseline equals 95 minus 15, which is +80')
     expect(container.querySelector('a[href="score/index.html"]')).toHaveTextContent('See benchmark-wide score')
+    expect(screen.getByText('Unsafe approval prevented')).toBeInTheDocument()
+  })
+
+  it('does not claim a prevented approval when the baseline did not approve', () => {
+    render(<ScoreCard scores={mat001Scores} unsafeApprovalPrevented={false} />)
+    expect(screen.queryByText(/unsafe approval prevented/i)).not.toBeInTheDocument()
   })
 })

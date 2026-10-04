@@ -6,16 +6,20 @@
   "scripts": {
     "predev": "node tools/check-deps.mjs",
     "dev": "vite",
+    "dev:live": "node tools/dev-live.mjs",
     "prebuild": "npm run score:check",
     "build": "tsc -b && vite build",
+    "postbuild": "node tools/check-dist-secrets.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b",
     "score": "vite-node tools/score/score.ts",
-    "score:check": "node tools/score/check.mjs"
+    "score:check": "node tools/score/check.mjs",
+    "stub:anthropic": "vite-node server/stub/run.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.123.0",
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource/red-hat-mono": "^5.3.0",
     "lucide-react": "^1.51.0",
@@ -27,6 +31,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^20.19.43",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

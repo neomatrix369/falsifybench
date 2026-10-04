@@ -1,7 +1,7 @@
 import { ArrowUpRight, ShieldCheck, TrendingUp } from 'lucide-react'
 import { METRIC_KEYS, METRIC_LABELS, compareScores, formatDelta } from '../domain/scoring'
 import { SCRIPTED_FIXTURE_LABEL } from '../domain/provenance'
-import type { RubricScores } from '../domain/types'
+import type { GraderIdentity, RubricScores } from '../domain/types'
 import { ScoreMath } from './ScoreMath'
 
 function Bar({ value, tone }: { value: number; tone: 'baseline' | 'guarded' }) {
@@ -12,7 +12,16 @@ function Bar({ value, tone }: { value: number; tone: 'baseline' | 'guarded' }) {
   )
 }
 
-export function ScoreCard({ scores }: { scores: RubricScores }) {
+export function ScoreCard({
+  scores,
+  grader,
+  unsafeApprovalPrevented = true,
+}: {
+  scores: RubricScores
+  grader?: GraderIdentity
+  /** False when this run's baseline did not approve (e.g. a live baseline that investigated), so nothing was prevented. */
+  unsafeApprovalPrevented?: boolean
+}) {
   const { baseline, guarded, rubricVersion } = scores
   const { baselineTotal, guardedTotal, delta } = compareScores(baseline, guarded)
   return (
@@ -21,7 +30,7 @@ export function ScoreCard({ scores }: { scores: RubricScores }) {
         <h3 id="scorecard-title" className="text-body font-semibold text-ink">
           Benchmark scorecard <span className="font-mono font-normal text-ink-3">· {rubricVersion}</span>
         </h3>
-        <p className="label">{SCRIPTED_FIXTURE_LABEL}</p>
+        <p className="label">{!grader || grader.id === 'fixture-grader' ? SCRIPTED_FIXTURE_LABEL : `Graded by ${grader.label}`}</p>
       </div>
       <table className="w-full text-body">
         <caption className="sr-only">Baseline versus guarded scores, 0 to 100</caption>
@@ -62,10 +71,12 @@ export function ScoreCard({ scores }: { scores: RubricScores }) {
           <TrendingUp aria-hidden className="h-4 w-4" />
           {formatDelta(delta)} release-readiness points
         </span>
-        <span className="inline-flex items-center gap-1 text-meta font-semibold text-ok">
-          <ShieldCheck aria-hidden className="h-3.5 w-3.5" />
-          Unsafe approval prevented
-        </span>
+        {unsafeApprovalPrevented && (
+          <span className="inline-flex items-center gap-1 text-meta font-semibold text-ok">
+            <ShieldCheck aria-hidden className="h-3.5 w-3.5" />
+            Unsafe approval prevented
+          </span>
+        )}
         <span className="ml-auto text-meta text-ink-3">Total = round(mean of four metrics). Benchmark demonstration, not a validated scientific result.</span>
       </div>
       <ScoreMath baseline={baseline} guarded={guarded} />

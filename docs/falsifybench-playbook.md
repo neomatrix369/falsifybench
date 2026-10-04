@@ -40,9 +40,9 @@ The first runnable case is a materials-reliability release decision. The app mus
   - `Synthetic / Mocked — active`
   - `Partner data — unavailable`
 - The real-data option is disabled until a future source has schema validation, non-empty provenance, and explicit `partner_validated` status. Explain: `Awaiting validated partner source.`
-- Design a typed adapter seam for future live data and live agent calls. Do not wire a client-side API key or live LLM call in this one-hour build.
+- Design a typed adapter seam for future live data and live agent calls. Do not wire a client-side API key or a live LLM call into the deployed build. Live calls are allowed for local runs only, through the local server (`server/`, `npm run dev:live`) with the key in a gitignored `.env`; they never enter the deployed static build.
 - Future live calls must be server-side and configured with environment variables for both localhost and cloud. Mock mode must never require a secret or network connection.
-- Also show `Agent execution: Scripted fixture — active`; reserve a disabled `Live agent — unavailable` state for the later server-side integration. Never imply inference occurred in this PoC.
+- Also show `Agent execution: Scripted fixture — active`; show `Live agent — unavailable` unless a local server reports a configured key (local runs only; the deployed build always shows unavailable). Never imply inference occurred when it did not.
 
 ## Reference use
 
@@ -464,7 +464,7 @@ Use the maximum useful parallelism within a one-hour integration window: one wri
 - [ ] The benchmark picker names each failure under test, and the idle claim matches the selected benchmark.
 - [ ] Keyboard-only: focus never lands on the page body during a walkthrough, including while the audit unseals; a failed unseal offers `Reload page`.
 - [ ] Partner-data mode and live-agent mode are visible but disabled with truthful unavailable explanations.
-- [ ] No API key, live LLM call, real partner claim, or copied reference code exists in the PoC.
+- [ ] No API key, real partner claim, or copied reference code exists in the PoC, and the deployed build makes no live LLM call. Live calls run only locally, through the local server with the key in a gitignored `.env`.
 - [ ] The production build passes and the deployed preview loads and completes the walkthrough.
 - [ ] Local setup is documented and can run the same app.
 - [ ] `DESIGN.md` exists, the UI passes the Design quality bar (no agent tells), and the `impeccable` critique and `ui-ux-pro-max` Pre-Delivery Checklist results are in the PR.
@@ -485,7 +485,7 @@ The FalsifyBench score (`docs/SCORE.md`, `npm run score`) evaluates the agents o
 
 Do not add these in the one-hour PoC:
 
-- live LLM calls or model-provider credentials;
+- live LLM calls or model-provider credentials in the deployed build (local runs may call a model through the local server, key in a gitignored `.env`);
 - partner-data import, persistence, or a claim of real-data validation;
 - user editing of evidence and rerunning cases;
 - the full research-validity walkthrough;
