@@ -23,10 +23,10 @@ function loadEnvFile() {
 loadEnvFile()
 
 const port = Number(process.env.FALSIFYBENCH_SERVER_PORT) || 8787
+let lastWarnedConfiguredPort
 // server/index.ts exits with this code when the port is taken (e.g. two npm run dev started together).
 const PORT_BUSY_EXIT = 98
-const portBusyMessage = () =>
-  `Port ${Number(process.env.FALSIFYBENCH_SERVER_PORT) || 8787} is already in use (another npm run dev or FalsifyBench server?). Stop it, or set FALSIFYBENCH_SERVER_PORT in .env, then rerun npm run dev.`
+const portBusyMessage = `Port ${port} is already in use (another npm run dev or FalsifyBench server?). Stop it, or set FALSIFYBENCH_SERVER_PORT in .env, then rerun npm run dev.`
 try {
   await new Promise((resolve, reject) => {
     const probe = createServer()
@@ -37,7 +37,7 @@ try {
   })
 } catch (error) {
   if (error?.code !== 'EADDRINUSE') throw error
-  console.error(portBusyMessage())
+  console.error(portBusyMessage)
   process.exit(1)
 }
 
@@ -73,8 +73,20 @@ function startServer(retriedAfterBusy = false) {
     serverRetryTimer = undefined
   }
   loadEnvFile()
+  const configuredPort = Number(process.env.FALSIFYBENCH_SERVER_PORT) || 8787
+  if (configuredPort !== port) {
+    if (configuredPort !== lastWarnedConfiguredPort) {
+      console.error(`[dev] FALSIFYBENCH_SERVER_PORT changed in .env; restart npm run dev to move the server and the Vite proxy (keeping ${port} for now)`)
+      lastWarnedConfiguredPort = configuredPort
+    }
+  } else {
+    lastWarnedConfiguredPort = undefined
+  }
   serverExitReported = false
-  const child = spawn(bin('vite-node'), ['server/index.ts'], { stdio: ['ignore', 'pipe', 'pipe'] })
+  const child = spawn(bin('vite-node'), ['server/index.ts'], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, FALSIFYBENCH_SERVER_PORT: String(port) },
+  })
   const generation = ++serverGeneration
   server = child
   prefixOutput('server', child)
@@ -96,7 +108,7 @@ function startServer(retriedAfterBusy = false) {
         }, 500)
         return
       }
-      console.error(portBusyMessage())
+      console.error(portBusyMessage)
       stop(1)
       return
     }

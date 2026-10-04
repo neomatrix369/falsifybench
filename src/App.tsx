@@ -86,11 +86,12 @@ interface BenchProps {
   health: LiveHealth | null
   onSelectAgentMode: (mode: AgentMode, abandoned: RunLogEntry | null) => void
   onRunStarted: (mode: AgentMode) => void
+  onRunReset: () => void
   tab: BenchTab
   onTabChange: (tab: BenchTab) => void
 }
 
-function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView, agentMode, health, onSelectAgentMode, onRunStarted, tab, onTabChange }: BenchProps) {
+function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView, agentMode, health, onSelectAgentMode, onRunStarted, onRunReset, tab, onTabChange }: BenchProps) {
   const { state, evaluation, run: graded, receipt, error, controls, actions, unseal, abandoned, liveCall, awaitingLive } = useWalkthrough(
     scenario,
     deps,
@@ -145,8 +146,9 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
 
   const reset = useCallback(() => {
     actions.reset()
+    onRunReset()
     setFocusRequest((n) => n + 1)
-  }, [actions])
+  }, [actions, onRunReset])
 
   const unsealed = state.reached >= AUDIT_STAGE_INDEX && evaluation ? evaluation : null
   const excludedIds = unsealed?.hiddenTruth.untrustedEvidenceIds ?? []
@@ -190,9 +192,9 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
       <TabBar tab={tab} onChange={onTabChange} />
       {tab === 'simple' ? (
         <main id="bench-panel" role="tabpanel" aria-labelledby="bench-tab-simple" className="mx-auto max-w-page px-6 py-4">
-          <WalkthroughErrorBoundary onReset={actions.reset} resetKey={state.runId}>
+          <WalkthroughErrorBoundary onReset={reset} resetKey={state.runId}>
             {error ? (
-              <ErrorCard message={error.message} onReset={actions.reset} recovery={recovery ?? 'reset'} onRetry={actions.retryLive} />
+              <ErrorCard message={error.message} onReset={reset} recovery={recovery ?? 'reset'} onRetry={actions.retryLive} />
             ) : (
               <SimpleJourney
                 ref={resultHeading}
@@ -248,9 +250,9 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
             <UnavailableModesNote health={health} />
           </div>
           <div className="space-y-4">
-            <WalkthroughErrorBoundary onReset={actions.reset} resetKey={state.runId}>
+            <WalkthroughErrorBoundary onReset={reset} resetKey={state.runId}>
               {error ? (
-                <ErrorCard message={error.message} onReset={actions.reset} recovery={recovery ?? 'reset'} onRetry={actions.retryLive} />
+                <ErrorCard message={error.message} onReset={reset} recovery={recovery ?? 'reset'} onRetry={actions.retryLive} />
               ) : (
                 <ResultSurface
                   ref={resultHeading}
@@ -308,6 +310,7 @@ export default function App({
   const [carried, setCarried] = useState<RunLogEntry | null>(null)
   const [health, setHealth] = useState<LiveHealth | null>(null)
   const [agentMode, setAgentMode] = useState<AgentMode | null>(null)
+  const [runMode, setRunMode] = useState<AgentMode | null>(null)
   useEffect(() => {
     if (!probeLive) return
     let cancelled = false
@@ -316,7 +319,7 @@ export default function App({
       probeLive().then((h) => {
         if (cancelled) return
         setHealth(h)
-        if (h === null) timer = setTimeout(probe, LIVE_HEALTH_RETRY_MS)
+        if (h === null || !h.configured) timer = setTimeout(probe, LIVE_HEALTH_RETRY_MS)
       })
     }
     probe()
@@ -325,16 +328,20 @@ export default function App({
       if (timer !== undefined) clearTimeout(timer)
     }
   }, [probeLive])
-  const preferred = agentMode ?? (liveAvailable(health) ? 'live' : 'scripted')
+  const preferred = agentMode ?? runMode ?? (liveAvailable(health) ? 'live' : 'scripted')
   const mode: AgentMode = preferred === 'live' && liveAvailable(health) ? 'live' : 'scripted'
   const seams = useMemo(() => ({ runner: mode === 'live' ? liveRunner : runner, grader }), [mode, liveRunner, runner, grader])
   const selectAgentMode = useCallback((next: AgentMode, abandoned: RunLogEntry | null) => {
     setCarried(abandoned)
     setAgentMode(next)
   }, [])
-  const onRunStarted = useCallback((runMode: AgentMode) => {
-    setAgentMode((current) => current ?? runMode)
-  }, [])
+  const onRunStarted = useCallback(
+    (mode: AgentMode) => {
+      if (agentMode === null) setRunMode((current) => current ?? mode)
+    },
+    [agentMode],
+  )
+  const onRunReset = useCallback(() => setRunMode(null), [])
   const [tab, setTab] = useState<BenchTab>(initialTab)
   const changeTab = useCallback(
     (next: BenchTab) => {
@@ -345,6 +352,7 @@ export default function App({
   )
   const selectBenchmark = useCallback((id: string, abandoned: RunLogEntry | null = null) => {
     setCarried(abandoned)
+    setRunMode(null)
     setSwitched(true)
     setActiveId(id)
   }, [])
@@ -397,6 +405,7 @@ export default function App({
         health={health}
         onSelectAgentMode={selectAgentMode}
         onRunStarted={onRunStarted}
+        onRunReset={onRunReset}
         tab={tab}
         onTabChange={changeTab}
       />
