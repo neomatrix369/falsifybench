@@ -105,6 +105,13 @@ describe('liveAgentRunner', () => {
     expect(await failure(runner.run('baseline', ei001))).toMatchObject({ kind: 'server', httpStatus: 504 })
   })
 
+  it('names a missing guarded endpoint as an outdated local server', async () => {
+    const { runner } = runnerWith(json(404, { error: { kind: 'server', message: 'No route for POST /api/agents/guarded' } }))
+    const err = await failure(runner.run('guarded', ei001, { baseline: liveAnswer() }))
+    expect(err.kind).toBe('server-outdated')
+    expect(err.message).toBe(`The local server is running older code without ${LIVE_GUARDED_ENDPOINT}. Stop npm run dev (Ctrl+C) and start it again.`)
+  })
+
   it('reports an unreachable local server as a network error', async () => {
     const { runner } = runnerWith(new TypeError('fetch failed'))
     expect(await failure(runner.run('baseline', ei001))).toMatchObject({ kind: 'network', message: 'Could not reach the local server: fetch failed' })

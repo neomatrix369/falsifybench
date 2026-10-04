@@ -85,11 +85,12 @@ interface BenchProps {
   agentMode: AgentMode
   health: LiveHealth | null
   onSelectAgentMode: (mode: AgentMode, abandoned: RunLogEntry | null) => void
+  onRunStarted: (mode: AgentMode) => void
   tab: BenchTab
   onTabChange: (tab: BenchTab) => void
 }
 
-function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView, agentMode, health, onSelectAgentMode, tab, onTabChange }: BenchProps) {
+function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView, agentMode, health, onSelectAgentMode, onRunStarted, tab, onTabChange }: BenchProps) {
   const { state, evaluation, run: graded, receipt, error, controls, actions, unseal, abandoned, liveCall, awaitingLive } = useWalkthrough(
     scenario,
     deps,
@@ -120,9 +121,15 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
   )
 
   const run = useCallback(() => {
+    onRunStarted(agentMode)
     actions.run()
     setFocusRequest((n) => n + 1)
-  }, [actions])
+  }, [actions, agentMode, onRunStarted])
+
+  const toggleAutoplay = useCallback(() => {
+    if (!state.autoplay && state.runId === null) onRunStarted(agentMode)
+    actions.toggleAutoplay()
+  }, [actions, agentMode, onRunStarted, state.autoplay, state.runId])
 
   // Back / Next step keep focus while stepping. Only when the focused control
   // disables itself (Back at Evidence, Next step at Receipt) does focus move to the stage heading.
@@ -200,7 +207,7 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
                 onRun={run}
                 onBack={actions.back}
                 onNext={actions.next}
-                onToggleAutoplay={actions.toggleAutoplay}
+                onToggleAutoplay={toggleAutoplay}
                 onReset={reset}
                 onSelect={actions.select}
                 onOpenDetail={openDetail}
@@ -227,7 +234,7 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
               onSelect={select}
               onBack={actions.back}
               onNext={actions.next}
-              onToggleAutoplay={actions.toggleAutoplay}
+              onToggleAutoplay={toggleAutoplay}
               onReset={reset}
             />
             <RunLog
@@ -300,7 +307,7 @@ export default function App({
   const [attempt, setAttempt] = useState(0)
   const [carried, setCarried] = useState<RunLogEntry | null>(null)
   const [health, setHealth] = useState<LiveHealth | null>(null)
-  const [agentMode, setAgentMode] = useState<AgentMode>('scripted')
+  const [agentMode, setAgentMode] = useState<AgentMode | null>(null)
   useEffect(() => {
     if (!probeLive) return
     let cancelled = false
@@ -318,11 +325,15 @@ export default function App({
       if (timer !== undefined) clearTimeout(timer)
     }
   }, [probeLive])
-  const mode: AgentMode = agentMode === 'live' && liveAvailable(health) ? 'live' : 'scripted'
+  const preferred = agentMode ?? (liveAvailable(health) ? 'live' : 'scripted')
+  const mode: AgentMode = preferred === 'live' && liveAvailable(health) ? 'live' : 'scripted'
   const seams = useMemo(() => ({ runner: mode === 'live' ? liveRunner : runner, grader }), [mode, liveRunner, runner, grader])
   const selectAgentMode = useCallback((next: AgentMode, abandoned: RunLogEntry | null) => {
     setCarried(abandoned)
     setAgentMode(next)
+  }, [])
+  const onRunStarted = useCallback((runMode: AgentMode) => {
+    setAgentMode((current) => current ?? runMode)
   }, [])
   const [tab, setTab] = useState<BenchTab>(initialTab)
   const changeTab = useCallback(
@@ -385,6 +396,7 @@ export default function App({
         agentMode={mode}
         health={health}
         onSelectAgentMode={selectAgentMode}
+        onRunStarted={onRunStarted}
         tab={tab}
         onTabChange={changeTab}
       />

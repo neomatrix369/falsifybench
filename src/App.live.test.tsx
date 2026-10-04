@@ -59,14 +59,73 @@ async function openLive(runner: AgentRunner, initialId = 'MAT-001', source?: Sce
     />,
   )
   await screen.findByRole('button', { name: /run benchmark/i })
-  const live = await screen.findByRole('radio', { name: /live agents — available/i })
+  const live = await screen.findByRole('radio', { name: /live agents — active/i })
   expect(live).toBeEnabled()
-  await user.click(live)
-  await screen.findByRole('radio', { name: /live agents — active/i })
   return user
 }
 
 describe('Live agent selector', () => {
+  it('selects configured live agents by default and runs through the live runner', async () => {
+    const { runner, baseline } = liveRunnerReplying(liveAnswer())
+    const user = await openLive(runner)
+    expect(screen.getByRole('radio', { name: /live agents — active/i })).toBeChecked()
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    await waitFor(() => expect(baseline).toHaveBeenCalledTimes(1))
+  })
+
+  it.each([
+    ['null', null],
+    ['not configured', { ...configured, configured: false }],
+  ] as const)('keeps scripted agents active when the health probe is %s', async (_label, health) => {
+    const probeLive = vi.fn(async () => health)
+    render(<App deps={deps} initialId="MAT-001" probeLive={probeLive} />)
+    await waitFor(() => expect(probeLive).toHaveBeenCalledTimes(1))
+    expect(await screen.findByRole('radio', { name: /scripted fixture — active/i })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /live agents — unavailable/i })).toBeDisabled()
+  })
+
+  it('keeps an explicit scripted choice after a later probe reports configured', async () => {
+    const user = userEvent.setup()
+    const firstProbe = vi.fn(async () => configured)
+    const laterProbe = vi.fn(async () => configured)
+    const { rerender } = render(<App deps={deps} initialId="MAT-001" probeLive={firstProbe} />)
+    expect(await screen.findByRole('radio', { name: /live agents — active/i })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: /scripted fixture/i }))
+    expect(screen.getByRole('radio', { name: /scripted fixture — active/i })).toBeChecked()
+    rerender(<App deps={deps} initialId="MAT-001" probeLive={laterProbe} />)
+    await waitFor(() => expect(laterProbe).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.getByRole('radio', { name: /scripted fixture — active/i })).toBeChecked())
+    expect(screen.getByRole('radio', { name: /live agents — available/i })).toBeEnabled()
+  })
+
+  it('pins the scripted runner when a run starts before configured health arrives', async () => {
+    let resolveHealth: (health: LiveHealth | null) => void = () => {}
+    const probeLive = vi.fn(() => new Promise<LiveHealth | null>((resolve) => (resolveHealth = resolve)))
+    const scriptedRun = vi.fn()
+    const runner: AgentRunner = {
+      execution: 'scripted',
+      run: (agent, scenario, options) => {
+        scriptedRun(agent)
+        return scriptedAgentRunner.run(agent, scenario, options)
+      },
+    }
+    const liveRun = vi.fn(async () => liveAnswer())
+    const liveRunner: AgentRunner = { execution: 'live', run: liveRun }
+    const user = userEvent.setup()
+    render(<App deps={deps} initialId="MAT-001" runner={runner} liveRunner={liveRunner} probeLive={probeLive} />)
+    await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
+    await waitFor(() => expect(probeLive).toHaveBeenCalledTimes(1))
+    await act(async () => {
+      resolveHealth(configured)
+    })
+    expect(screen.getByRole('radio', { name: /scripted fixture — active/i })).toBeChecked()
+    await user.click(btn(/next step/i))
+    await user.click(btn(/next step/i))
+    await waitFor(() => expect(scriptedRun).toHaveBeenCalled())
+    expect(liveRun).not.toHaveBeenCalled()
+  })
+
   it('retries a null health probe until the server responds', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
@@ -77,7 +136,7 @@ describe('Live agent selector', () => {
         await Promise.resolve()
       })
       await act(() => vi.advanceTimersByTimeAsync(LIVE_HEALTH_RETRY_MS))
-      expect(screen.getByRole('radio', { name: /live agents — available/i })).toBeEnabled()
+      expect(screen.getByRole('radio', { name: /live agents — active/i })).toBeEnabled()
       expect(probeLive).toHaveBeenCalledTimes(2)
     } finally {
       vi.useRealTimers()
