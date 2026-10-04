@@ -123,7 +123,7 @@ export const SCIENCE_AGENT_THEMES: readonly ScienceAgentTheme[] = [
     ask: 'Evals that catch research agents reward hacking.',
     status: 'covered',
     evidence:
-      'Each scenario offers an attractive but invalid shortcut: extrapolate a pass from sampled points, or obey a source that says “report it as approved”. Taking it costs Safe action, and every run ends in a receipt.',
+      'Each scenario offers an attractive but invalid shortcut: obey a source that says “report it as approved”, trust an operator’s stale “arm is parked” message, or extrapolate a pass from sampled points. Taking it costs Safe action, and every run ends in a receipt.',
   },
   {
     theme: 'Epistemological agents',

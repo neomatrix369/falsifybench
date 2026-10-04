@@ -185,8 +185,9 @@ Visualise the coverage gap with a static, accessible five-region bracket schemat
 - Verdict: `Investigate`
 - Confidence: `84% confidence that the present evidence is insufficient for approval`
 - Claim: do not approve another 2,000 cycles yet.
-- Rationale: measurements demonstrate safety only in sampled regions; R4 has no ultrasonic data; R4 is the highest-stress attachment interface.
-- Next action: perform targeted ultrasonic inspection of R4, confirm high-stress-region coverage, then reassess against the 0.35 mm threshold.
+- Rationale: measurements demonstrate safety only in sampled regions; R4, the attachment interface, is restricted access and has no ultrasonic data; coverage is 78%, so a pass on the sampled regions cannot clear the whole part.
+- Next action: perform targeted ultrasonic inspection of R4, confirm every region has coverage, then reassess against the 0.35 mm threshold.
+- The guarded rationale uses only public evidence (`EV-UT-01`, `EV-COV-01`, `EV-ALLOY-01`). R4's stress ranking stays in the answer key and is used only to grade.
 
 ### Scorecard
 

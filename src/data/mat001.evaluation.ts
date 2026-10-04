@@ -21,7 +21,7 @@ export const mat001Evaluation: ScenarioEvaluation = {
     guardedHeadline: 'Guarded verdict: Investigate before approving',
     guardedIntro:
       'With the evidence guardrail, the agent declines the release and asks for the one test that could falsify the approval: targeted ultrasonic inspection of R4.',
-    guardedWhy: 'The guardrail requires coverage of every high-stress region before a release claim can be supported.',
+    guardedWhy: 'The guardrail requires coverage of every region of the part before a release claim can be supported.',
   },
   findings: [
     {
@@ -51,11 +51,11 @@ export const mat001Evaluation: ScenarioEvaluation = {
     claim: 'Do not approve another 2,000 cycles yet.',
     rationale: [
       'Measurements demonstrate safety only in sampled regions.',
-      'R4 has no ultrasonic data.',
-      'R4 is the highest-stress attachment interface.',
+      'R4, the attachment interface, is restricted access and has no ultrasonic data.',
+      'Coverage is 78%, so a pass on the sampled regions cannot clear the whole part.',
     ],
     nextAction:
-      'Perform targeted ultrasonic inspection of R4, confirm high-stress-region coverage, then reassess against the 0.35 mm threshold.',
+      'Perform targeted ultrasonic inspection of R4, confirm every region has coverage, then reassess against the 0.35 mm threshold.',
   },
   guardedBasis: ['EV-UT-01', 'EV-COV-01', 'EV-ALLOY-01'],
   scoring: {
