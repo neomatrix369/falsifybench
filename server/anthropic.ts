@@ -23,7 +23,7 @@ function safeMessage(message: string, apiKey: string): string {
 /** Asks the model for the baseline decision with forced tool use, then validates the tool input into an `AgentResponse`. */
 export async function askBaseline(
   client: Anthropic,
-  opts: { model: string; apiKey: string; timeoutMs: number; clock?: () => number },
+  opts: { model: string; apiKey: string; timeoutMs: number; clock?: () => number; signal?: AbortSignal },
   scenario: PublicScenario,
 ): Promise<BaselineOutcome> {
   const clock = opts.clock ?? (() => performance.now())
@@ -39,7 +39,7 @@ export async function askBaseline(
           tool_choice: { type: 'tool', name: DECISION_TOOL_NAME },
           messages: [{ role: 'user', content: baselineUserPrompt(scenario) }],
         },
-        { timeout: opts.timeoutMs, maxRetries: 0 },
+        { timeout: opts.timeoutMs, maxRetries: 0, signal: opts.signal },
       )
       .withResponse()
     const latencyMs = Math.round(clock() - started)
@@ -72,6 +72,9 @@ export async function askBaseline(
       },
     }
   } catch (err) {
+    if (err instanceof Anthropic.APIUserAbortError) {
+      return { status: 499, body: { error: { kind: 'network', message: 'The browser closed the request, so the provider call was cancelled.' } } }
+    }
     if (err instanceof Anthropic.APIConnectionTimeoutError) {
       return { status: 504, body: { error: { kind: 'upstream-timeout', message: `Anthropic did not answer within ${opts.timeoutMs / 1000} s` } } }
     }

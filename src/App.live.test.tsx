@@ -108,4 +108,23 @@ describe('Live baseline run (injected runner)', () => {
       vi.useRealTimers()
     }
   })
+
+  it('cancels an abandoned live call when the walkthrough is reset', async () => {
+    let signal: AbortSignal | undefined
+    const runner: AgentRunner = {
+      execution: 'live',
+      run: (agent, s, options) => {
+        if (agent === 'guarded') return scriptedAgentRunner.run(agent, s)
+        signal = options?.signal
+        return new Promise(() => {})
+      },
+    }
+    const user = await openLive(runner)
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    await waitFor(() => expect(signal).toBeDefined())
+    expect(signal!.aborted).toBe(false)
+    await user.click(btn(/^reset$/i))
+    expect(signal!.aborted).toBe(true)
+  })
 })

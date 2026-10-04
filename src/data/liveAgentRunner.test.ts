@@ -38,6 +38,13 @@ describe('liveAgentRunner', () => {
     expect(runner.execution).toBe('live')
   })
 
+  it('forwards the abort signal so an abandoned call is cancelled', async () => {
+    const { runner, fetch } = runnerWith(json(200, serverBody()))
+    const abandon = new AbortController()
+    await runner.run('baseline', ei001, { signal: abandon.signal })
+    expect(fetch).toHaveBeenCalledWith('/api/agents/baseline', expect.objectContaining({ signal: abandon.signal }))
+  })
+
   it('keeps the guarded agent scripted: no request', async () => {
     const { runner, fetch } = runnerWith(json(500, {}))
     const guarded = await runner.run('guarded', ei001)

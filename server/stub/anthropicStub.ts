@@ -12,6 +12,8 @@ export interface AnthropicStub {
   setMode(mode: StubMode): void
   /** Requests seen so far: only whether a key header arrived, never the key. */
   calls: { mode: StubMode; hadKey: boolean; model: string; toolChoice: unknown; prompt: string }[]
+  /** Hanging requests whose caller gave up and closed the connection. */
+  abandoned(): number
   close(): Promise<void>
 }
 
@@ -29,6 +31,7 @@ function decisionFor(prompt: string) {
 export function startAnthropicStub(initial: StubMode = 'success', port = 0): Promise<AnthropicStub> {
   let mode = initial
   let n = 0
+  let abandoned = 0
   const calls: AnthropicStub['calls'] = []
   const server = createServer(async (req, res) => {
     const chunks: Buffer[] = []
@@ -49,7 +52,10 @@ export function startAnthropicStub(initial: StubMode = 'success', port = 0): Pro
     calls.push({ mode, hadKey: typeof req.headers['x-api-key'] === 'string' && req.headers['x-api-key'] !== '', model: body.model, toolChoice: body.tool_choice, prompt })
     const requestId = `req_stub_${String(++n).padStart(4, '0')}`
     const headers = { 'content-type': 'application/json', 'request-id': requestId }
-    if (mode === 'hang') return
+    if (mode === 'hang') {
+      res.on('close', () => abandoned++)
+      return
+    }
     if (mode === 'http-400' || mode === 'http-500') {
       const status = mode === 'http-400' ? 400 : 500
       res.writeHead(status, headers)
@@ -80,6 +86,7 @@ export function startAnthropicStub(initial: StubMode = 'success', port = 0): Pro
           mode = next
         },
         calls,
+        abandoned: () => abandoned,
         close: () =>
           new Promise((done) => {
             server.closeAllConnections()

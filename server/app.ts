@@ -6,6 +6,30 @@ import type { ServerConfig } from './config'
 import { PUBLIC_SCENARIO_IDS, publicScenario } from './scenarios'
 
 const MAX_BODY_BYTES = 4096
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+function hostnameOf(url: string): string | null {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Only this machine may spend the key. A `vite --host` proxy or a DNS-rebinding page arrives with a non-local Host,
+ * another site with a non-local Origin; both are refused before any provider call.
+ */
+export function nonLocalRequest(headers: IncomingMessage['headers']): string | null {
+  const host = headers.host ? hostnameOf(`http://${headers.host}`) : null
+  if (!host || !LOCAL_HOSTNAMES.has(host)) return `Host ${JSON.stringify(headers.host ?? '')} is not this machine`
+  const { origin } = headers
+  if (origin !== undefined) {
+    const originHost = hostnameOf(origin)
+    if (!originHost || !LOCAL_HOSTNAMES.has(originHost)) return `Origin ${JSON.stringify(origin)} is not this machine`
+  }
+  return null
+}
 
 class BadRequest extends Error {}
 
@@ -50,6 +74,8 @@ export function createLocalServer(config: ServerConfig, log: (line: string) => v
 
   async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const path = new URL(req.url ?? '/', 'http://localhost').pathname
+    const foreign = nonLocalRequest(req.headers)
+    if (foreign) return fail(res, 403, { kind: 'bad-request', message: `The local server only answers this machine: ${foreign}.` })
     if (path === LIVE_HEALTH_ENDPOINT && req.method === 'GET') {
       const health: LiveHealth = {
         configured: client !== null,
@@ -71,7 +97,17 @@ export function createLocalServer(config: ServerConfig, log: (line: string) => v
       const problems = baselineRequestProblems(body)
       if (problems.length) return fail(res, 400, { kind: 'bad-request', message: 'Invalid baseline request', problems })
       const scenario = publicScenario((body as { scenarioId: string }).scenarioId)!
-      const outcome = await askBaseline(client, { model: config.model, apiKey: config.apiKey, timeoutMs: config.upstreamTimeoutMs }, scenario)
+      const abandoned = new AbortController()
+      res.on('close', () => {
+        if (res.writableFinished) return
+        abandoned.abort()
+        log(`${req.method} ${req.url} cancelled: the browser closed the request`)
+      })
+      const outcome = await askBaseline(
+        client,
+        { model: config.model, apiKey: config.apiKey, timeoutMs: config.upstreamTimeoutMs, signal: abandoned.signal },
+        scenario,
+      )
       return send(res, outcome.status, outcome.body)
     }
     return fail(res, 404, { kind: 'bad-request', message: `No route for ${req.method} ${path}` })

@@ -63,7 +63,7 @@ export function createLiveAgentRunner({
 }: { fetch?: Fetch; guarded?: AgentRunner; now?: () => number } = {}): AgentRunner {
   return {
     execution: 'live',
-    async run(agent, scenario): Promise<AgentResponse> {
+    async run(agent, scenario, options): Promise<AgentResponse> {
       if (agent === 'guarded') return guarded.run('guarded', scenario)
       const started = now()
       let res: Response
@@ -72,6 +72,7 @@ export function createLiveAgentRunner({
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ scenarioId: scenario.id }),
+          signal: options?.signal,
         })
       } catch (err) {
         throw new LiveAgentError({ kind: 'network', message: `Could not reach the local server: ${err instanceof Error ? err.message : String(err)}` })

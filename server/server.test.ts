@@ -1,7 +1,7 @@
 // @vitest-environment node
 import type { AddressInfo } from 'node:net'
-import type { Server } from 'node:http'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { request, type Server } from 'node:http'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createLocalServer } from './app'
 import { readConfig, describeConfig, DEFAULT_ANTHROPIC_MODEL } from './config'
 import { startAnthropicStub, STUB_MODEL, type AnthropicStub } from './stub/anthropicStub'
@@ -137,6 +137,46 @@ describe('POST /api/agents/baseline against the Messages stub', () => {
     const notJson = await fetch(`${base}/api/agents/baseline`, { method: 'POST', body: '{' })
     expect((await notJson.json()).error).toMatchObject({ kind: 'bad-request', problems: ['body is not JSON'] })
     expect(stub.calls.length).toBe(before)
+  })
+
+  it('refuses requests addressed from or to another machine, before calling the provider', async () => {
+    const before = stub.calls.length
+    const raw = (headers: Record<string, string>) =>
+      new Promise<{ status: number; body: string }>((done, fail) => {
+        const { port } = new URL(base)
+        const headersOut = { 'content-type': 'application/json', ...headers }
+        const req = request({ host: '127.0.0.1', port, path: '/api/agents/baseline', method: 'POST', headers: headersOut }, (res) => {
+          let body = ''
+          res.on('data', (d) => (body += d))
+          res.on('end', () => done({ status: res.statusCode ?? 0, body }))
+        })
+        req.on('error', fail)
+        req.end(JSON.stringify({ scenarioId: 'EI-001' }))
+      })
+    const lan = await raw({ host: '192.168.1.20:5173' })
+    expect(lan.status).toBe(403)
+    expect(JSON.parse(lan.body).error.message).toMatch(/only answers this machine: Host "192\.168\.1\.20:5173"/)
+    expect((await raw({ host: 'localhost:5173', origin: 'https://evil.example' })).status).toBe(403)
+    expect((await raw({ host: 'localhost:5173', origin: 'null' })).status).toBe(403)
+    expect(stub.calls.length).toBe(before)
+    expect((await raw({ host: 'localhost:5173', origin: 'http://localhost:5173' })).status).toBe(200)
+  })
+
+  it('cancels the provider call when the browser abandons the request', async () => {
+    stub.setMode('hang')
+    const before = stub.abandoned()
+    const abandon = new AbortController()
+    const pending = fetch(`${base}/api/agents/baseline`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scenarioId: 'EI-001' }),
+      signal: abandon.signal,
+    }).catch((e: unknown) => e)
+    await vi.waitFor(() => expect(stub.calls.at(-1)?.mode).toBe('hang'))
+    abandon.abort()
+    expect(await pending).toBeInstanceOf(Error)
+    await vi.waitFor(() => expect(stub.abandoned()).toBe(before + 1), { timeout: 250 })
+    await vi.waitFor(() => expect(logs.some((l) => /cancelled: the browser closed the request/.test(l))).toBe(true))
   })
 
   it('answers unknown routes with 404', async () => {

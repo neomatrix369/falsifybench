@@ -206,7 +206,8 @@ export type AgentPath = 'baseline' | 'guarded'
 export interface AgentRunner {
   /** `live` runners call a model: the walkthrough asks for the baseline at the Baseline stage and holds Next step until it answers. Default `scripted`. */
   readonly execution?: 'scripted' | 'live'
-  run(agent: 'baseline' | 'guarded', scenario: Scenario): Promise<AgentResponse>
+  /** `signal` aborts an abandoned call (reset, scenario switch, timeout); scripted runners can ignore it. */
+  run(agent: 'baseline' | 'guarded', scenario: Scenario, options?: { signal?: AbortSignal }): Promise<AgentResponse>
 }
 
 export type GraderId = 'fixture-grader' | 'rule-grader' | 'custom'

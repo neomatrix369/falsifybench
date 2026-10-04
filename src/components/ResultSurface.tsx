@@ -13,6 +13,7 @@ import { BracketSchematic } from './BracketSchematic'
 import { Disclosure } from './Disclosure'
 import { ReceiptView } from './ReceiptView'
 import { ScoreCard } from './ScoreCard'
+import { unsafeApprovalPrevented } from '../domain/receipt'
 import { SourceAudit } from './SourceAudit'
 import { TurnTrace } from './TurnTrace'
 
@@ -266,7 +267,11 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
               </div>
             </div>
           )}
-          <ScoreCard scores={run.scores} grader={run.grader} />
+          <ScoreCard
+            scores={run.scores}
+            grader={run.grader}
+            unsafeApprovalPrevented={unsafeApprovalPrevented(run.responses, evaluation)}
+          />
           <Why>{evaluation.narrative.guardedWhy}</Why>
           <Disclosure>
             <p>Sufficient next action: {evaluation.sufficientNextAction}</p>

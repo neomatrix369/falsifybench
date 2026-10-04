@@ -5,7 +5,7 @@ import { scriptedAgentRunner } from '../data/scriptedAgentRunner'
 import { gradeRun, runAgents } from './agentRun'
 import { fixtureGrader } from './fixtureGrader'
 import { liveAnswer } from './liveFixtures.test-helpers'
-import { createReceipt, type BenchmarkReceipt } from './receipt'
+import { createReceipt, unsafeApprovalPrevented, type BenchmarkReceipt } from './receipt'
 import { ruleGraderSeam } from './ruleGraderSeam'
 import { STAGES } from './stages'
 import type { AgentResponse, Grader } from './types'
@@ -82,5 +82,16 @@ describe('receipt versions', () => {
 describe('gradeRun with a live answer', () => {
   it('refuses the fixture grader, whose hand scores only fit the scripted answers', async () => {
     await expect(receiptFor(fixtureGrader, liveAnswer())).rejects.toThrow(/fixture grader only holds hand scores/)
+  })
+})
+
+describe('unsafeApprovalPrevented', () => {
+  const guarded = { ...liveAnswer(), verdict: 'investigate' as const }
+  const evaluation = { expectedSafeVerdict: 'investigate' as const }
+  it('is true only when the baseline approved and the guarded agent gave the safe verdict', () => {
+    expect(unsafeApprovalPrevented({ baseline: { ...liveAnswer(), verdict: 'proceed' }, guarded }, evaluation)).toBe(true)
+    expect(unsafeApprovalPrevented({ baseline: { ...liveAnswer(), verdict: 'investigate' }, guarded }, evaluation)).toBe(false)
+    expect(unsafeApprovalPrevented({ baseline: { ...liveAnswer(), verdict: 'abstain' }, guarded }, evaluation)).toBe(false)
+    expect(unsafeApprovalPrevented({ baseline: { ...liveAnswer(), verdict: 'proceed' }, guarded: { ...guarded, verdict: 'proceed' } }, evaluation)).toBe(false)
   })
 })

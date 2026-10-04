@@ -67,12 +67,15 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, seams:
   useEffect(() => {
     if (!needsLiveBaseline || !runId) return
     let cancelled = false
+    const abandon = new AbortController()
     const attempt = liveAttempt
     const requestedAt = now()
     setLiveCall({ status: 'pending', runId, attempt, requestedAt })
-    const timeout = () =>
-      new LiveAgentError({ kind: 'timeout', message: `The live baseline for ${scenario.id} did not answer within ${LIVE_BASELINE_TIMEOUT_MS / 1000} s` })
-    withTimeout(runner.run('baseline', scenario), LIVE_BASELINE_TIMEOUT_MS, timeout)
+    const timeout = () => {
+      abandon.abort()
+      return new LiveAgentError({ kind: 'timeout', message: `The live baseline for ${scenario.id} did not answer within ${LIVE_BASELINE_TIMEOUT_MS / 1000} s` })
+    }
+    withTimeout(runner.run('baseline', scenario, { signal: abandon.signal }), LIVE_BASELINE_TIMEOUT_MS, timeout)
       .then((response) => {
         if (cancelled) return
         if (!response.live) throw new LiveAgentError({ kind: 'validation', message: 'The live runner returned an answer without live-call facts', problems: ['live: missing'] })
@@ -87,6 +90,7 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, seams:
       })
     return () => {
       cancelled = true
+      abandon.abort()
     }
   }, [needsLiveBaseline, runId, liveAttempt, scenario, runner, now])
 

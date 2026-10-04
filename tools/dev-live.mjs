@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 // npm run dev:live: the local server (server/index.ts) and `vite dev` together. Local machine only; Ctrl+C stops both.
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+
+// Both children inherit .env, so FALSIFYBENCH_SERVER_PORT moves the server and the vite /api proxy together.
+if (existsSync('.env')) process.loadEnvFile('.env')
 
 const bin = (name) => join(process.cwd(), 'node_modules', '.bin', name)
 const children = [

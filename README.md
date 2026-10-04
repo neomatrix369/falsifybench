@@ -39,7 +39,7 @@ Runs the baseline agent on a real Anthropic model from your machine. The guarded
 
 1. Copy the template: `cp .env.example .env` (`.env` is gitignored; only the empty template is committed).
 2. Add your key to `.env`: `ANTHROPIC_API_KEY=...`. Optionally set `ANTHROPIC_MODEL` (default `claude-sonnet-4-6`). Never use a `VITE_` prefix: the key stays in the local server.
-3. Run `npm run dev:live`. It starts the local server (`server/`, port 8787) and `vite dev` with an `/api` proxy to it, then open http://localhost:5173.
+3. Run `npm run dev:live`. It starts the local server (`server/`, port 8787, or `FALSIFYBENCH_SERVER_PORT` in `.env`) and `vite dev` with an `/api` proxy to it, then open http://localhost:5173. The server answers only requests whose Host and Origin are this machine, so `vite --host` cannot expose the key to the network. Resetting or switching scenario mid-call cancels the provider request.
 4. In the Agent selector pick `Live baseline — available` and run a benchmark. The baseline card, Run log and receipt (v1.1, [`docs/RECEIPT.md`](docs/RECEIPT.md)) name the model, request ID, latency and grader.
 
 Without a key, `npm run stub:anthropic` starts a local Messages API stub on port 8788; set `ANTHROPIC_BASE_URL=http://127.0.0.1:8788` and any non-empty `ANTHROPIC_API_KEY` in `.env` to exercise the whole path offline. `npm run build` fails if `dist/` ever contains `sk-ant` or the key's variable name.
