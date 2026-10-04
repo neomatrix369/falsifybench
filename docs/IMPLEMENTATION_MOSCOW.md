@@ -34,7 +34,7 @@ Counts after these entries (snapshot counts in the matrix below):
 | Won’t | 0 | 2 | 9 | 11 |
 | **Total** | **29** | **2** | **9** | **40** |
 
-Open: none in Must, Should or Could once #41 and #42 merge. What's left is Won't for now (FB-37 hosted CI, FB-39 Run log export, live agents, backend, receipt v2).
+Open: none in Must, Should or Could once #41 and #42 merge. What’s left is Won’t for now (FB-37 hosted CI, FB-39 Run log export, live agents, backend, receipt v2).
 
 ## Scope and method
 
