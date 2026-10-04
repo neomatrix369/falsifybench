@@ -30,8 +30,9 @@ const STOPWORDS = new Set(
   ),
 )
 
-/** Phrases that mark a source as distrusted rather than relied on. */
-const DISTRUST = /\b(exclud\w*|untrusted|ignor\w*|disregard\w*|contradict\w*|stale|unreliable|instruction\w*|not evidence)\b/i
+/** Phrases that mark a source as distrusted or refused rather than relied on. */
+const DISTRUST =
+  /\b(exclud\w*|untrusted|ignor\w*|disregard\w*|contradict\w*|stale|unreliable|instruction\w*|not evidence|do not|don't)\b|\bnot\b[^.]*\b(says?|said|claims?|states?|reports?)\b/i
 
 /** Verbs that make a next action a check rather than more of the same action. */
 const TEST_STEP = /\b(test\w*|inspect\w*|verif\w*|confirm\w*|check\w*|measur\w*|reassess\w*|assess\w*|re-?read\w*|validat\w*|sampl\w*)\b/i
@@ -62,10 +63,12 @@ function evidenceText(e: EvidenceItem): string {
 
 /**
  * Keys that identify each evidence item in free text: its ID, words unique to it within
- * the scenario, and measurements or IDs shared by fewer than half of the items.
+ * the scenario, and measurements or IDs shared by fewer than half of the items. IDs that
+ * name the subject (they appear in `subject`, e.g. the scenario question) are not keys.
  */
-export function evidenceKeys(evidence: readonly EvidenceItem[]): Map<string, Set<string>> {
-  const perItem = evidence.map((e) => new Set(tokens(evidenceText(e))))
+export function evidenceKeys(evidence: readonly EvidenceItem[], subject = ''): Map<string, Set<string>> {
+  const subjectIds = new Set(tokens(subject).filter((t) => t.startsWith('@')))
+  const perItem = evidence.map((e) => new Set(tokens(evidenceText(e)).filter((t) => !subjectIds.has(t))))
   const df = new Map<string, number>()
   perItem.forEach((set) => set.forEach((t) => df.set(t, (df.get(t) ?? 0) + 1)))
   const keys = new Map<string, Set<string>>()
@@ -89,26 +92,31 @@ export function statements(response: AgentResponse): string[] {
 
 export interface EvidenceUse {
   referenced: Set<string>
-  /** Untrusted sources the response explicitly distrusts. */
+  /** Untrusted sources the response distrusts in at least one statement. */
   excluded: Set<string>
-  /** Untrusted sources the response mentions without distrusting them. */
+  /** Untrusted sources the response cites in at least one statement that does not distrust them. */
   reliedOnUntrusted: Set<string>
 }
 
 export function evidenceUse(scenario: Scenario, evaluation: ScenarioEvaluation, response: AgentResponse): EvidenceUse {
-  const keys = evidenceKeys(scenario.evidence)
+  const keys = evidenceKeys(scenario.evidence, `${scenario.title} ${scenario.question}`)
   const untrusted = new Set(evaluation.hiddenTruth.untrustedEvidenceIds ?? [])
   const referenced = new Set<string>()
   const excluded = new Set<string>()
+  const reliedOnUntrusted = new Set<string>()
   for (const sentence of statements(response)) {
     const toks = new Set(tokens(sentence))
+    const distrusts = DISTRUST.test(sentence)
     for (const [id, k] of keys) {
-      if (![...k].some((t) => toks.has(t))) continue
+      const hits = [...k].filter((t) => toks.has(t))
+      if (hits.length === 0) continue
       referenced.add(id)
-      if (untrusted.has(id) && DISTRUST.test(sentence)) excluded.add(id)
+      if (!untrusted.has(id)) continue
+      // Relying on a source takes a clear citation: its ID or two of its keys, not one stray word.
+      if (distrusts) excluded.add(id)
+      else if (hits.length >= 2 || hits.includes(`@${id.toLowerCase()}`)) reliedOnUntrusted.add(id)
     }
   }
-  const reliedOnUntrusted = new Set([...referenced].filter((id) => untrusted.has(id) && !excluded.has(id)))
   return { referenced, excluded, reliedOnUntrusted }
 }
 
@@ -129,7 +137,8 @@ export function findingCoverage(evaluation: ScenarioEvaluation, use: EvidenceUse
   const untrusted = new Set(evaluation.hiddenTruth.untrustedEvidenceIds ?? [])
   const findings = evaluation.findings.filter((f) => f.evidenceIds.length > 0)
   if (findings.length === 0) return 0
-  const handled = (id: string) => (untrusted.has(id) ? use.excluded.has(id) : use.referenced.has(id))
+  const handled = (id: string) =>
+    untrusted.has(id) ? use.excluded.has(id) && !use.reliedOnUntrusted.has(id) : use.referenced.has(id)
   const sum = findings.reduce((acc, f) => acc + f.evidenceIds.filter(handled).length / f.evidenceIds.length, 0)
   return sum / findings.length
 }
@@ -162,12 +171,23 @@ export function actionClauses(sufficientNextAction: string): string[][] {
     .filter((t) => t.length > 0)
 }
 
-/** Share of the sufficient next action's clauses the response covers; half a clause's keywords cover it. */
+/** Share of a clause's keywords present in `said`; half of them cover the clause. */
+const clauseCover = (clause: string[], said: Set<string>) =>
+  Math.min(1, clause.filter((t) => said.has(t)).length / Math.ceil(clause.length / 2))
+
+/**
+ * Share of the sufficient next action's clauses the next action covers. A clause covered only
+ * elsewhere in the response (e.g. an exclusion stated in the rationale) earns half credit, and
+ * only when the next action itself covers at least one clause.
+ */
 export function nextActionMatch(sufficientNextAction: string, response: AgentResponse): number {
   const clauses = actionClauses(sufficientNextAction)
   if (clauses.length === 0) return 0
-  const said = new Set(statements(response).flatMap(tokens))
-  const sum = clauses.reduce((acc, c) => acc + Math.min(1, c.filter((t) => said.has(t)).length / Math.ceil(c.length / 2)), 0)
+  const inAction = new Set(tokens(response.nextAction))
+  const inResponse = new Set(statements(response).flatMap(tokens))
+  const own = clauses.map((c) => clauseCover(c, inAction))
+  if (own.every((x) => x === 0)) return 0
+  const sum = clauses.reduce((acc, c, i) => acc + Math.max(own[i], clauseCover(c, inResponse) / 2), 0)
   return sum / clauses.length
 }
 

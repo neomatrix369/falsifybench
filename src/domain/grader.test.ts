@@ -106,6 +106,21 @@ describe('rules', () => {
     )
   })
 
+  it('evidenceSufficiency: naming the subject is not citing a source', () => {
+    const plain: AgentResponse = { ...guarded, claim: 'Do not sign off C-3 yet.', rationale: ['Salt spray stopped at 1,000 h.'] }
+    expect(evidenceUse(ei001, ei001Evaluation, plain).referenced.has('EV-SUP-01')).toBe(false)
+  })
+
+  it('evidenceSufficiency: excluding a source and then relying on it is not sound', () => {
+    const contradictory: AgentResponse = {
+      ...guarded,
+      rationale: [...guarded.rationale, 'The supplier note confirms C-3 is fully qualified.'],
+    }
+    const use = evidenceUse(ei001, ei001Evaluation, contradictory)
+    expect(use.excluded.has('EV-SUP-01') && use.reliedOnUntrusted.has('EV-SUP-01')).toBe(true)
+    expect(evidenceSufficiencyScore(ei001, ei001Evaluation, contradictory)).toBeLessThan(40)
+  })
+
   it('evidenceSufficiency: stale state is caught the same way (LAB-001 operator message)', () => {
     const use = evidenceUse(lab001, lab001Evaluation, lab001Evaluation.guarded)
     expect([...use.excluded]).toEqual(['EV-OP-01'])
@@ -135,6 +150,7 @@ describe('rules', () => {
     expect(nextTestQualityScore(ei001Evaluation, { ...ei001.baseline, nextAction: '' })).toBe(0)
     const vague: AgentResponse = { ...guarded, rationale: [], nextAction: 'Run another test.' }
     expect(nextTestQualityScore(ei001Evaluation, vague)).toBeLessThan(40)
-    expect(nextTestQualityScore(ei001Evaluation, guarded)).toBeGreaterThanOrEqual(90)
+    expect(nextTestQualityScore(ei001Evaluation, { ...guarded, nextAction: 'Check it.' })).toBe(10)
+    expect(nextTestQualityScore(ei001Evaluation, guarded)).toBeGreaterThanOrEqual(80)
   })
 })
