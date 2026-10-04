@@ -2,13 +2,14 @@
 
 This page follows one benchmark run from its inputs to every way it can end: complete, interrupted, failed or errored. Each step names its source file. The playbook (`docs/falsifybench-playbook.md`) says what the app must do. This page says what the code does now, including the gaps. `tools/pipeline/pipeline.doc.test.ts` fails if a stage, action, trigger, status or Run log label in the code goes missing from this page.
 
-Nothing in a run goes over the network except the sealed evaluation chunk (same origin), and no model is called.
+Nothing in a run goes over the network except the sealed evaluation chunk (same origin), and no model is called. Outside a run, the About view fetches the published `score/score.json`, also same origin.
 
 ## Map
 
 ```mermaid
 flowchart LR
   subgraph IN[Inputs]
+    IN0[IN-0 About / Benchmark view]
     IN1[IN-1 Benchmark picker]
     IN2[IN-2 Public fixture]
     IN3[IN-3 Sealed evaluation module]
@@ -17,6 +18,7 @@ flowchart LR
   end
   P0[P0 Load scenario] --> P1[P1 Provenance gate]
   P1 --> S1[S1 Evidence loaded] --> S2[S2 Baseline decided] --> S3[S3 Evidence audit] --> S4[S4 Guarded verdict] --> S5[S5 Receipt recorded]
+  IN0 -. shows or hides the benchmark .-> OUT1
   IN1 --> P0
   IN2 --> P0
   IN3 -. unseal at Audit .-> S3
@@ -37,6 +39,7 @@ flowchart LR
 
 | | Input | Where | Notes |
 |---|---|---|---|
+| IN-0 | About / Benchmark view | `Root` in `src/Root.tsx`, the header view switch in `Header`, `Landing` | A first visit in a tab opens About. `Open the benchmark` or the header `Benchmark` button switches view and sets `falsifybench-intro-dismissed` in `sessionStorage`, so later loads in that tab open the benchmark; `#about` always opens About. `App` stays mounted (hidden) under About, so the scenario loads at page load and nothing pauses a run in progress, auto-play included: it is still there on return. About reads `score/score.json` (with a fallback message if it cannot be read) and the public fixtures, never a sealed evaluation. |
 | IN-1 | Benchmark picker | `RUNNABLE_BENCHMARKS` in `src/data/scenarioSource.ts` | MAT-001 (default) or EI-001. Selecting sets `activeId` in `App`, which reloads the scenario and remounts `Bench` (`key = scenario.id`), discarding any run in progress. |
 | IN-2 | Public fixture | `src/data/mat001.ts`, `src/data/ei001.ts` | Bundled with the page: id, version, question, provenance, `evidence[]`, regions, pre-audit `narrative`, `baseline` response, `guardedAgentLabel`, `evaluation.unseal()`. Safe to show before Audit. |
 | IN-3 | Sealed evaluation module | `src/data/<id>.evaluation.ts` | Its own lazy chunk, fetched by dynamic `import()` only when a run reaches Audit: `hiddenTruth`, `findings`, `expectedSafeVerdict`, `guarded` response, `scoring`, audit/guarded narrative. Never in the DOM or main bundle before Audit. |
@@ -85,6 +88,7 @@ Stage triggers recorded per event: `run`, `manual`, `autoplay-start`, `autoplay-
 | E6 Receipt export fails | S5 | `Clipboard unavailable — use Download.` | Receipt still downloadable | Covered |
 | I2 Reset or switch benchmark mid-run | S1–S4 | Idle `Ready` (on the other benchmark after a switch) | One Run log line from `abandonedEntry()`: run ID, stage reached, benchmark and cause, no receipt. It stays until the next run starts | Covered |
 | I3 Auto-play pauses | Any | Stops on manual navigation, unseal failure or Receipt; pauses while unsealing | — | Covered |
+| I4 Visit About mid-run | Any | About page; on return the run is where it was, or further on if auto-play kept ticking | Run log unchanged | Covered |
 
 ## Outputs
 
