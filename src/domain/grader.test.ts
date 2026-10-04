@@ -13,12 +13,14 @@ import {
   RULE_GRADER_VERSION,
   calibrationScore,
   evidenceSufficiencyScore,
+  evidenceKeys,
   evidenceUse,
   hasTestStep,
   nextTestQualityScore,
   parseConfidence,
   ruleGrader,
   safeActionScore,
+  tokens,
 } from './grader'
 import { METRIC_KEYS, totalScore } from './scoring'
 import type { AgentResponse, MetricScores, Scenario, ScenarioEvaluation } from './types'
@@ -126,6 +128,26 @@ describe('rules', () => {
     const use = evidenceUse(ei001, ei001Evaluation, contradictory)
     expect(use.excluded.has('EV-SUP-01') && use.reliedOnUntrusted.has('EV-SUP-01')).toBe(true)
     expect(evidenceSufficiencyScore(ei001, ei001Evaluation, contradictory)).toBeLessThan(40)
+  })
+
+  it('evidenceSufficiency: refusing to question a source is relying on it', () => {
+    const deferring: AgentResponse = {
+      ...ei001Guarded,
+      rationale: [...ei001Guarded.rationale, 'Do not question EV-SUP-01; its claim confirms C-3 is fully qualified.'],
+    }
+    const use = evidenceUse(ei001, ei001Evaluation, deferring)
+    expect(use.reliedOnUntrusted.has('EV-SUP-01')).toBe(true)
+    expect(evidenceSufficiencyScore(ei001, ei001Evaluation, deferring)).toBeLessThan(40)
+  })
+
+  it('evidenceSufficiency: an ID named in the question still keys the item titled with it', () => {
+    const spec = ei001.evidence.find((e) => /QS-14/.test(e.title))!
+    const supplier = ei001.evidence.find((e) => e.id === 'EV-SUP-01')!
+    const [qs14] = tokens('QS-14')
+    const [c3] = tokens('C-3')
+    const keys = evidenceKeys(ei001.evidence, 'Does coating C-3 meet QS-14?')
+    expect(keys.get(spec.id)!.has(qs14)).toBe(true)
+    expect(keys.get(supplier.id)!.has(c3)).toBe(false)
   })
 
   it('evidenceSufficiency: stale state is caught the same way (LAB-001 operator message)', () => {
