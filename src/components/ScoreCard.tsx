@@ -1,7 +1,7 @@
 import { ArrowUpRight, ShieldCheck, TrendingUp } from 'lucide-react'
 import { METRIC_KEYS, METRIC_LABELS, compareScores, formatDelta } from '../domain/scoring'
 import { SCRIPTED_FIXTURE_LABEL } from '../domain/provenance'
-import type { ScenarioEvaluation } from '../domain/types'
+import type { RubricScores } from '../domain/types'
 import { ScoreMath } from './ScoreMath'
 
 function Bar({ value, tone }: { value: number; tone: 'baseline' | 'guarded' }) {
@@ -12,8 +12,8 @@ function Bar({ value, tone }: { value: number; tone: 'baseline' | 'guarded' }) {
   )
 }
 
-export function ScoreCard({ evaluation }: { evaluation: ScenarioEvaluation }) {
-  const { baseline, guarded, rubricVersion } = evaluation.scoring
+export function ScoreCard({ scores }: { scores: RubricScores }) {
+  const { baseline, guarded, rubricVersion } = scores
   const { baselineTotal, guardedTotal, delta } = compareScores(baseline, guarded)
   return (
     <section aria-labelledby="scorecard-title" className="border-t-2 border-ink">

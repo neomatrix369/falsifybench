@@ -4,6 +4,9 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ei001 } from '../../src/data/ei001'
 import { RUNNABLE_BENCHMARKS } from '../../src/data/scenarioSource'
+import { scriptedAgentRunner } from '../../src/data/scriptedAgentRunner'
+import { gradeRun, runAgents } from '../../src/domain/agentRun'
+import { fixtureGrader } from '../../src/domain/fixtureGrader'
 import { compareScores, totalScore } from '../../src/domain/scoring'
 
 const spec = readFileSync(process.env.SCORE_PLAYBOOK ?? new URL('../../docs/falsifybench-playbook.md', import.meta.url), 'utf8')
@@ -23,6 +26,8 @@ const eiScoreRows = Object.fromEntries(
 )
 const EI_HIDDEN = ['falls short', 'instruction to the agent', 'excluded']
 const loadEiEval = () => ei001.evaluation.unseal()
+const loadGuarded = () => scriptedAgentRunner.run('guarded', ei001)
+const loadScores = async () => gradeRun(fixtureGrader, ei001, await loadEiEval(), await runAgents(scriptedAgentRunner, ei001)).scores
 
 describe('Spec: EI-001 identity, evidence and injected source', () => {
   it('id/version/title/question match spec', () => {
@@ -59,13 +64,14 @@ describe('Spec: EI-001 fixed results and scorecard', () => {
   })
   it('guarded verdict/confidence/next action and expected verdict match spec', async () => {
     const ev = await loadEiEval()
-    expect(ev.guarded.verdict).toBe(norm(tick(eiGuardedSec, 'Verdict')))
-    expect(ev.guarded.confidenceLabel).toBe(tick(eiGuardedSec, 'Confidence'))
-    expect(norm(ev.guarded.nextAction)).toBe(norm(plain(eiGuardedSec, 'Next action')))
+    const guarded = await loadGuarded()
+    expect(guarded.verdict).toBe(norm(tick(eiGuardedSec, 'Verdict')))
+    expect(guarded.confidenceLabel).toBe(tick(eiGuardedSec, 'Confidence'))
+    expect(norm(guarded.nextAction)).toBe(norm(plain(eiGuardedSec, 'Next action')))
     expect(ev.expectedSafeVerdict).toBe(norm(/Expected safe verdict is `([^`]+)`/.exec(eiFixture)?.[1]))
   })
   it('rubric, metric inputs, totals and delta match spec', async () => {
-    const { rubricVersion, baseline, guarded } = (await loadEiEval()).scoring
+    const { rubricVersion, baseline, guarded } = (await loadScores())
     expect(rubricVersion).toBe(/Rubric version: `([^`]+)`/.exec(eiFixture)?.[1])
     metricOrder.forEach((k, i) => expect([baseline[k], guarded[k]]).toEqual(eiScoreRows[metricRows[i]]))
     expect([totalScore(baseline), totalScore(guarded)]).toEqual(eiScoreRows.Total)

@@ -4,6 +4,9 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { lab001 } from '../../src/data/lab001'
 import { RUNNABLE_BENCHMARKS } from '../../src/data/scenarioSource'
+import { scriptedAgentRunner } from '../../src/data/scriptedAgentRunner'
+import { gradeRun, runAgents } from '../../src/domain/agentRun'
+import { fixtureGrader } from '../../src/domain/fixtureGrader'
 import { compareScores, totalScore } from '../../src/domain/scoring'
 
 const spec = readFileSync(process.env.SCORE_PLAYBOOK ?? new URL('../../docs/falsifybench-playbook.md', import.meta.url), 'utf8')
@@ -23,6 +26,8 @@ const labScoreRows = Object.fromEntries(
 )
 const LAB_HIDDEN = ['stale state', 'crash', 'rectification', 'excluded']
 const loadLabEval = () => lab001.evaluation.unseal()
+const loadGuarded = () => scriptedAgentRunner.run('guarded', lab001)
+const loadScores = async () => gradeRun(fixtureGrader, lab001, await loadLabEval(), await runAgents(scriptedAgentRunner, lab001)).scores
 
 describe('Spec: LAB-001 identity, evidence and stale operator message', () => {
   it('id/version/title/question match spec', () => {
@@ -59,9 +64,10 @@ describe('Spec: LAB-001 fixed results and scorecard', () => {
   })
   it('guarded verdict/confidence/next action and expected verdict match spec', async () => {
     const ev = await loadLabEval()
-    expect(ev.guarded.verdict).toBe(norm(tick(labGuardedSec, 'Verdict')))
-    expect(ev.guarded.confidenceLabel).toBe(tick(labGuardedSec, 'Confidence'))
-    expect(norm(ev.guarded.nextAction)).toBe(norm(plain(labGuardedSec, 'Next action')))
+    const guarded = await loadGuarded()
+    expect(guarded.verdict).toBe(norm(tick(labGuardedSec, 'Verdict')))
+    expect(guarded.confidenceLabel).toBe(tick(labGuardedSec, 'Confidence'))
+    expect(norm(guarded.nextAction)).toBe(norm(plain(labGuardedSec, 'Next action')))
     expect(ev.expectedSafeVerdict).toBe(norm(/Expected safe verdict is `([^`]+)`/.exec(labFixture)?.[1]))
   })
   it('guarded basis and turn tags match spec, and the guard stops then the agent resumes', async () => {
@@ -74,7 +80,7 @@ describe('Spec: LAB-001 fixed results and scorecard', () => {
     ])
   })
   it('rubric, metric inputs, totals and delta match spec', async () => {
-    const { rubricVersion, baseline, guarded } = (await loadLabEval()).scoring
+    const { rubricVersion, baseline, guarded } = (await loadScores())
     expect(rubricVersion).toBe(/Rubric version: `([^`]+)`/.exec(labFixture)?.[1])
     metricOrder.forEach((k, i) => expect([baseline[k], guarded[k]]).toEqual(labScoreRows[metricRows[i]]))
     expect([totalScore(baseline), totalScore(guarded)]).toEqual(labScoreRows.Total)

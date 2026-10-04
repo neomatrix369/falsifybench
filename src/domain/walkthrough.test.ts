@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mat001 } from '../data/mat001'
 import { mat001Evaluation } from '../data/mat001.evaluation'
 import { createReceipt, IncompleteRunError } from './receipt'
+import { scriptedRun } from '../test/scriptedRun'
 import { STAGES } from './stages'
 import {
   controlAvailability,
@@ -97,7 +98,7 @@ describe('walkthrough state machine', () => {
     expect(auto.events).toEqual(manual.events)
     const clock = () => new Date('2026-01-01T12:00:05.000Z')
     const receipt = (s: WalkthroughState) =>
-      createReceipt({ scenario: mat001, evaluation: mat001Evaluation, runId: s.runId!, startedAt: s.startedAt!, events: s.events, mode: 'synthetic', clock })
+      createReceipt({ scenario: mat001, evaluation: mat001Evaluation, run: scriptedRun(mat001, mat001Evaluation), runId: s.runId!, startedAt: s.startedAt!, events: s.events, mode: 'synthetic', clock })
     expect(receipt(auto)).toEqual(receipt(manual))
   })
 })
@@ -107,7 +108,7 @@ describe('createReceipt', () => {
   const clock = () => new Date('2026-01-01T12:00:05.000Z')
 
   it('records every required field with injected clock and run ID', () => {
-    const r = createReceipt({ scenario: mat001, evaluation: mat001Evaluation, runId: 'RUN-TEST', startedAt: AT(0), events: complete.events, mode: 'synthetic', clock })
+    const r = createReceipt({ scenario: mat001, evaluation: mat001Evaluation, run: scriptedRun(mat001, mat001Evaluation), runId: 'RUN-TEST', startedAt: AT(0), events: complete.events, mode: 'synthetic', clock })
     expect(r).toMatchObject({
       mode: 'synthetic',
       provenance: 'synthetic_hand_audited',
@@ -128,19 +129,19 @@ describe('createReceipt', () => {
   it('refuses to fabricate a receipt for an incomplete run', () => {
     const partial = run([start, next(1)])
     expect(() =>
-      createReceipt({ scenario: mat001, evaluation: mat001Evaluation, runId: 'RUN-TEST', startedAt: AT(0), events: partial.events, mode: 'synthetic', clock }),
+      createReceipt({ scenario: mat001, evaluation: mat001Evaluation, run: scriptedRun(mat001, mat001Evaluation), runId: 'RUN-TEST', startedAt: AT(0), events: partial.events, mode: 'synthetic', clock }),
     ).toThrow(IncompleteRunError)
   })
 
   it('does not claim an unsafe approval was prevented when approval was the safe verdict', () => {
-    const safeProceed = { ...mat001Evaluation, expectedSafeVerdict: 'proceed' as const, guarded: { ...mat001Evaluation.guarded, verdict: 'proceed' as const } }
-    const r = createReceipt({ scenario: mat001, evaluation: safeProceed, runId: 'RUN-TEST', startedAt: AT(0), events: complete.events, mode: 'synthetic', clock })
+    const safeProceed = { ...mat001Evaluation, expectedSafeVerdict: 'proceed' as const }
+    const r = createReceipt({ scenario: mat001, evaluation: safeProceed, run: scriptedRun(mat001, safeProceed, { verdict: 'proceed' }), runId: 'RUN-TEST', startedAt: AT(0), events: complete.events, mode: 'synthetic', clock })
     expect(r.unsafeApprovalPrevented).toBe(false)
   })
 
   it('refuses partner-mode receipts', () => {
     expect(() =>
-      createReceipt({ scenario: mat001, evaluation: mat001Evaluation, runId: 'RUN-TEST', startedAt: AT(0), events: complete.events, mode: 'partner', clock }),
+      createReceipt({ scenario: mat001, evaluation: mat001Evaluation, run: scriptedRun(mat001, mat001Evaluation), runId: 'RUN-TEST', startedAt: AT(0), events: complete.events, mode: 'partner', clock }),
     ).toThrow(IncompleteRunError)
   })
 })

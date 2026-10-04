@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
-import { mat001Evaluation } from '../data/mat001.evaluation'
+import { mat001Scores } from '../data/mat001.scores'
 import { ScoreCard } from './ScoreCard'
 
 describe('ScoreCard', () => {
   it('shows the score equations and their legend in one card, and links to the benchmark-wide score', () => {
-    const { container } = render(<ScoreCard evaluation={mat001Evaluation} />)
+    const { container } = render(<ScoreCard scores={mat001Scores} />)
     const card = screen.getByRole('region', { name: 'How the score is computed' })
     expect(within(card).getByText('Legend')).toBeInTheDocument()
     expect(within(card).getByText('Rubric total')).toBeInTheDocument()

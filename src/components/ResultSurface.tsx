@@ -6,7 +6,7 @@ import { STAGES, STAGE_LABELS } from '../domain/stages'
 import { VERDICT_LABEL } from '../domain/verdict'
 import type { BenchmarkReceipt } from '../domain/receipt'
 import type { WalkthroughState } from '../domain/walkthrough'
-import type { Scenario, ScenarioEvaluation, WalkthroughStage } from '../domain/types'
+import type { GradedRun, Scenario, ScenarioEvaluation, WalkthroughStage } from '../domain/types'
 import { AgentResponseCard } from './AgentResponseCard'
 import { BracketSchematic } from './BracketSchematic'
 import { Disclosure } from './Disclosure'
@@ -38,19 +38,20 @@ function Loading() {
   )
 }
 
-function OutcomeStrip({ scenario, evaluation }: { scenario: Scenario; evaluation: ScenarioEvaluation }) {
-  const { baselineTotal, guardedTotal, delta } = compareScores(evaluation.scoring.baseline, evaluation.scoring.guarded)
-  const baselineUnsafe = scenario.baseline.verdict !== evaluation.expectedSafeVerdict
+function OutcomeStrip({ evaluation, run }: { evaluation: ScenarioEvaluation; run: GradedRun }) {
+  const { baselineTotal, guardedTotal, delta } = compareScores(run.scores.baseline, run.scores.guarded)
+  const { baseline, guarded } = run.responses
+  const baselineUnsafe = baseline.verdict !== evaluation.expectedSafeVerdict
   return (
     <p className="flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-y-2 border-ink py-3 text-body text-ink-2">
       <span className="flex flex-wrap items-baseline gap-x-2">
         Baseline{' '}
         <strong className={`text-lead ${baselineUnsafe ? 'text-risk' : 'text-ink'}`}>
-          {VERDICT_LABEL[scenario.baseline.verdict]}
+          {VERDICT_LABEL[baseline.verdict]}
           {baselineUnsafe ? ' (unsafe)' : ''}
         </strong>{' '}
         <span className="text-ink-3">→</span> Guarded{' '}
-        <strong className="text-lead text-warn">{VERDICT_LABEL[evaluation.guarded.verdict]}</strong>
+        <strong className="text-lead text-warn">{VERDICT_LABEL[guarded.verdict]}</strong>
       </span>
       {' '}
       <span className="flex items-baseline gap-x-3">
@@ -67,6 +68,8 @@ function OutcomeStrip({ scenario, evaluation }: { scenario: Scenario; evaluation
 interface PanelProps {
   scenario: Scenario
   evaluation: ScenarioEvaluation | null
+  /** The agents' answers and grades; arrives with the evaluation. */
+  run: GradedRun | null
   receipt: BenchmarkReceipt | null
 }
 
@@ -185,16 +188,16 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
   },
   guarded: {
     headline: ({ evaluation }) => (evaluation ? evaluation.narrative.guardedHeadline : 'Preparing guarded verdict…'),
-    body: ({ scenario, evaluation }) =>
-      !evaluation ? (
+    body: ({ scenario, evaluation, run }) =>
+      !evaluation || !run ? (
         <Loading />
       ) : (
         <>
           <p className="max-w-[72ch] text-body text-ink-2">{evaluation.narrative.guardedIntro}</p>
-          <OutcomeStrip scenario={scenario} evaluation={evaluation} />
+          <OutcomeStrip evaluation={evaluation} run={run} />
           <div className="grid grid-cols-2 gap-6">
-            <AgentResponseCard response={scenario.baseline} unsafe />
-            <AgentResponseCard response={evaluation.guarded} emphasis />
+            <AgentResponseCard response={run.responses.baseline} unsafe />
+            <AgentResponseCard response={run.responses.guarded} emphasis />
           </div>
           <p className="rounded-sm border border-rule bg-sunken px-3 py-2 text-body text-ink-2">
             <span className="font-semibold text-ink">Decided from public evidence: </span>
@@ -216,11 +219,11 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
               </div>
             </div>
           )}
-          <ScoreCard evaluation={evaluation} />
+          <ScoreCard scores={run.scores} />
           <Why>{evaluation.narrative.guardedWhy}</Why>
           <Disclosure>
             <p>Sufficient next action: {evaluation.sufficientNextAction}</p>
-            <p className="mt-1">Scores are fixture inputs on rubric {evaluation.scoring.rubricVersion}; totals are computed, not stored.</p>
+            <p className="mt-1">Scores are fixture inputs on rubric {run.scores.rubricVersion}; totals are computed, not stored.</p>
           </Disclosure>
         </>
       ),
@@ -249,7 +252,7 @@ interface Props extends PanelProps {
 }
 
 export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function ResultSurface(
-  { state, scenario, evaluation, receipt, onSelect, onSelectTab },
+  { state, scenario, evaluation, run, receipt, onSelect, onSelectTab },
   headingRef,
 ) {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -283,7 +286,7 @@ export const ResultSurface = forwardRef<HTMLHeadingElement, Props>(function Resu
 
   const stage = STAGES[state.cursor]
   const panel = PANELS[stage]
-  const props = { scenario, evaluation, receipt }
+  const props = { scenario, evaluation, run, receipt }
 
   return (
     <section aria-labelledby="result-heading" className="sheet">
