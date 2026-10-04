@@ -1,6 +1,6 @@
 # Rule grader
 
-`src/domain/grader.ts` is Step 2 of [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md): a deterministic, offline grader that computes the four rubric metrics from an agent's response. It needs no network, model or secret. Live runs (local only, `npm run dev:live`) are graded by it through the `Grader` seam (`src/domain/ruleGraderSeam.ts`); scripted runs and `npm run score` still use the hand scores (`src/data/<id>.scores.ts`, looked up by `fixtureGrader`).
+`src/domain/grader.ts` is Step 2 of [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md): a deterministic, offline grader that computes the four rubric metrics from an agent's response. It needs no network, model or secret. Live runs (local only, `npm run dev`) are graded by it through the `Grader` seam (`src/domain/ruleGraderSeam.ts`); scripted runs and `npm run score` still use the hand scores (`src/data/<id>.scores.ts`, looked up by `fixtureGrader`).
 
 ```ts
 ruleGrader.grade(scenario, evaluation, response): MetricScores // ruleGrader.rubricVersion === 'RULE-GRADER-1.0'

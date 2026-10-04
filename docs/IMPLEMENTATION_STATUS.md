@@ -173,7 +173,7 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 
 | Capability | MoSCoW | Note |
 |---|---|---|
-| Backend service (holds keys, runs agents, optionally grades) | **Must** | Partial: local-only `server/` (`npm run dev:live`) reads `ANTHROPIC_API_KEY` from a gitignored `.env` and calls Claude for the baseline; the deployed static site has no backend |
+| Backend service (holds keys, runs agents, optionally grades) | **Must** | Partial: local-only `server/` (`npm run dev`) reads `ANTHROPIC_API_KEY` from a gitignored `.env` and calls Claude for the baseline; the deployed static site has no backend |
 | Real guardrail / guarded agent that never reads the sealed evaluation | **Must** | Step 4; core claim of the benchmark |
 | Server-side sealing or grading | **Must** | Step 5 |
 | Receipt v2 schema | **Must** | Live runs emit receipt v1.1 (model, request id, latency, grader); scripted runs stay byte-identical v1.0. v2 still pending |

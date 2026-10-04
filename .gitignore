@@ -32,7 +32,7 @@ qa-accept.json
 # Private submission notes (not for the repo)
 docs/SUBMISSION.md
 
-# Local secrets for live mode (npm run dev:live). Only the empty template is committed.
+# Local secrets for live mode (npm run dev). Only the empty template is committed.
 .env
 .env.*
 !.env.example
