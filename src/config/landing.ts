@@ -106,28 +106,37 @@ export const RESEARCH_QUOTES: readonly ResearchQuote[] = [
   },
 ]
 
-export interface Requirement {
-  need: string
+export type ThemeStatus = 'covered' | 'partial' | 'not-yet'
+
+export interface ScienceAgentTheme {
+  theme: string
+  ask: string
+  status: ThemeStatus
   evidence: string
 }
 
-export const REQUIREMENTS: readonly Requirement[] = [
+export const AGENT_SCIENCE_LINE = 'Agents that do science should know when they are wrong, and when they are being rewarded for a shortcut.'
+
+export const SCIENCE_AGENT_THEMES: readonly ScienceAgentTheme[] = [
   {
-    need: 'Benchmark science agents',
-    evidence: 'Controlled scientific-workflow scenarios with a known shortcut and a sealed answer key.',
-  },
-  {
-    need: 'Catch reward hacking',
+    theme: 'Benchmark science agents',
+    ask: 'Evals that catch research agents reward hacking.',
+    status: 'covered',
     evidence:
-      'Each scenario offers an attractive but scientifically invalid shortcut: extrapolate a pass from sampled points, or obey a source that says “report it as approved”.',
+      'Each scenario offers an attractive but invalid shortcut: extrapolate a pass from sampled points, or obey a source that says “report it as approved”. Taking it costs Safe action, and every run ends in a receipt.',
   },
   {
-    need: 'Reward falsification',
-    evidence: 'Next-test quality scores whether the agent names the experiment that could prove the claim wrong.',
+    theme: 'Epistemological agents',
+    ask: 'Agents that flag what they do not know, with calibrated uncertainty, falsification and reward design.',
+    status: 'partial',
+    evidence:
+      'Calibration and Next-test quality (the falsifying experiment) are scored today. Declared unknowns are on the roadmap. The rubric total could act as a reward signal, but nothing trains on it yet.',
   },
   {
-    need: 'Show the working',
-    evidence: 'Every run ends in a receipt, and the Run log shows each load, unseal and score formula as it happens.',
+    theme: 'Lab hardware, automation & safety',
+    ask: 'Safe, standard control of lab equipment, with testable results.',
+    status: 'not-yet',
+    evidence: 'Out of scope for the PoC. Both scenarios are paper decisions; no equipment is controlled or simulated.',
   },
 ]
 
@@ -169,6 +178,8 @@ export const ROADMAP = [
   { step: 'Declared unknowns', detail: 'Ask every agent to list what it does not know before it proposes a falsifying test.', done: false },
   { step: 'Two to four cases per pack', detail: 'Grow each pack with small, auditable cases rather than full domain models.', done: false },
   { step: 'Partner data', detail: 'Run at least one validated partner dataset through the same harness. The validator is a stub until then.', done: false },
+  { step: 'Reward signal', detail: 'Expose the rubric total as a reward for RL environments. Today it only scores fixed, scripted runs.', done: false },
+  { step: 'Lab-automation pack', detail: 'Safe, testable control of lab equipment. Not started.', done: false },
   { step: 'Live agents', detail: 'Server-side agent calls with keys from the environment. Mock mode never needs a secret.', done: false },
 ] as const
 

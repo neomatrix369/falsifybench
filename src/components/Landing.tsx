@@ -7,7 +7,9 @@ import {
   METRIC_QUESTIONS,
   POSITIONING,
   REPO_URL,
-  REQUIREMENTS,
+  AGENT_SCIENCE_LINE,
+  type ThemeStatus,
+  SCIENCE_AGENT_THEMES,
   RESEARCH_QUOTES,
   ROADMAP,
   SCENARIO_PACKS,
@@ -24,6 +26,12 @@ import { STAGES, STAGE_LABELS } from '../domain/stages'
 import type { Scenario } from '../domain/types'
 import { Header, type View } from './Header'
 import { FalsificationStrip, Ticker } from './LandingMotion'
+
+const THEME_STATUS: Record<ThemeStatus, { label: string; className: string }> = {
+  covered: { label: 'Covered', className: 'text-ok' },
+  partial: { label: 'Partly covered', className: 'text-warn' },
+  'not-yet': { label: 'Not yet', className: 'text-ink-3' },
+}
 
 export const SCORE_JSON_URL = 'score/score.json'
 
@@ -235,6 +243,7 @@ export function Landing({ onSwitchView }: { onSwitchView: (view: View) => void }
               <span className="font-semibold">{BRAND.name}:</span> {POSITIONING.charAt(0).toLowerCase() + POSITIONING.slice(1)}
             </p>
             <p className="mt-3 max-w-2xl text-body text-ink-2">{BRAND.claim}</p>
+            <p className="mt-2 max-w-2xl text-body text-ink-2">{AGENT_SCIENCE_LINE}</p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <button type="button" className="btn-primary px-4 py-2.5 text-lead" data-view-switch="benchmark" onClick={open}>
                 Open the benchmark
@@ -346,14 +355,22 @@ export function Landing({ onSwitchView }: { onSwitchView: (view: View) => void }
               </tbody>
             </table>
             <table className="w-full text-body">
-              <caption className="px-6 pt-4 text-left text-body font-semibold text-ink">Requirement → how {BRAND.name} meets it</caption>
+              <caption className="px-6 pt-4 text-left text-body font-semibold text-ink">
+                Science-agent themes → what {BRAND.name} covers
+              </caption>
               <tbody className="divide-y divide-rule">
-                {REQUIREMENTS.map((r) => (
-                  <tr key={r.need}>
+                {SCIENCE_AGENT_THEMES.map((t) => (
+                  <tr key={t.theme}>
                     <th scope="row" className="w-44 py-2.5 pl-6 pr-3 text-left align-top font-medium text-ink">
-                      {r.need}
+                      {t.theme}
+                      <span className={`mt-1 block font-mono text-meta ${THEME_STATUS[t.status].className}`}>
+                        {THEME_STATUS[t.status].label}
+                      </span>
                     </th>
-                    <td className="py-2.5 pr-6 text-ink-2">{r.evidence}</td>
+                    <td className="py-2.5 pr-6 text-ink-2">
+                      <span className="block text-ink">{t.ask}</span>
+                      {t.evidence}
+                    </td>
                   </tr>
                 ))}
               </tbody>
