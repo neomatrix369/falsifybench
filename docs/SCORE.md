@@ -4,6 +4,8 @@ The FalsifyBench score measures **how the agents perform on the FalsifyBench syn
 
 `npm run score` writes the published page `public/score/index.html` (served at `/score/index.html`) and the raw results `public/score/score.json`. It exits 1 if any data-integrity gate fails.
 
+`npm run score:check` regenerates both files, puts back what was on disk and exits 1 naming any file that differs; it runs as `prebuild`, so `npm run build` refuses to ship a stale score report.
+
 ## Formula
 
 ```

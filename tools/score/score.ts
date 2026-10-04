@@ -11,6 +11,7 @@ import { AGENT_PATHS, scoreBenchmark, type BenchmarkScore, type IntegrityCheck, 
 import { METRIC_KEYS, METRIC_LABELS, formatDelta } from '../../src/domain/scoring'
 import { SCORE_EQUATIONS, scoreLegend, workedRun, workedTotal } from '../../src/domain/scoreMath'
 import { VERDICT_LABEL } from '../../src/domain/verdict'
+import { ARCHIVO, SCORE_CSS, token } from './style'
 
 const ROOT = new URL('../../', import.meta.url).pathname
 const OUT = `${ROOT}public/score/`
@@ -32,7 +33,7 @@ function specGate(ids: readonly string[]): IntegrityCheck {
   mkdirSync(WORK, { recursive: true })
   const out = `${WORK}spec.json`
   rmSync(out, { force: true })
-  const run = spawnSync('npx', ['vitest', 'run', 'tools/score', '--reporter=json', `--outputFile=${out}`], { cwd: ROOT, encoding: 'utf8' })
+  const run = spawnSync('npx', ['vitest', 'run', 'tools/score/spec.', '--reporter=json', `--outputFile=${out}`], { cwd: ROOT, encoding: 'utf8' })
   if (!existsSync(out)) return fail(`spec checks did not run (exit ${run.status ?? run.signal})`)
   const r = JSON.parse(readFileSync(out, 'utf8')) as {
     numPassedTests: number
@@ -73,47 +74,11 @@ function fontFaces(): string {
   const archivo = find('archivo-latin-wdth-normal-', 'archivo-latin-wdth-normal-DY7AcnAa.woff2')
   const mono400 = find('red-hat-mono-latin-400-normal-', 'red-hat-mono-latin-400-normal-C-lyubUB.woff2')
   const mono600 = find('red-hat-mono-latin-600-normal-', 'red-hat-mono-latin-600-normal-BElMyFjl.woff2')
-  return `@font-face{font-family:Archivo;src:url(../assets/${archivo}) format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+  return `@font-face{font-family:${ARCHIVO};src:url(../assets/${archivo}) format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
 @font-face{font-family:"Red Hat Mono";src:url(../assets/${mono400}) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:"Red Hat Mono";src:url(../assets/${mono600}) format("woff2");font-weight:600;font-display:swap}`
 }
 
-const CSS = `
-:root{--ground:236 237 233;--surface:250 250 247;--sunken:242 242 238;--ink:22 25 28;--ink-2:62 68 74;--ink-3:92 99 106;--rule:213 215 209;--rule-strong:133 138 132;--primary:36 71 154;--focus:59 111 224;--ok:36 101 58;--ok-tint:226 239 228;--warn:122 74 0;--warn-tint:250 237 207;--risk:158 42 32;--risk-tint:247 227 224;--shell:28 32 36;--shell-ink:241 242 238;--shell-muted:169 176 182;--shell-line:53 59 65}
-*{box-sizing:border-box}body{margin:0;background:rgb(var(--ground));color:rgb(var(--ink));font:15px/1.55 Archivo,system-ui,sans-serif;font-variant-numeric:tabular-nums}
-.mono{font-family:"Red Hat Mono",ui-monospace,monospace}.muted{color:rgb(var(--ink-3))}.strong{font-weight:600}
-header{background:rgb(var(--shell));color:rgb(var(--shell-ink));border-bottom:1px solid rgb(var(--shell-line))}
-.bar{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;gap:16px;align-items:baseline;justify-content:space-between}
-.brand{font-weight:650;letter-spacing:.01em}.brand span{color:rgb(var(--shell-muted));font-weight:400}
-header a{color:rgb(var(--shell-ink))}a:focus-visible{outline:2px solid rgb(var(--focus));outline-offset:2px}
-main{max-width:1180px;margin:0 auto;padding:24px;display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
-.sheet{background:rgb(var(--surface));border:1px solid rgb(var(--rule));border-radius:4px;padding:20px 24px;min-width:0}
-h1{font-size:26px;line-height:1.2;margin:0 0 6px;font-weight:650}h2{font-size:17px;margin:0 0 4px;font-weight:650}
-.lead{margin:0 0 14px;color:rgb(var(--ink-2));font-size:14px}
-.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:rgb(var(--ink-3));margin:0 0 6px}
-.hero{display:grid;grid-template-columns:minmax(0,40fr) minmax(0,60fr);gap:28px;align-items:start}
-.pair{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:14px}
-.big{font-family:"Red Hat Mono",monospace;font-size:44px;line-height:1;font-weight:600}.big.dim{color:rgb(var(--ink-3))}
-.cap{font-size:13px;color:rgb(var(--ink-2));margin-top:6px}
-.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:3px;border:1px solid;white-space:nowrap}
-.tag.ok{color:rgb(var(--ok));background:rgb(var(--ok-tint))}.tag.warn{color:rgb(var(--warn));background:rgb(var(--warn-tint))}.tag.risk{color:rgb(var(--risk));background:rgb(var(--risk-tint))}
-.tag.plain{color:rgb(var(--ink-2));background:rgb(var(--sunken));border-color:rgb(var(--rule))}
-.stats{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:8px 18px;align-items:baseline}
-.stats dt{font-size:13px;color:rgb(var(--ink-2))}.stats dd{margin:0;font-family:"Red Hat Mono",monospace}
-.stats .h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--ink-3));font-family:inherit}
-.method{display:grid;grid-template-columns:minmax(0,58fr) minmax(0,42fr);gap:28px;align-items:start}
-.eqs{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 14px;align-items:baseline;background:rgb(var(--sunken));border:1px solid rgb(var(--rule));border-radius:3px;padding:14px 16px;overflow-x:auto}
-.eqs dt{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--ink-3));white-space:nowrap}.eqs dd{margin:0}
-math{font-family:"STIX Two Math","Cambria Math","Latin Modern Math","DejaVu Serif","Times New Roman",serif;font-size:17px;color:rgb(var(--ink))}
-.legend{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 12px;font-size:14px;align-items:baseline}.legend dt{text-align:right}.legend dd{margin:0;color:rgb(var(--ink-2))}
-.worked{margin:14px 0 0;font-size:14px;line-height:2.2;color:rgb(var(--ink-2))}.worked math{font-size:15px}
-.formula{font-family:"Red Hat Mono",monospace;font-size:14px;background:rgb(var(--sunken));border:1px solid rgb(var(--rule));border-radius:3px;padding:12px 14px;overflow-x:auto;white-space:pre;line-height:1.7;margin:0}
-.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px;border-top:1px solid rgb(var(--rule));vertical-align:top}
-thead th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgb(var(--ink-3));border-top:0;font-weight:600}
-td.n,th.n{text-align:right;font-family:"Red Hat Mono",monospace}tr.first th,tr.first td{border-top:1px solid rgb(var(--rule-strong))}
-td.det{color:rgb(var(--ink-2));font-size:13px;overflow-wrap:anywhere}
-ul{margin:0;padding-left:20px}li{margin:4px 0}.foot{font-size:13px;color:rgb(var(--ink-3))}
-`
 
 function yesNo(v: boolean, good: boolean): string {
   return `<span class="tag ${v === good ? 'ok' : good ? 'warn' : 'risk'}">${v ? 'Yes' : 'No'}</span>`
@@ -134,7 +99,7 @@ function method(score: BenchmarkScore): string {
 <p class="lead">Every number on this page follows from these equations applied to the synthetic benchmark data in <span class="mono">src/data</span>.</p>
 <div class="method">
 <div><dl class="eqs">${SCORE_EQUATIONS.map((e) => `<dt>${esc(e.label)}</dt><dd>${e.mathml}</dd>`).join('')}</dl>${worked}</div>
-<div><h3 class="eyebrow" style="margin-top:2px">Legend</h3><dl class="legend">${legend.map((l) => `<dt>${l.symbol}</dt><dd>${esc(l.text)}</dd>`).join('')}</dl>
+<div><h3 class="label" style="margin-top:2px">Legend</h3><dl class="legend">${legend.map((l) => `<dt>${l.symbol}</dt><dd>${esc(l.text)}</dd>`).join('')}</dl>
 <ul class="foot" style="margin-top:14px">
 <li>Not measured: code quality, tests, bundle size or commit history. Those are development checks (<span class="mono">npm run lint</span>, <span class="mono">npm test</span>, <span class="mono">npm run build</span>, <span class="mono">tools/qa/acceptance.py</span>) and do not change this score.</li>
 <li>Agents are scripted fixtures; no model, partner data or network call is involved.</li>
@@ -181,19 +146,19 @@ ${i === 0 ? `<td class="n" rowspan="2">${s.delta === null ? '—' : formatDelta(
   const n = scenarios.length
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FalsifyBench — Benchmark score</title><link rel="icon" type="image/svg+xml" href="../favicon.svg"><meta name="theme-color" content="#1c2024">
-<style>${fontFaces()}${CSS}</style></head><body>
+<title>FalsifyBench — Benchmark score</title><link rel="icon" type="image/svg+xml" href="../favicon.svg"><meta name="theme-color" content="${token('shell')}">
+<style>${fontFaces()}${SCORE_CSS}</style></head><body>
 <header><div class="bar"><div class="brand">FalsifyBench <span>· Benchmark score</span></div><a href="../index.html">Open the walkthrough</a></div></header>
 <main>
 <section class="sheet hero" aria-labelledby="h-score">
- <div><p class="eyebrow">Synthetic data · ${n} scenarios · ${esc(rubrics)}</p>
-  <h1 id="h-score">FalsifyBench score</h1>
+ <div><h1 id="h-score">FalsifyBench score</h1>
   <p class="lead">Mean rubric total per agent over every runnable scenario, computed from the benchmark data only.</p>
+  <p class="meta">Synthetic data · ${n} scenarios · <span class="mono">${esc(rubrics)}</span></p>
   ${status}
   <div class="pair">
    <div><div class="big" aria-label="Guarded score ${num(agents.guarded.score)} of 100">${num(agents.guarded.score)}</div><div class="cap">Guarded agent</div></div>
    <div><div class="big dim" aria-label="Baseline score ${num(agents.baseline.score)} of 100">${num(agents.baseline.score)}</div><div class="cap">Baseline agent</div></div>
-   <div><div class="big" aria-label="Mean delta ${formatDelta(score.meanDelta)}">${formatDelta(score.meanDelta)}</div><div class="cap">Mean delta per scenario</div></div>
+   <div><div class="big delta" aria-label="Mean delta ${formatDelta(score.meanDelta)}">${formatDelta(score.meanDelta)}</div><div class="cap">Mean delta per scenario</div></div>
   </div></div>
  <dl class="stats" aria-label="Per-agent results">
   <dt class="h">Across ${n} scenarios</dt><dd class="h">Baseline</dd><dd class="h">Guarded</dd>
@@ -220,7 +185,7 @@ ${METRIC_KEYS.map((k) => `<th scope="col" class="n">${METRIC_LABELS[k]}</th>`).j
 
 function withheld(gate: IntegrityCheck): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FalsifyBench — Benchmark score withheld</title><style>${fontFaces()}${CSS}</style></head><body>
+<title>FalsifyBench — Benchmark score withheld</title><style>${fontFaces()}${SCORE_CSS}</style></head><body>
 <header><div class="bar"><div class="brand">FalsifyBench <span>· Benchmark score</span></div><a href="../index.html">Open the walkthrough</a></div></header>
 <main><section class="sheet" aria-labelledby="h-score"><h1 id="h-score">Score withheld</h1>
 <p class="lead">Not scored (G = 0). Results are not published because gate <span class="mono">${esc(gate.id)}</span> (${esc(gate.label)}) failed: ${esc(gate.detail)}.</p></section></main></body></html>

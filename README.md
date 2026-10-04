@@ -26,6 +26,7 @@ npm run dev        # http://localhost:5173
 npm test           # vitest (unit + DOM tests)
 npm run lint
 npm run typecheck
+npm run score:check  # fails if public/score is stale vs the data; runs before every build
 npm run build      # outputs static site to dist/
 npm run preview    # serve dist/ locally
 ```

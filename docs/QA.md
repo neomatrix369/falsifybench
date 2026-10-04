@@ -9,6 +9,7 @@ Read-only acceptance review of FalsifyBench against the playbook's **Acceptance 
 - **Run-log trace pass (PRs #14–#17):** browser checks on a local Vite build of PR #15 (`e1cc7e4`), then a spot-check of the #16 fixes on `main` @ `3d84f56`, desktop Chrome at 1280 CSS px. `main` @ `c76a92c`: lint, typecheck, 48/48 tests, build, `npm run frs` SHIP 0.9913 (no gate, acceptance or alignment failures). Results are in [Run log trace](#run-log-trace); F6–F7 are below.
 - **After #18 (`npm run frs` replaced by `npm run score`):** `main` @ `97662b7` merged with this branch: lint, typecheck, 84/84 tests, build and `npm run score` pass (G = 1; guarded 94.5, baseline 12.5, mean delta +82).
 - **EI-001 default and LAB-001 pass (PR #39 branch @ `98ecb13`):** `tools/qa/acceptance.py` on a local `vite preview` build, desktop Chrome over CDP at 1280 CSS px: 72/72 pass. Not run against a deployed preview. The benchmark now opens on EI-001, so row 1 below records the earlier MAT-001 default. Results are in [Acceptance script](#acceptance-script) and [LAB-001](#lab-001-stale-robot-arm-state).
+- **Deployed pass (`main` @ `7c805a7`, PRs through #39):** `tools/qa/acceptance.py` against <https://deploy-main-dist-nweflryx.devinapps.com> on 2026-10-04, after confirming the live `index-CZoUusoP.js` matches a local build of the same revision: 72/72 pass, exit 0. Locally on that revision: lint, typecheck, 131/131 tests, build, `npm run score` (all gates pass).
 
 ## Checklist
 
