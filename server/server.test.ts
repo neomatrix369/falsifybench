@@ -99,6 +99,12 @@ describe('POST /api/agents/guarded against the Messages stub', () => {
     expect(stub.calls.at(-1)).toMatchObject({ toolChoice: { type: 'tool', name: GUARDED_TOOL_NAME }, prompt: expect.stringContaining('Baseline agent decision:') })
   })
 
+  it('uses the public fixture guarded-agent label for a live LAB-001 response', async () => {
+    const res = await askGuarded(base, { scenarioId: 'LAB-001', baseline: baselineDecision })
+    expect(res.status).toBe(200)
+    expect((await res.json()).response.agentLabel).toBe(`Action guard (${STUB_MODEL})`)
+  })
+
   it('rejects a malformed baseline as a bad request before calling the provider', async () => {
     const before = stub.calls.length
     const res = await askGuarded(base, { scenarioId: 'EI-001', baseline: { ...baselineDecision, verdict: 'approve' } })

@@ -10,6 +10,9 @@ export const LIVE_BASELINE_TIMEOUT_MS = 30_000
 /** How long the local server waits for the provider; shorter than the browser's wait so its own error arrives first. */
 export const LIVE_UPSTREAM_TIMEOUT_MS = 25_000
 
+export const liveGuardedAgentLabel = (declared: string, model: string) =>
+  `${declared.replace(/ \(simulated\)$/, '')} (${model})`
+
 export interface LiveHealth {
   configured: boolean
   provider: 'anthropic'

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { AGENT_DECISION_FIELDS, AGENT_DECISION_SCHEMA, agentDecisionProblems, toAgentDecision } from '../src/domain/agentResponseCheck'
 import { applyGuardRules } from '../src/domain/guardRules'
-import { LIVE_BASELINE_ENDPOINT, LIVE_GUARDED_ENDPOINT, type LiveBaselineBody, type LiveErrorBody, type LiveGuardedBody } from '../src/domain/live'
+import { LIVE_BASELINE_ENDPOINT, LIVE_GUARDED_ENDPOINT, liveGuardedAgentLabel, type LiveBaselineBody, type LiveErrorBody, type LiveGuardedBody } from '../src/domain/live'
 import type { AgentDecision } from '../src/domain/agentResponseCheck'
 import { BASELINE_SYSTEM_PROMPT, DECISION_TOOL_NAME, GUARDED_SYSTEM_PROMPT, GUARDED_TOOL_NAME, baselineUserPrompt, guardedUserPrompt } from './prompt'
 import type { PublicScenario } from './scenarios'
@@ -199,7 +199,7 @@ export async function askGuarded(
       status: 200,
       body: {
         response: {
-          agentLabel: `Evidence guardrail (${data.model})`,
+          agentLabel: liveGuardedAgentLabel(scenario.guardedAgentLabel, data.model),
           ...result.decision,
           guard: result.guard,
           live: {

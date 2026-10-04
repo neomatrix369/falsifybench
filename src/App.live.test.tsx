@@ -5,7 +5,7 @@ import App from './App'
 import { scriptedAgentRunner } from './data/scriptedAgentRunner'
 import { LIVE_HEALTH_RETRY_MS, LiveAgentError, type LiveHealth } from './domain/live'
 import { liveAnswer } from './domain/liveFixtures.test-helpers'
-import type { AgentResponse, AgentRunner } from './domain/types'
+import type { AgentResponse, AgentRunner, ScenarioSource } from './domain/types'
 
 const deps = { clock: () => new Date('2026-01-01T12:00:00.000Z'), createRunId: () => 'RUN-LIVE' }
 const HIDDEN = [/highest-stress/i, /zero ultrasonic/i]
@@ -47,9 +47,17 @@ function liveRunnerReplying(...replies: (AgentResponse | Error)[]) {
   return { runner, baseline, guarded }
 }
 
-async function openLive(runner: AgentRunner, initialId = 'MAT-001') {
+async function openLive(runner: AgentRunner, initialId = 'MAT-001', source?: ScenarioSource) {
   const user = userEvent.setup()
-  render(<App deps={deps} initialId={initialId} liveRunner={runner} probeLive={async () => configured} />)
+  render(
+    <App
+      deps={deps}
+      initialId={initialId}
+      {...(source ? { source } : {})}
+      liveRunner={runner}
+      probeLive={async () => configured}
+    />,
+  )
   await screen.findByRole('button', { name: /run benchmark/i })
   const live = await screen.findByRole('radio', { name: /live agents — available/i })
   expect(live).toBeEnabled()
@@ -221,6 +229,32 @@ describe('Live agent run (injected runner)', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('aborts the guarded call when evaluation unsealing rejects', async () => {
+    const { mat001 } = await import('./data/mat001')
+    const failing = { ...mat001, evaluation: { unseal: () => Promise.reject(new Error('chunk failed')) } }
+    const baseline = vi.fn(async () => liveAnswer())
+    let guardedSignal: AbortSignal | undefined
+    const guarded = vi.fn((options?: { signal?: AbortSignal }) => {
+      guardedSignal = options?.signal
+      return new Promise<AgentResponse>(() => {})
+    })
+    const runner: AgentRunner = {
+      execution: 'live',
+      run: (agent, _scenario, options) => (agent === 'guarded' ? guarded(options) : baseline()),
+    }
+    const source: ScenarioSource = { loadScenario: async () => failing }
+    const user = await openLive(runner, 'MAT-001', source)
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    await waitFor(() => expect(baseline).toHaveBeenCalledTimes(1))
+    await user.click(btn(/next step/i))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('chunk failed')
+    expect(guarded).toHaveBeenCalledTimes(1)
+    expect(guardedSignal?.aborted).toBe(true)
   })
 
   it('cancels an abandoned live call when the walkthrough is reset', async () => {

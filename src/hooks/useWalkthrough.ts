@@ -131,7 +131,10 @@ export function useWalkthrough(scenario: Scenario, deps: WalkthroughDeps, seams:
       Promise.all([scenario.evaluation.unseal(), grader ?? (isLive ? loadRuleGrader() : loadFixtureGrader())]),
       UNSEAL_TIMEOUT_MS,
       () => new UnsealTimeoutError(scenario.id, UNSEAL_TIMEOUT_MS),
-    )
+    ).catch((err: unknown) => {
+      guardedAbort?.abort()
+      throw err
+    })
     Promise.all([evaluationAndGrader, answers])
       .then(([[value, grading], responses]) => {
         if (cancelled) return

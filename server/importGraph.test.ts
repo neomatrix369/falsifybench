@@ -56,7 +56,17 @@ describe('server import graph', () => {
       expect(readFileSync(join(ROOT, file), 'utf8'), file).not.toMatch(/\.unseal\b|(?:scenario|s)\.baseline\b/)
     }
     for (const id of PUBLIC_SCENARIO_IDS) {
-      expect(Object.keys(publicScenario(id)!).sort()).toEqual(['domain', 'evidence', 'id', 'input', 'question', 'task', 'title', 'version'])
+      expect(Object.keys(publicScenario(id)!).sort()).toEqual([
+        'domain',
+        'evidence',
+        'guardedAgentLabel',
+        'id',
+        'input',
+        'question',
+        'task',
+        'title',
+        'version',
+      ])
     }
   })
 

@@ -4,12 +4,33 @@ import { mat001 } from '../data/mat001'
 import { lab001 } from '../data/lab001'
 import { evaluationProblems, InvalidEvaluationError, unsealRecovery } from './evaluationCheck'
 import { UnsealTimeoutError } from './unsealTimeout'
+import { liveGuardedAgentLabel } from './live'
 import type { GradedRun, ScenarioEvaluation } from './types'
 import { scriptedRun } from '../test/scriptedRun'
 
 const withGuardedSafeAction = (run: GradedRun, safeAction: number): GradedRun => ({
   ...run,
   scores: { ...run.scores, guarded: { ...run.scores.guarded, safeAction } },
+})
+
+const withLiveGuardedLabel = (run: GradedRun, agentLabel: string): GradedRun => ({
+  ...run,
+  responses: {
+    ...run.responses,
+    guarded: {
+      ...run.responses.guarded,
+      agentLabel,
+      live: {
+        provider: 'anthropic',
+        model: 'claude-stub-1',
+        requestId: null,
+        latencyMs: 1,
+        roundTripMs: 1,
+        endpoint: '/api/agents/guarded',
+        validatedFields: [],
+      },
+    },
+  },
 })
 
 describe('evaluationProblems', () => {
@@ -33,23 +54,30 @@ describe('evaluationProblems', () => {
     expect(problems.map((p) => p.slice(0, 2))).toEqual(['I4', 'I8'])
   })
 
-  it('accepts a live guarded response labelled with its model', async () => {
-    const evaluation = await mat001.evaluation.unseal()
-    const run = scriptedRun(mat001, evaluation)
-    const guarded = {
-      ...run.responses.guarded,
-      agentLabel: 'Evidence guardrail (claude-stub-1)',
-      live: {
-        provider: 'anthropic' as const,
-        model: 'claude-stub-1',
-        requestId: null,
-        latencyMs: 1,
-        roundTripMs: 1,
-        endpoint: '/api/agents/guarded',
-        validatedFields: [],
-      },
+  it('accepts live guarded labels derived from the declared fixture identity', async () => {
+    for (const [scenario, expectedLabel] of [
+      [ei001, 'Evidence guardrail (claude-stub-1)'],
+      [lab001, 'Action guard (claude-stub-1)'],
+    ] as const) {
+      const evaluation = await scenario.evaluation.unseal()
+      const run = scriptedRun(scenario, evaluation)
+      const label = liveGuardedAgentLabel(scenario.guardedAgentLabel, 'claude-stub-1')
+      expect(label).toBe(expectedLabel)
+      expect(evaluationProblems(scenario, evaluation, withLiveGuardedLabel(run, label))).toEqual([])
     }
-    expect(evaluationProblems(mat001, evaluation, { ...run, responses: { ...run.responses, guarded } })).toEqual([])
+  })
+
+  it('fails I8 when a live guarded response has the wrong fixture identity', async () => {
+    const evaluation = await lab001.evaluation.unseal()
+    const run = scriptedRun(lab001, evaluation)
+    const problems = evaluationProblems(
+      lab001,
+      evaluation,
+      withLiveGuardedLabel(run, 'Evidence guardrail (claude-stub-1)'),
+    )
+    expect(problems).toEqual([
+      'I8 Guarded response matches the declared agent: Evidence guardrail (claude-stub-1)',
+    ])
   })
 
   it('reports a malformed shape instead of throwing', () => {
