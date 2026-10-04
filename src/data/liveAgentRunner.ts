@@ -12,7 +12,7 @@ import type { AgentResponse, AgentRunner, Scenario } from '../domain/types'
 
 type Fetch = typeof globalThis.fetch
 
-const KINDS: LiveFailureKind[] = ['timeout', 'network', 'not-configured', 'bad-request', 'upstream', 'upstream-timeout', 'validation', 'server']
+const KINDS: LiveFailureKind[] = ['timeout', 'network', 'not-configured', 'bad-request', 'upstream', 'upstream-timeout', 'server-outdated', 'validation', 'server']
 
 /** Every problem with the local server's baseline reply at once; empty when it is a usable live `AgentResponse`. */
 export function liveBaselineProblems(body: unknown): string[] {
@@ -67,7 +67,14 @@ export function liveGuardedProblems(body: unknown, scenario: Scenario): string[]
   return problems
 }
 
-function errorFrom(status: number, body: unknown): LiveAgentError {
+function errorFrom(status: number, body: unknown, endpoint: string): LiveAgentError {
+  if (status === 404) {
+    return new LiveAgentError({
+      kind: 'server-outdated',
+      message: `The local server is running older code without ${endpoint}. Stop npm run dev (Ctrl+C) and start it again.`,
+      httpStatus: status,
+    })
+  }
   const e = (body as Partial<LiveErrorBody> | null)?.error
   const kind = e && KINDS.includes(e.kind) ? e.kind : 'server'
   return new LiveAgentError({
@@ -94,10 +101,11 @@ export function createLiveAgentRunner({
       if (agent === 'guarded' && !options?.baseline) {
         throw new LiveAgentError({ kind: 'bad-request', message: 'The guarded live agent requires the live baseline decision.' })
       }
+      const endpoint = agent === 'guarded' ? LIVE_GUARDED_ENDPOINT : LIVE_BASELINE_ENDPOINT
       const started = now()
       let res: Response
       try {
-        res = await fetch(agent === 'guarded' ? LIVE_GUARDED_ENDPOINT : LIVE_BASELINE_ENDPOINT, {
+        res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -110,7 +118,7 @@ export function createLiveAgentRunner({
         throw new LiveAgentError({ kind: 'network', message: `Could not reach the local server: ${err instanceof Error ? err.message : String(err)}` })
       }
       const body: unknown = await res.json().catch(() => null)
-      if (!res.ok) throw errorFrom(res.status, body)
+      if (!res.ok) throw errorFrom(res.status, body, endpoint)
       const problems = agent === 'guarded' ? liveGuardedProblems(body, scenario) : liveBaselineProblems(body)
       if (problems.length) {
         const subject = agent === 'guarded' ? 'guarded agent' : 'baseline'

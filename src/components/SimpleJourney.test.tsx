@@ -209,7 +209,6 @@ describe('Simple tab with a live baseline', () => {
     const user = userEvent.setup()
     render(<App deps={deps} initialId="MAT-001" initialTab="simple" liveRunner={runner} probeLive={async () => configured} />)
     await screen.findByRole('button', { name: /run benchmark/i })
-    await user.click(await screen.findByRole('radio', { name: /live agents — available/i }))
     await screen.findByRole('radio', { name: /live agents — active/i })
     return user
   }

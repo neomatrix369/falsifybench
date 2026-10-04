@@ -85,11 +85,13 @@ interface BenchProps {
   agentMode: AgentMode
   health: LiveHealth | null
   onSelectAgentMode: (mode: AgentMode, abandoned: RunLogEntry | null) => void
+  onRunStarted: (mode: AgentMode) => void
+  onRunReset: () => void
   tab: BenchTab
   onTabChange: (tab: BenchTab) => void
 }
 
-function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView, agentMode, health, onSelectAgentMode, tab, onTabChange }: BenchProps) {
+function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView, agentMode, health, onSelectAgentMode, onRunStarted, onRunReset, tab, onTabChange }: BenchProps) {
   const { state, evaluation, run: graded, receipt, error, controls, actions, unseal, abandoned, liveCall, awaitingLive } = useWalkthrough(
     scenario,
     deps,
@@ -120,9 +122,15 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
   )
 
   const run = useCallback(() => {
+    onRunStarted(agentMode)
     actions.run()
     setFocusRequest((n) => n + 1)
-  }, [actions])
+  }, [actions, agentMode, onRunStarted])
+
+  const toggleAutoplay = useCallback(() => {
+    if (!state.autoplay && state.runId === null) onRunStarted(agentMode)
+    actions.toggleAutoplay()
+  }, [actions, agentMode, onRunStarted, state.autoplay, state.runId])
 
   // Back / Next step keep focus while stepping. Only when the focused control
   // disables itself (Back at Evidence, Next step at Receipt) does focus move to the stage heading.
@@ -138,8 +146,9 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
 
   const reset = useCallback(() => {
     actions.reset()
+    onRunReset()
     setFocusRequest((n) => n + 1)
-  }, [actions])
+  }, [actions, onRunReset])
 
   const unsealed = state.reached >= AUDIT_STAGE_INDEX && evaluation ? evaluation : null
   const excludedIds = unsealed?.hiddenTruth.untrustedEvidenceIds ?? []
@@ -183,9 +192,9 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
       <TabBar tab={tab} onChange={onTabChange} />
       {tab === 'simple' ? (
         <main id="bench-panel" role="tabpanel" aria-labelledby="bench-tab-simple" className="mx-auto max-w-page px-6 py-4">
-          <WalkthroughErrorBoundary onReset={actions.reset} resetKey={state.runId}>
+          <WalkthroughErrorBoundary onReset={reset} resetKey={state.runId}>
             {error ? (
-              <ErrorCard message={error.message} onReset={actions.reset} recovery={recovery ?? 'reset'} onRetry={actions.retryLive} />
+              <ErrorCard message={error.message} onReset={reset} recovery={recovery ?? 'reset'} onRetry={actions.retryLive} />
             ) : (
               <SimpleJourney
                 ref={resultHeading}
@@ -200,7 +209,7 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
                 onRun={run}
                 onBack={actions.back}
                 onNext={actions.next}
-                onToggleAutoplay={actions.toggleAutoplay}
+                onToggleAutoplay={toggleAutoplay}
                 onReset={reset}
                 onSelect={actions.select}
                 onOpenDetail={openDetail}
@@ -227,7 +236,7 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
               onSelect={select}
               onBack={actions.back}
               onNext={actions.next}
-              onToggleAutoplay={actions.toggleAutoplay}
+              onToggleAutoplay={toggleAutoplay}
               onReset={reset}
             />
             <RunLog
@@ -241,9 +250,9 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
             <UnavailableModesNote health={health} />
           </div>
           <div className="space-y-4">
-            <WalkthroughErrorBoundary onReset={actions.reset} resetKey={state.runId}>
+            <WalkthroughErrorBoundary onReset={reset} resetKey={state.runId}>
               {error ? (
-                <ErrorCard message={error.message} onReset={actions.reset} recovery={recovery ?? 'reset'} onRetry={actions.retryLive} />
+                <ErrorCard message={error.message} onReset={reset} recovery={recovery ?? 'reset'} onRetry={actions.retryLive} />
               ) : (
                 <ResultSurface
                   ref={resultHeading}
@@ -300,7 +309,8 @@ export default function App({
   const [attempt, setAttempt] = useState(0)
   const [carried, setCarried] = useState<RunLogEntry | null>(null)
   const [health, setHealth] = useState<LiveHealth | null>(null)
-  const [agentMode, setAgentMode] = useState<AgentMode>('scripted')
+  const [agentMode, setAgentMode] = useState<AgentMode | null>(null)
+  const [runMode, setRunMode] = useState<AgentMode | null>(null)
   useEffect(() => {
     if (!probeLive) return
     let cancelled = false
@@ -309,7 +319,7 @@ export default function App({
       probeLive().then((h) => {
         if (cancelled) return
         setHealth(h)
-        if (h === null) timer = setTimeout(probe, LIVE_HEALTH_RETRY_MS)
+        if (h === null || !h.configured) timer = setTimeout(probe, LIVE_HEALTH_RETRY_MS)
       })
     }
     probe()
@@ -318,12 +328,20 @@ export default function App({
       if (timer !== undefined) clearTimeout(timer)
     }
   }, [probeLive])
-  const mode: AgentMode = agentMode === 'live' && liveAvailable(health) ? 'live' : 'scripted'
+  const preferred = agentMode ?? runMode ?? (liveAvailable(health) ? 'live' : 'scripted')
+  const mode: AgentMode = preferred === 'live' && liveAvailable(health) ? 'live' : 'scripted'
   const seams = useMemo(() => ({ runner: mode === 'live' ? liveRunner : runner, grader }), [mode, liveRunner, runner, grader])
   const selectAgentMode = useCallback((next: AgentMode, abandoned: RunLogEntry | null) => {
     setCarried(abandoned)
     setAgentMode(next)
   }, [])
+  const onRunStarted = useCallback(
+    (mode: AgentMode) => {
+      if (agentMode === null) setRunMode((current) => current ?? mode)
+    },
+    [agentMode],
+  )
+  const onRunReset = useCallback(() => setRunMode(null), [])
   const [tab, setTab] = useState<BenchTab>(initialTab)
   const changeTab = useCallback(
     (next: BenchTab) => {
@@ -334,6 +352,7 @@ export default function App({
   )
   const selectBenchmark = useCallback((id: string, abandoned: RunLogEntry | null = null) => {
     setCarried(abandoned)
+    setRunMode(null)
     setSwitched(true)
     setActiveId(id)
   }, [])
@@ -385,6 +404,8 @@ export default function App({
         agentMode={mode}
         health={health}
         onSelectAgentMode={selectAgentMode}
+        onRunStarted={onRunStarted}
+        onRunReset={onRunReset}
         tab={tab}
         onTabChange={changeTab}
       />

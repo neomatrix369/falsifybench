@@ -29,6 +29,7 @@ export type LiveFailureKind =
   | 'bad-request'
   | 'upstream'
   | 'upstream-timeout'
+  | 'server-outdated'
   | 'validation'
   | 'server'
 
@@ -62,6 +63,7 @@ export const LIVE_FAILURE_LABEL: Record<LiveFailureKind, string> = {
   'bad-request': 'request rejected by the local server',
   upstream: 'model provider returned an error',
   'upstream-timeout': 'model provider timed out',
+  'server-outdated': 'local server is out of date',
   validation: 'model output failed validation',
   server: 'local server error',
 }
