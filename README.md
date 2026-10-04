@@ -55,6 +55,15 @@ Mock mode needs no secrets and no network access.
 
 [`docs/PIPELINE.md`](docs/PIPELINE.md) follows a run from its inputs through each stage to every way it can end (complete, interrupted, failed or errored), with the known gaps.
 
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [Project playbook](docs/falsifybench-playbook.md) | Product scope, fixture specifications and delivery/acceptance contract |
+| [Documentation audit](docs/DOC_AUDIT.md) | Two-way documentation/implementation findings and verification limits |
+| [Implementation and MoSCoW inventory](docs/IMPLEMENTATION_MOSCOW.md) | Full, partial and not-implemented capabilities with proposed priorities and source evidence |
+
+The audit and inventory are dated snapshots of revision [`43cf9d390f49`](https://github.com/neomatrix369/falsifybench/commit/43cf9d390f499d419225be6c72d8badf66d9161a), not current-main release certification. See their scope notes before applying findings to newer changes.
 [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) lists what is real and what is mocked or stubbed, gives each capability a status (fully, partially or not implemented) and a MoSCoW priority, and sets out the steps to replace the mocks with real agents, grading and data.
 
 ## Deferred seams (not in this PoC)
