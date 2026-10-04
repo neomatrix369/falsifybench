@@ -45,6 +45,8 @@ Defined once as RGB triplets in `src/index.css` (`:root`) and exposed through `t
 
 Status is never colour alone: every state pairs colour with text and an icon/shape (verdict stamps, trace icons + "Completed / Flagged by audit / Current / Pending", hatch for the gap).
 
+The generated score page (`public/score/index.html`, `npm run score`) takes the same tokens: `tools/score/style.ts` reads the `:root` block from `src/index.css` and the type scale, font stacks, radii and shadows from `tailwind.config.js` at generation time, and `tools/score/style.test.ts` fails on uppercase or tracked labels and raw hex.
+
 ## Spacing, radii, elevation
 - 4px base rhythm; steps 4 / 8 / 12 / 16 / 20 / 24 / 32. Sheet padding 20–24px; page gutter 24px.
 - Radii are replaced: `sm` 2px (tags, stamps), `DEFAULT` 3px (buttons), `md` 4px (sheets). No pills except the reading-point dot.
