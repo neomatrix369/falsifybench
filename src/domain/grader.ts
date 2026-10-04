@@ -4,7 +4,7 @@ import type { AgentResponse, EvidenceItem, MetricScores, Scenario, ScenarioEvalu
  * Deterministic, offline rule grader (Step 2 of docs/IMPLEMENTATION_STATUS.md).
  * Every rule reads only the scenario's public data, the evaluation's grading truth
  * (findings, untrusted sources, expected verdict, sufficient next action) and the
- * agent's response. It never reads `evaluation.scoring`, the hand-entered target
+ * agent's response. It never reads the hand scores (`<id>.scores.ts`), the hand-entered target
  * it is calibrated against. See docs/GRADER.md.
  */
 

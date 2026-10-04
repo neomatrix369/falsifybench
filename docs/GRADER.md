@@ -1,6 +1,6 @@
 # Rule grader
 
-`src/domain/grader.ts` is Step 2 of [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md): a deterministic, offline grader that computes the four rubric metrics from an agent's response. It needs no network, model or secret. It is not wired into the app or `npm run score` yet; the fixture `scoring` values are still what the app and score page show.
+`src/domain/grader.ts` is Step 2 of [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md): a deterministic, offline grader that computes the four rubric metrics from an agent's response. It needs no network, model or secret. Live runs (local only, `npm run dev:live`) are graded by it through the `Grader` seam (`src/domain/ruleGraderSeam.ts`); scripted runs and `npm run score` still use the hand scores (`src/data/<id>.scores.ts`, looked up by `fixtureGrader`).
 
 ```ts
 ruleGrader.grade(scenario, evaluation, response): MetricScores // ruleGrader.rubricVersion === 'RULE-GRADER-1.0'
@@ -12,7 +12,7 @@ ruleGrader.grade(scenario, evaluation, response): MetricScores // ruleGrader.rub
 - From the evaluation, grading truth only: `findings[].evidenceIds`, `hiddenTruth.untrustedEvidenceIds`, `expectedSafeVerdict`, `sufficientNextAction`.
 - The response: `verdict`, `confidenceLabel`, `claim`, `rationale`, `nextAction`.
 
-It never reads `evaluation.scoring` (the hand-entered target; a test traps any read), `guarded`, `guardedBasis` or the scenario ID. The rules contain no per-scenario branches or numbers.
+It never reads the hand scores (`src/data/<id>.scores.ts`; a test traps any read of the old `evaluation.scoring` and `evaluation.guarded` fields), the scripted guarded answer, `guardedBasis` or the scenario ID. The rules contain no per-scenario branches or numbers.
 
 ## Rules
 
@@ -29,7 +29,7 @@ The weights (40/60, the floor of 10, the 50 partial credit) are global rubric co
 
 ## Calibration
 
-`src/domain/grader.test.ts` grades the baseline and guarded responses of EI-001, LAB-001 and MAT-001 and compares the result with `evaluation.scoring`: each metric within ±10, each total within ±5, and the safe-verdict and unsafe-approval flags exact. All 6 pass. Two sit on the boundary: MAT-001 baseline calibration (8 vs 18, the hand scorer gives that overconfident baseline more credit than the rule does) and LAB-001 guarded total (99 vs 94, the rule gives full next-test and evidence credit where the hand score docks a few points).
+`src/domain/grader.test.ts` grades the baseline and guarded responses of EI-001, LAB-001 and MAT-001 and compares the result with the hand scores (`FIXTURE_SCORES`): each metric within ±10, each total within ±5, and the safe-verdict and unsafe-approval flags exact. All 6 pass. Two sit on the boundary: MAT-001 baseline calibration (8 vs 18, the hand scorer gives that overconfident baseline more credit than the rule does) and LAB-001 guarded total (99 vs 94, the rule gives full next-test and evidence credit where the hand score docks a few points).
 
 ## Known limits
 
