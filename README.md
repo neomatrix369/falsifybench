@@ -67,7 +67,7 @@ Without a key, `npm run stub:anthropic` starts a local Messages API stub on port
 | Behind-the-scenes run log (timings, unseal, score formula) | `src/domain/runLog.ts`, `src/components/RunLog.tsx` |
 | Synthetic scenario source | `src/data/scenarioSource.ts` |
 | React hook wiring the reducer, auto-play timer, and audit unsealing | `src/hooks/useWalkthrough.ts` |
-| UI | `src/components/*`, `src/App.tsx` |
+| Benchmark UI: Simple tab (five-column journey) and Detailed tab (two-column walkthrough), sharing one run | `src/components/SimpleJourney.tsx`, `src/components/*`, `src/App.tsx` |
 
 ## Documentation
 

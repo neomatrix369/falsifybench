@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Root, { INTRO_DISMISSED_KEY } from './Root'
+import Root, { BENCH_TAB_KEY, INTRO_DISMISSED_KEY } from './Root'
 import { INDUSTRY_FINDINGS } from './config/landing'
 import scoreJson from '../public/score/score.json?raw'
 
@@ -51,6 +51,26 @@ describe('About / Benchmark view switch', () => {
     render(<Root />)
     expect(aboutView()).toBeNull()
     expect(benchView()).toBeVisible()
+  })
+
+  it('opens the benchmark on Simple, remembers Detailed and reopens on it', async () => {
+    const user = userEvent.setup()
+    const first = render(<Root />)
+    await user.click(screen.getAllByRole('button', { name: /open the benchmark/i })[0])
+    const bench = within(benchView())
+    expect(await bench.findByRole('tab', { name: 'Simple' })).toHaveAttribute('aria-selected', 'true')
+    expect(bench.getByRole('list', { name: /benchmark journey/i })).toBeInTheDocument()
+
+    await user.click(bench.getByRole('tab', { name: 'Detailed' }))
+    expect(window.sessionStorage.getItem(BENCH_TAB_KEY)).toBe('detailed')
+    expect(await bench.findByRole('tab', { name: 'Detailed' })).toHaveAttribute('aria-selected', 'true')
+    expect(bench.getByRole('heading', { name: /run log/i })).toBeInTheDocument()
+    first.unmount()
+
+    render(<Root />)
+    const bench2 = within(benchView())
+    expect(await bench2.findByRole('tab', { name: 'Detailed' })).toHaveAttribute('aria-selected', 'true')
+    expect(bench2.getByRole('tab', { name: 'Simple' })).toHaveAttribute('aria-selected', 'false')
   })
 })
 
