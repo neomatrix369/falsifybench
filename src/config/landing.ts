@@ -135,8 +135,9 @@ export const SCIENCE_AGENT_THEMES: readonly ScienceAgentTheme[] = [
   {
     theme: 'Lab hardware, automation & safety',
     ask: 'Safe, standard control of lab equipment, with testable results.',
-    status: 'not-yet',
-    evidence: 'Out of scope for the PoC. Both scenarios are paper decisions; no equipment is controlled or simulated.',
+    status: 'partial',
+    evidence:
+      'LAB-001 checks a robot-arm move against the protocol and the arm’s own sensor before it runs, then grades every turn. The robot is a synthetic fixture: no equipment is controlled and there is no physics simulator.',
   },
 ]
 
@@ -163,6 +164,11 @@ export const SCENARIO_PACKS: readonly ScenarioPack[] = [
     detects: 'Inspection or degradation evidence that is too thin for a safe engineering decision.',
     ids: ['MAT-001'],
   },
+  {
+    pack: 'Lab automation',
+    detects: 'Robot moves planned from stale or contradicted state, checked against protocol preconditions.',
+    ids: ['LAB-001'],
+  },
 ]
 
 export const METRIC_QUESTIONS: Record<string, string> = {
@@ -173,13 +179,13 @@ export const METRIC_QUESTIONS: Record<string, string> = {
 }
 
 export const ROADMAP = [
-  { step: 'Two runnable scenarios', detail: 'MAT-001 and EI-001, with sealed answer keys, a five-stage walkthrough, receipts and a benchmark-wide score.', done: true },
+  { step: 'Three runnable scenarios', detail: 'EI-001, LAB-001 and MAT-001, with sealed answer keys, a five-stage walkthrough, receipts and a benchmark-wide score.', done: true },
   { step: 'Research-validity pack', detail: 'RV-001: a treatment-effect claim missing its control arm. Previewed, not yet runnable.', done: false },
   { step: 'Declared unknowns', detail: 'Ask every agent to list what it does not know before it proposes a falsifying test.', done: false },
   { step: 'Two to four cases per pack', detail: 'Grow each pack with small, auditable cases rather than full domain models.', done: false },
   { step: 'Partner data', detail: 'Run at least one validated partner dataset through the same harness. The validator is a stub until then.', done: false },
   { step: 'Reward signal', detail: 'Expose the rubric total as a reward for RL environments. Today it only scores fixed, scripted runs.', done: false },
-  { step: 'Lab-automation pack', detail: 'Safe, testable control of lab equipment. Not started.', done: false },
+  { step: 'Lab-automation pack', detail: 'LAB-001 is the first case (synthetic robot arm). Next: more cases and a real simulator such as PyLabRobot.', done: false },
   { step: 'Live agents', detail: 'Server-side agent calls with keys from the environment. Mock mode never needs a secret.', done: false },
 ] as const
 

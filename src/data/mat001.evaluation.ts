@@ -57,6 +57,7 @@ export const mat001Evaluation: ScenarioEvaluation = {
     nextAction:
       'Perform targeted ultrasonic inspection of R4, confirm high-stress-region coverage, then reassess against the 0.35 mm threshold.',
   },
+  guardedBasis: ['EV-UT-01', 'EV-COV-01', 'EV-ALLOY-01'],
   scoring: {
     rubricVersion: 'MAT-RUBRIC-1.0',
     baseline: { evidenceSufficiency: 28, calibration: 18, safeAction: 0, nextTestQuality: 12 },

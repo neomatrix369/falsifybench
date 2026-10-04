@@ -20,7 +20,7 @@ G            = 1 if every data-integrity gate passes, else 0
 
 The headline is `Score(guarded)` and `Score(baseline)`, together with the safe-verdict rate, the unsafe-approval rate and the number of unsafe approvals prevented. Metric inputs come from the data. Totals and deltas are always computed (`src/domain/scoring.ts`) and never stored in a fixture.
 
-Current data (MAT-001, EI-001): guarded 94.5, baseline 12.5, Δ +82. Safe verdicts are guarded 2/2 and baseline 0/2. The baseline makes 2 unsafe approvals, and both are prevented.
+Current data (EI-001, LAB-001, MAT-001): guarded 94.3, baseline 11.3, Δ +83. Safe verdicts are guarded 3/3 and baseline 0/3. The baseline makes 3 unsafe approvals, and all are prevented.
 
 ## Data-integrity gates
 

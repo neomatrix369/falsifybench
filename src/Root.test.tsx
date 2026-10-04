@@ -97,13 +97,13 @@ describe('About page content', () => {
     expect(ticker).toHaveAttribute('data-paused', 'true')
   })
 
-  it('maps science-agent themes to honest coverage, with lab hardware marked not yet', async () => {
+  it('maps science-agent themes to honest coverage, with lab hardware marked partly covered', async () => {
     render(<Root />)
     const table = within(aboutView()!).getByRole('table', { name: /science-agent themes/i })
     const row = (name: RegExp) => within(table).getByRole('rowheader', { name })
     expect(row(/benchmark science agents/i)).toHaveTextContent('Covered')
     expect(row(/epistemological agents/i)).toHaveTextContent('Partly covered')
-    expect(row(/lab hardware/i)).toHaveTextContent('Not yet')
+    expect(row(/lab hardware/i)).toHaveTextContent('Partly covered')
     await within(aboutView()!).findByText(/MAT-001 · v1.0/)
   })
 
