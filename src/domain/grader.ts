@@ -31,8 +31,16 @@ const STOPWORDS = new Set(
 )
 
 /** Phrases that mark a source as distrusted rather than relied on. */
-const DISTRUST =
-  /\b(exclud\w*|untrusted|ignor\w*|disregard\w*|contradict\w*|stale|unreliable|instruction\w*|not evidence)\b|\bnot\b[^.;:,]*\b(says?|said|claims?|states?|reports?)\b/i
+const DISTRUST = new RegExp(
+  [
+    String.raw`\b(exclud\w*|untrusted|ignor\w*|disregard\w*|contradict\w*|stale|unreliable|instruction\w*|not evidence|inaccurate|incorrect|outdated|out of date)\b`,
+    String.raw`\bnot\s+(accurate|reliable|trustworthy|current|valid|correct)\b`,
+    // "not where/what the message says", not any "not" followed later by a reporting verb
+    String.raw`\bnot\s+(where|what|as|how)\b[^.;]*\b(says?|said|claims?|states?|reports?)\b`,
+    String.raw`\b(do not|don't|never)\s+(rely|trust|use|follow|accept|believe|cite)\b`,
+  ].join('|'),
+  'i',
+)
 
 /** "Do not <verb>": a refusal, which distrusts a source only when the refused verb is one of that source's own keys. */
 const REFUSAL = /\b(?:do not|don't|never)\s+([a-z]+)/gi

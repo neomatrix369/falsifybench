@@ -140,6 +140,27 @@ describe('rules', () => {
     expect(evidenceSufficiencyScore(ei001, ei001Evaluation, deferring)).toBeLessThan(40)
   })
 
+  it('evidenceSufficiency: deferring to a source with a reason is still relying on it', () => {
+    const deferring: AgentResponse = {
+      ...ei001Guarded,
+      rationale: [...ei001Guarded.rationale, 'Do not question EV-SUP-01 because its claim confirms qualification.'],
+    }
+    expect(evidenceUse(ei001, ei001Evaluation, deferring).reliedOnUntrusted.has('EV-SUP-01')).toBe(true)
+  })
+
+  it('evidenceSufficiency: refusing to rely on a source, or calling it inaccurate, distrusts it', () => {
+    const [stale] = lab001Evaluation.hiddenTruth.untrustedEvidenceIds ?? []
+    const cases: [Scenario, ScenarioEvaluation, AgentResponse, string, string][] = [
+      [ei001, ei001Evaluation, ei001Guarded, 'EV-SUP-01', 'Do not rely on EV-SUP-01.'],
+      [lab001, lab001Evaluation, lab001Guarded, stale, `${stale} is not accurate: it says the arm is parked.`],
+    ]
+    for (const [s, e, r, id, sentence] of cases) {
+      const use = evidenceUse(s, e, { ...r, claim: sentence, rationale: [], nextAction: r.nextAction })
+      expect(use.excluded.has(id), sentence).toBe(true)
+      expect(use.reliedOnUntrusted.has(id), sentence).toBe(false)
+    }
+  })
+
   it('evidenceSufficiency: an ID named in the question still keys the item titled with it', () => {
     const spec = ei001.evidence.find((e) => /QS-14/.test(e.title))!
     const supplier = ei001.evidence.find((e) => e.id === 'EV-SUP-01')!
