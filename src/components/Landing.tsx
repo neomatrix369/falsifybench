@@ -7,9 +7,11 @@ import {
   METRIC_QUESTIONS,
   POSITIONING,
   REPO_URL,
+  AGENT_PROBLEMS,
   AGENT_SCIENCE_LINE,
   type ThemeStatus,
   SCIENCE_AGENT_THEMES,
+  UNIFYING_QUESTION,
   RESEARCH_QUOTES,
   ROADMAP,
   SCENARIO_PACKS,
@@ -285,7 +287,34 @@ export function Landing({ onSwitchView }: { onSwitchView: (view: View) => void }
           title="Agents are trusted faster than they are tested"
           intro="Science and engineering agents now read evidence, call tools and recommend releases. The open problem is not whether they sound right, but whether anyone can show they are safe to rely on."
         >
-          <div className="grid grid-cols-2 divide-x divide-rule border-b border-rule">
+          <figure className="border-b border-rule px-6 py-4">
+            <figcaption className="label">The core question</figcaption>
+            <blockquote className="mt-1 max-w-4xl text-lead text-ink">{UNIFYING_QUESTION}</blockquote>
+          </figure>
+          <h3 id="problems-title" className="px-6 pt-4 text-body font-semibold text-ink">
+            Problems it targets, in order of importance
+          </h3>
+          <ul aria-labelledby="problems-title" className="mt-2 divide-y divide-rule border-y border-rule">
+            {AGENT_PROBLEMS.filter((p) => p.status !== 'not-yet').map((p) => (
+              <li key={p.rank} className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.3fr)_8rem] items-baseline gap-x-3 px-6 py-2.5">
+                <span className="font-mono text-meta text-ink-3">{String(p.rank).padStart(2, '0')}</span>
+                <span className="text-body font-medium text-ink">{p.problem}</span>
+                <span className="text-body text-ink-2">{p.how}</span>
+                <span className={`text-right font-mono text-meta ${THEME_STATUS[p.status].className}`}>{THEME_STATUS[p.status].label}</span>
+              </li>
+            ))}
+          </ul>
+          <h3 id="problems-later-title" className="px-6 pt-3 text-meta font-medium text-ink-3">
+            Not covered yet
+          </h3>
+          <ul aria-labelledby="problems-later-title" className="px-6 pb-4 pt-1 text-meta text-ink-3">
+            {AGENT_PROBLEMS.filter((p) => p.status === 'not-yet').map((p) => (
+              <li key={p.rank}>
+                <span className="font-mono">{String(p.rank).padStart(2, '0')}</span> {p.problem}. {p.how}
+              </li>
+            ))}
+          </ul>
+          <div className="grid grid-cols-2 divide-x divide-rule border-y border-rule">
             {CHALLENGES.map((c) => (
               <figure key={c} className="px-6 py-4">
                 <figcaption className="label">Challenge statement</figcaption>
@@ -360,15 +389,18 @@ export function Landing({ onSwitchView }: { onSwitchView: (view: View) => void }
               </caption>
               <tbody className="divide-y divide-rule">
                 {SCIENCE_AGENT_THEMES.map((t) => (
-                  <tr key={t.theme}>
-                    <th scope="row" className="w-44 py-2.5 pl-6 pr-3 text-left align-top font-medium text-ink">
+                  <tr key={t.theme} className={t.status === 'not-yet' ? 'text-ink-3' : undefined}>
+                    <th
+                      scope="row"
+                      className={`w-44 py-2.5 pl-6 pr-3 text-left align-top font-medium ${t.status === 'not-yet' ? '' : 'text-ink'}`}
+                    >
                       {t.theme}
                       <span className={`mt-1 block font-mono text-meta ${THEME_STATUS[t.status].className}`}>
                         {THEME_STATUS[t.status].label}
                       </span>
                     </th>
-                    <td className="py-2.5 pr-6 text-ink-2">
-                      <span className="block text-ink">{t.ask}</span>
+                    <td className={`py-2.5 pr-6 ${t.status === 'not-yet' ? '' : 'text-ink-2'}`}>
+                      <span className={`block ${t.status === 'not-yet' ? '' : 'text-ink'}`}>{t.ask}</span>
                       {t.evidence}
                     </td>
                   </tr>
@@ -518,8 +550,8 @@ export function Landing({ onSwitchView }: { onSwitchView: (view: View) => void }
             {ROADMAP.map((r, i) => (
               <li key={r.step} className="grid grid-cols-[3rem_14rem_minmax(0,1fr)_auto] items-baseline gap-x-3 px-6 py-2.5">
                 <span className="font-mono text-meta text-ink-3">{String(i + 1).padStart(2, '0')}</span>
-                <span className="text-body font-medium text-ink">{r.step}</span>
-                <span className="text-body text-ink-2">{r.detail}</span>
+                <span className={`text-body font-medium ${r.done ? 'text-ink' : 'text-ink-2'}`}>{r.step}</span>
+                <span className={`text-body ${r.done ? 'text-ink-2' : 'text-ink-3'}`}>{r.detail}</span>
                 <span className={`text-meta ${r.done ? 'text-ok' : 'text-ink-3'}`}>{r.done ? 'Shipped' : 'Planned'}</span>
               </li>
             ))}

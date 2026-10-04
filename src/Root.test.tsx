@@ -107,6 +107,17 @@ describe('About page content', () => {
     await within(aboutView()!).findByText(/MAT-001 · v1.0/)
   })
 
+  it('ranks the targeted problems, with what the code covers first and the rest dimmed', () => {
+    render(<Root />)
+    const about = within(aboutView()!)
+    const tested = within(about.getByRole('list', { name: /problems it targets/i })).getAllByRole('listitem')
+    const later = within(about.getByRole('list', { name: /not covered yet/i })).getAllByRole('listitem')
+    expect(tested[0]).toHaveTextContent(/recognise when they are wrong/i)
+    tested.forEach((li) => expect(li.textContent).toMatch(/(Covered|Partly covered)$/))
+    expect(later.map((li) => li.textContent).join(' ')).toMatch(/multi-agent.*bio.*traceability/i)
+    expect(tested.length + later.length).toBe(16)
+  })
+
   it('shows a fallback when the published score cannot be read', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
     render(<Root />)

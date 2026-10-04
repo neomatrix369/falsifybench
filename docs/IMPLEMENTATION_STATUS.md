@@ -188,7 +188,8 @@ Items marked Full are already done. Their MoSCoW is what they would have been, k
 | Multiple model providers / model comparison view | **Could** | |
 | Declared unknowns (each agent lists what it does not know before proposing a test) | **Could** | About roadmap; needs a new rubric input |
 | Two to four cases per pack | **Could** | About roadmap; content, not code |
-| Reward signal for RL environments (rubric total as reward) | **Could** | About roadmap; only meaningful once grading is real (Step 2) |
+| RL environment (scenario as environment, rubric total as reward) | **Could** | About roadmap; only meaningful once grading is real (Step 2) |
+| Bio-agent pack (assay and wet-lab protocol claims) | **Won't** (this iteration) | About roadmap: not started, no biology scenario exists |
 | Lab-automation pack beyond LAB-001 (more cases, a real simulator such as PyLabRobot) | **Could** | LAB-001 is a synthetic robot-arm fixture; no equipment is controlled and no physics simulator runs |
 | Authentication, collaboration, dashboards, CLI/MCP, multi-agent orchestration, token telemetry | **Won't** | Playbook non-goals; out of scope for this iteration |
 | Mobile-first layout | **Won't** | Playbook non-goal (desktop-first) |
