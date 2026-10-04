@@ -1,5 +1,6 @@
 import { compareScores, METRIC_KEYS, METRIC_LABELS } from './scoring'
 import { InvalidEvaluationError } from './evaluationCheck'
+import { UnsealTimeoutError } from './unsealTimeout'
 import type { BenchmarkReceipt } from './receipt'
 import { STAGES, STAGE_LABELS } from './stages'
 import type { StageTrigger, WalkthroughState } from './walkthrough'
@@ -74,7 +75,7 @@ export function buildRunLog(input: {
       at: state.startedAt,
       stage: 'run',
       label: `Run ${state.runId} started`,
-      detail: `${scenario.id} v${scenario.version} · mode: synthetic · ${scenario.provenance.label} · no network or model calls`,
+      detail: `${scenario.id} v${scenario.version} · mode: synthetic · ${scenario.provenance.label} · no external API or model calls`,
       facts: [
         { key: 'Triggered by', value: TRIGGER_LABEL[state.triggers[0] ?? 'run'] },
         { key: 'Run ID', value: `${state.runId} (4 random bytes from crypto.getRandomValues)` },
@@ -139,7 +140,7 @@ export function buildRunLog(input: {
             : [
                 trigger,
                 { key: 'Request', value: `evaluation.unseal() for ${scenario.id}: dynamic import() of a separately bundled module` },
-                { key: 'Why sealed', value: 'The grading truth is kept out of the page, DOM and accessibility tree until now, so nobody can read it ahead of the baseline' },
+                { key: 'Why sealed', value: 'The grading truth is kept out of the page, DOM and accessibility tree until now, so neither agent can read it. The chunk is a public file, so this is presentation sealing, not access control' },
                 { key: 'Where to see it', value: 'DevTools › Network shows the module as its own JS chunk' },
                 ...(unseal ? [{ key: 'Requested at', value: unseal.requestedAt }] : []),
                 { key: 'Next step held', value: evaluation || input.error ? 'No' : 'Yes, until the module arrives' },
@@ -169,7 +170,13 @@ export function buildRunLog(input: {
               producedBy,
               { key: 'Error', value: `${input.error.name}: ${input.error.message}` },
               { key: 'Effect', value: 'Run stopped at Evidence audit; auto-play is off and no receipt is recorded' },
-              { key: 'Recovery', value: 'Reload the page to retry. The browser caches a failed module import for this page, so Reset alone repeats the failure' },
+              {
+                key: 'Recovery',
+                value:
+                  input.error instanceof UnsealTimeoutError
+                    ? 'Reset retries the load: a slow module can still arrive. Reload the page if it keeps timing out'
+                    : 'Reload the page to retry. The browser caches a failed module import for this page, so Reset alone repeats the failure',
+              },
             ],
           })
         } else if (!evaluation) {

@@ -8,6 +8,30 @@
 
 **Verdict:** The two-case synthetic demonstration is implemented. Precise operational explanations and current release evidence remain incomplete. Production integrations are deliberately deferred.
 
+## Progress log
+
+Newest first. Each entry names the items it moved; the snapshot tables below stay as audited at `43cf9d3`.
+
+| Date (UTC) | PR | Items | Status change | What landed |
+|---|---|---|---|---|
+| 2026-10-04 | [#39](https://github.com/neomatrix369/falsifybench/pull/39) | FB-23 | Partial → Full | Run log says `no external API or model calls` (Audit does fetch a same-origin chunk) and calls the sealing presentation-only, since the chunk is a public file. |
+| 2026-10-04 | [#39](https://github.com/neomatrix369/falsifybench/pull/39) | FB-24 | Partial → Full | A 15 s unseal timeout gets its own recovery (`unsealRecovery()` → `retry`): the card, `Now` line and Run log say Reset retries the slow import. A rejected import still says only a reload retries. |
+| 2026-10-04 | [#39](https://github.com/neomatrix369/falsifybench/pull/39) | FB-27 | Partial → Full (local) | `tools/qa/acceptance.py` works with the About-first view and EI-001 default, adds LAB-001 (section M) and exits non-zero on any failure. 72/72 against a local preview of the PR head. The deployed bundle was not rechecked. |
+| 2026-10-04 | [#39](https://github.com/neomatrix369/falsifybench/pull/39) | FB-17, FB-25 | FB-17 stays Full; FB-25 stays Partial | The Run log's Guarded entry records `Decided from` (public evidence IDs; the answer key only grades) and `Turns` (LAB-001). `PIPELINE.md`, the playbook and `QA.md` now cover the brief, evidence basis, turn trace and LAB-001, and the drift test fails if they drop out. FB-25 stays Partial until a deployed acceptance run is recorded. |
+| 2026-10-04 | [#37](https://github.com/neomatrix369/falsifybench/pull/37) | FB-40, FB-03, FB-11 | FB-40 Not implemented → Full | Third runnable case LAB-001 (robot-arm stale state, with turn trace); picker order EI-001 (default), LAB-001, MAT-001; a `What’s being tested` brief on every case; the guard cites only public evidence (`guardedBasis`). |
+
+Counts after these entries (snapshot counts in the matrix below):
+
+| Priority | Full | Partial | Not implemented | Total |
+|---|---:|---:|---:|---:|
+| Must | 24 | 1 | 0 | 25 |
+| Should | 1 | 1 | 2 | 4 |
+| Could | 1 | 0 | 1 | 2 |
+| Won’t | 0 | 2 | 7 | 9 |
+| **Total** | **26** | **4** | **10** | **40** |
+
+Open, highest first: FB-25 (Must, record a deployed acceptance run), FB-26 (Should, score page design tokens), FB-37 (Should, hosted CI), FB-38 (Should, score freshness gate), FB-39 (Could, Run log export).
+
 ## Scope and method
 
 Scope: the documented synthetic PoC at commit 43cf9d390f499d419225be6c72d8badf66d9161a. Full means the named capability is implemented for that scope, not production-complete or freshly browser-certified. Partial means an observable gap or scaffold exists; missing fresh verification alone does not make working code partial. Not implemented means no working capability was found, although placeholders or adjacent tools may exist. Counts describe these 40 inventory entries, including grouped capabilities—not percent complete, validated safety or the FalsifyBench benchmark score.

@@ -44,6 +44,7 @@ interface Props {
 function nowLine({ state, unsealing, failure }: Omit<Props, 'entries'>, countdown: number | null): string | null {
   if (state.status === 'idle') return null
   if (failure === 'fix-data') return 'Stopped: the sealed evaluation failed its data checks and was not used. Reload and Reset load the same data.'
+  if (failure === 'retry') return 'Stopped: the sealed evaluation timed out. Reset retries it; reload the page if it keeps timing out.'
   if (failure) return 'Stopped: the sealed evaluation failed to load. Reload the page to retry; Reset alone repeats the cached failure.'
   if (unsealing) return 'Unsealing the sealed evaluation… Next step is held until it arrives.'
   if (state.cursor === LAST_STAGE_INDEX) return 'Run complete. The receipt is recorded and nothing else runs.'

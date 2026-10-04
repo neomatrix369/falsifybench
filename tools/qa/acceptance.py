@@ -2,7 +2,7 @@
 # Usage: npm run build && npx vite preview --port 4173, then QA_URL=http://localhost:4173/ python3 tools/qa/acceptance.py
 import json, re, time
 from playwright.sync_api import sync_playwright
-import os, atexit
+import os, sys, atexit
 URL=os.environ.get('QA_URL','http://localhost:4173/')
 SHOTS=os.environ.get('QA_SHOTS','qa-shots')
 os.makedirs(SHOTS, exist_ok=True)
@@ -240,3 +240,4 @@ with sync_playwright() as p:
         pg.close()
 fails=[k for k,(ok,_) in R.items() if not ok]
 print('\nTOTAL', len(R), 'FAIL', len(fails), fails)
+sys.exit(1 if fails else 0)
