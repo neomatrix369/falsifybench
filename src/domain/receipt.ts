@@ -84,7 +84,7 @@ export function createReceipt(input: ReceiptInput): BenchmarkReceipt {
     runId,
     startedAt,
     recordedAt: clock().toISOString(),
-    agents: { baseline: scenario.baseline.agentLabel, guarded: scenario.guardedAgentLabel },
+    agents: { baseline: answers.baseline.agentLabel, guarded: scenario.guardedAgentLabel },
     agentExecution: 'scripted_fixture',
     evidenceIds: scenario.evidence.map((item) => item.id),
     stageEvents: events.map((event) => ({ ...event })),

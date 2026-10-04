@@ -196,7 +196,7 @@ const PANELS: Record<WalkthroughStage, { headline: (p: PanelProps) => string; bo
           <p className="max-w-[72ch] text-body text-ink-2">{evaluation.narrative.guardedIntro}</p>
           <OutcomeStrip evaluation={evaluation} run={run} />
           <div className="grid grid-cols-2 gap-6">
-            <AgentResponseCard response={scenario.baseline} unsafe />
+            <AgentResponseCard response={run.responses.baseline} unsafe />
             <AgentResponseCard response={run.responses.guarded} emphasis />
           </div>
           <p className="rounded-sm border border-rule bg-sunken px-3 py-2 text-body text-ink-2">
