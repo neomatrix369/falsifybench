@@ -78,7 +78,7 @@ export function FalsificationStrip() {
           <span aria-hidden className="h-2 w-2 rounded-full bg-ok" />
           Guarded path
         </span>
-        In both runnable scenarios the baseline claim is caught at the falsification check; the guarded path leaves with an Investigate verdict and a falsifying test.
+        In all three runnable scenarios the baseline claim is caught at the falsification check; the guarded path leaves with an Investigate verdict and a falsifying test.
       </figcaption>
     </figure>
   )
