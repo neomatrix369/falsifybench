@@ -3,7 +3,7 @@ import { BenchmarkPicker } from './components/BenchmarkPicker'
 import { ComingNextCards } from './components/ComingNextCards'
 import { UnavailableModesNote } from './components/DataModeSelector'
 import { ErrorCard, WalkthroughErrorBoundary } from './components/ErrorCard'
-import { Header } from './components/Header'
+import { Header, type View } from './components/Header'
 import { RunLog } from './components/RunLog'
 import { ReceiptSummary } from './components/ReceiptSummary'
 import { ResultSurface } from './components/ResultSurface'
@@ -27,9 +27,10 @@ interface BenchProps {
   onSelectBenchmark: (id: string, abandoned?: RunLogEntry | null) => void
   focusScenarioOnMount: boolean
   carried: RunLogEntry | null
+  onSwitchView?: (view: View) => void
 }
 
-function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carried }: BenchProps) {
+function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carried, onSwitchView }: BenchProps) {
   const { state, evaluation, receipt, error, controls, actions, unseal, abandoned } = useWalkthrough(scenario, deps, carried)
   const resultHeading = useRef<HTMLHeadingElement>(null)
   const activeScenarioHeading = useRef<HTMLHeadingElement>(null)
@@ -82,7 +83,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carrie
 
   return (
     <>
-      <Header onReceiptAnchor={openReceipt} />
+      <Header onReceiptAnchor={openReceipt} onSwitchView={onSwitchView} />
       <main className="mx-auto grid max-w-page grid-cols-[minmax(360px,35fr)_minmax(0,65fr)] items-start gap-6 px-6 py-6">
         <div className="space-y-4">
           <BenchmarkPicker
@@ -134,9 +135,11 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carrie
 export default function App({
   source = syntheticScenarioSource,
   deps = DEFAULT_DEPS,
+  onSwitchView,
 }: {
   source?: ScenarioSource
   deps?: WalkthroughDeps
+  onSwitchView?: (view: View) => void
 }) {
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -192,6 +195,7 @@ export default function App({
         onSelectBenchmark={selectBenchmark}
         focusScenarioOnMount={switched}
         carried={carried}
+        onSwitchView={onSwitchView}
       />
     </WalkthroughErrorBoundary>
   )

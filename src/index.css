@@ -133,4 +133,60 @@
   .animate-reveal {
     animation: reveal-sweep 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+
+  /* About page: the ticker, the falsification strip and the section rise. */
+  @keyframes ticker-scroll {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  .animate-ticker {
+    animation: ticker-scroll 70s linear infinite;
+  }
+  .ticker:hover .animate-ticker,
+  .ticker:focus-within .animate-ticker,
+  .ticker[data-paused='true'] .animate-ticker {
+    animation-play-state: paused;
+  }
+  @keyframes travel-caught {
+    0% { left: 4%; opacity: 0; }
+    6% { opacity: 1; }
+    48% { left: 50%; transform: translate(-50%, -50%) scale(1); }
+    54% { left: 50%; transform: translate(-50%, -50%) scale(1.8); }
+    60% { left: 50%; transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    86% { left: 50%; opacity: 1; }
+    100% { left: 50%; opacity: 0; }
+  }
+  @keyframes travel-through {
+    0% { left: 4%; opacity: 0; }
+    6% { opacity: 1; }
+    48% { left: 50%; }
+    86% { left: 96%; opacity: 1; }
+    100% { left: 96%; opacity: 0; }
+  }
+  .animate-travel-caught {
+    animation: travel-caught 7s linear infinite;
+  }
+  .animate-travel-through {
+    animation: travel-through 7s linear 3.5s infinite both;
+  }
+  @keyframes sheet-rise {
+    from { opacity: 0.35; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+  @supports (animation-timeline: view()) {
+    .rise-on-scroll {
+      animation: sheet-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-ticker,
+    .animate-travel-caught,
+    .animate-travel-through,
+    .rise-on-scroll {
+      animation: none !important;
+    }
+  }
 }
