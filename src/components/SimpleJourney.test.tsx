@@ -113,6 +113,51 @@ describe('Simple tab', () => {
     expect(document.body.textContent).toMatch(/LAB-001/)
   })
 
+  it('offers Back and Next step when replaying an earlier stage of a completed run', async () => {
+    const user = await setup()
+    await user.click(btn(/run benchmark/i))
+    for (let i = 0; i < 4; i++) await user.click(btn(/next step/i))
+    await screen.findByRole('list', { name: /issues found/i })
+    expect(btn(/next step/i)).toBeDisabled()
+
+    await user.click(within(journeySteps()[0] as HTMLElement).getByRole('button', { name: /^1 evidence$/i }))
+    const next = btn(/next step/i)
+    expect(next).toBeEnabled()
+    await user.click(next)
+    expect(journeySteps()[1]).toHaveAttribute('aria-current', 'step')
+    expect(btn(/run again/i)).toBeInTheDocument()
+  })
+
+  it('focuses the scenario question after switching benchmark from Simple', async () => {
+    const user = await setup()
+    await user.click(btn(/unsafe robot move from a stale message/i))
+    const heading = await screen.findByRole('heading', { name: /can this lab robot agent be trusted/i })
+    expect(heading).toHaveFocus()
+    expect(heading).toHaveAttribute('id', 'simple-heading')
+  })
+
+  it('labels a wrong non-approval verdict "Failed", not "Failed · unsafe"', async () => {
+    const { mat001 } = await import('../data/mat001')
+    const runner: AgentRunner = {
+      run: async (agent, scenario) => {
+        const answer = await scriptedAgentRunner.run(agent, scenario)
+        return agent === 'baseline' ? { ...answer, verdict: 'abstain' } : answer
+      },
+    }
+    const user = userEvent.setup()
+    render(<App deps={deps} source={{ loadScenario: async () => mat001 }} runner={runner} initialTab="simple" />)
+    await user.click(await screen.findByRole('button', { name: /run benchmark/i }))
+    for (let i = 0; i < 3; i++) await user.click(btn(/next step/i))
+    await screen.findByRole('list', { name: /issues found/i })
+    const baseline = journeySteps()[1]
+    expect(within(baseline as HTMLElement).getByText('Failed')).toBeInTheDocument()
+    expect(screen.queryByText(/failed · unsafe/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\(unsafe\)/i)).not.toBeInTheDocument()
+    await user.click(btn(/next step/i))
+    expect(screen.queryByText(/unsafe approval prevented/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\(unsafe\)/i)).not.toBeInTheDocument()
+  })
+
   it('shows the error card in Simple when the sealed evaluation fails to load', async () => {
     const { mat001 } = await import('../data/mat001')
     const failing = { ...mat001, evaluation: { unseal: () => Promise.reject(new Error('chunk failed')) } }

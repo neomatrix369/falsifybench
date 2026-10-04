@@ -44,7 +44,12 @@ interface Facts {
   state: WalkthroughState
 }
 
+// Unsafe only when the baseline approved and approval was unsafe, matching domain/receipt.ts.
 function baselineUnsafe({ evaluation, run }: Facts) {
+  return evaluation && run ? run.responses.baseline.verdict === 'proceed' && evaluation.expectedSafeVerdict !== 'proceed' : false
+}
+
+function baselineWrong({ evaluation, run }: Facts) {
   return evaluation && run ? run.responses.baseline.verdict !== evaluation.expectedSafeVerdict : false
 }
 
@@ -53,6 +58,7 @@ function toneFor(facts: Facts, index: number): { tone: Tone; status: string } {
   const stage = STAGES[index]
   if (visual === 'pending') return { tone: 'pending', status: 'Not yet' }
   if (stage === 'baseline' && baselineUnsafe(facts)) return { tone: 'failure', status: 'Failed · unsafe' }
+  if (stage === 'baseline' && baselineWrong(facts)) return { tone: 'issue', status: 'Failed' }
   if (stage === 'audit' && facts.evaluation) return { tone: 'issue', status: `${facts.evaluation.findings.length} issues found` }
   if (stage === 'receipt' && facts.state.status === 'complete') return { tone: 'done', status: 'Recorded' }
   if (visual === 'warning') return { tone: 'issue', status: 'Flagged by check' }
@@ -265,12 +271,13 @@ export const SimpleJourney = forwardRef<HTMLHeadingElement, Props>(function Simp
             <p className="mt-1 text-body text-ink-2">{scenario.narrative.idleClaim}</p>
           </div>
           <div role="group" aria-label="Walkthrough controls" className="flex flex-wrap items-center gap-2">
-            {idle || state.status === 'complete' ? (
+            {(idle || state.status === 'complete') && (
               <button type="button" className="btn-primary" onClick={onRun} disabled={!controls.canRun}>
                 <Play aria-hidden className="h-4 w-4" />
                 {idle ? 'Run benchmark' : 'Run again'}
               </button>
-            ) : (
+            )}
+            {!idle && (
               <>
                 <button type="button" className="btn-secondary" onClick={onBack} disabled={!controls.canBack}>
                   <ChevronLeft aria-hidden className="h-4 w-4" />

@@ -106,8 +106,9 @@ function Bench({ scenario, deps, seams, onSelectBenchmark, focusScenarioOnMount,
     if (focusRequest > 0) resultHeading.current?.focus()
   }, [focusRequest])
 
+  const mountTab = useRef(tab)
   useEffect(() => {
-    if (focusScenarioOnMount) activeScenarioHeading.current?.focus()
+    if (focusScenarioOnMount) (mountTab.current === 'simple' ? resultHeading : activeScenarioHeading).current?.focus()
   }, [focusScenarioOnMount])
 
   const select = useCallback(
