@@ -55,6 +55,7 @@ export const ei001Evaluation: ScenarioEvaluation = {
     ],
     nextAction: 'Complete salt-spray exposure to 1,500 h, then reassess against QS-14 using the four remaining sources.',
   },
+  guardedBasis: ['EV-SUP-01', 'EV-SALT-01', 'EV-SPEC-01'],
   scoring: {
     rubricVersion: 'MAT-RUBRIC-1.0',
     baseline: { evidenceSufficiency: 20, calibration: 12, safeAction: 0, nextTestQuality: 8 },

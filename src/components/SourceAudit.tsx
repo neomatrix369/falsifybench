@@ -5,9 +5,11 @@ interface Props {
   evidence: EvidenceItem[]
   /** Sources the audit excludes as instructions rather than evidence. */
   untrustedIds: string[]
+  /** Why untrusted sources are excluded. */
+  reason?: string
 }
 
-export function SourceAudit({ evidence, untrustedIds }: Props) {
+export function SourceAudit({ evidence, untrustedIds, reason = 'instruction' }: Props) {
   return (
     <ul aria-label="Source audit" className="divide-y divide-rule border-y border-rule text-body">
       {evidence.map((item) => {
@@ -31,7 +33,7 @@ export function SourceAudit({ evidence, untrustedIds }: Props) {
               )}
             </div>
             <span className={`text-meta font-medium ${untrusted ? 'text-risk' : 'text-ink-3'}`}>
-              {untrusted ? 'Excluded · instruction' : 'Used'}
+              {untrusted ? `Excluded · ${reason}` : 'Used'}
             </span>
           </li>
         )

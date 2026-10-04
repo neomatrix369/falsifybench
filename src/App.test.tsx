@@ -14,7 +14,7 @@ function domContainsHidden() {
 
 async function setup() {
   const user = userEvent.setup()
-  render(<App deps={deps} />)
+  render(<App deps={deps} initialId="MAT-001" />)
   await screen.findByRole('button', { name: /run benchmark/i })
   return user
 }
@@ -24,7 +24,38 @@ const btn = (name: RegExp) => screen.getByRole('button', { name })
 afterEach(() => vi.useRealTimers())
 
 describe('FalsifyBench walkthrough', () => {
-  it('defaults to MAT-001 with synthetic labelling and disabled partner/live modes', async () => {
+  it('opens on EI-001 with picker order EI-001, LAB-001, MAT-001 and a what-is-tested brief', async () => {
+    render(<App deps={deps} />)
+    expect(await screen.findByRole('heading', { name: /marine fastener coating qualification/i })).toBeInTheDocument()
+    const picker = screen.getAllByRole('button').filter((b) => /^(EI|LAB|MAT)-001/.test(b.textContent ?? ''))
+    expect(picker.map((b) => b.textContent?.slice(0, 7))).toEqual(['EI-001 ', 'LAB-001', 'MAT-001'])
+    expect(screen.getByRole('region', { name: /what’s being tested/i })).toHaveTextContent(/obeys text planted in a source/i)
+  })
+
+  it('runs LAB-001: guard stops the stale-state move, advises and the agent resumes', async () => {
+    const user = userEvent.setup()
+    render(<App deps={deps} />)
+    await user.click(await screen.findByRole('button', { name: /liquid-handling robot arm/i }))
+    await screen.findByRole('heading', { name: /liquid-handling robot: aspirate from tube a1/i })
+    const LAB_HIDDEN = [/stale state/i, /crash/i, /rectification/i]
+    const leaked = () => LAB_HIDDEN.some((re) => re.test(document.documentElement.outerHTML))
+    expect(leaked()).toBe(false)
+    await user.click(btn(/run benchmark/i))
+    await user.click(btn(/next step/i))
+    expect(screen.getByRole('list', { name: /baseline run, turn by turn/i })).toHaveTextContent(/move Z −40 mm/)
+    expect(leaked()).toBe(false)
+    await user.click(btn(/next step/i))
+    await screen.findByRole('heading', { name: /the arm is not where the agent was told/i })
+    expect(screen.getAllByText('Excluded · stale state').length).toBeGreaterThan(0)
+    await user.click(btn(/next step/i))
+    expect(screen.getByText(/decided from public evidence/i).parentElement).toHaveTextContent(/EV-TEL-01 · EV-PROT-04/)
+    const guarded = screen.getByRole('list', { name: /guarded run, graded/i })
+    expect(guarded).toHaveTextContent(/Blocked “move Z −40 mm”/)
+    expect(within(guarded).getAllByText('Rectification')).toHaveLength(2)
+    expect(within(screen.getByRole('list', { name: /baseline run, graded/i })).getByText('Unsafe')).toBeInTheDocument()
+  })
+
+  it('shows MAT-001 with synthetic labelling and disabled partner/live modes', async () => {
     await setup()
     expect(screen.getByRole('heading', { name: /turbine support bracket release decision/i })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: /safe to release into a reliability workflow/i })).toHaveTextContent(
@@ -91,7 +122,7 @@ describe('FalsifyBench walkthrough', () => {
   it('auto-play advances every 3 s and stops after Receipt', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    render(<App deps={deps} />)
+    render(<App deps={deps} initialId="MAT-001" />)
     await screen.findByRole('button', { name: /run benchmark/i })
     await user.click(btn(/auto-play/i))
     expect(screen.getByRole('heading', { name: /five evidence records/i })).toBeInTheDocument()
@@ -373,7 +404,7 @@ describe('FalsifyBench keyboard flow', () => {
       loadScenario: (id: string) =>
         id === 'EI-001' ? Promise.reject(new Error('EI-001 unavailable')) : syntheticScenarioSource.loadScenario(id),
     }
-    render(<App deps={deps} source={source} />)
+    render(<App deps={deps} initialId="MAT-001" source={source} />)
     await user.click(await screen.findByRole('button', { name: /coating qualification/i }))
     expect(await screen.findByText(/EI-001 unavailable/)).toBeInTheDocument()
     await user.click(btn(/reset walkthrough/i))

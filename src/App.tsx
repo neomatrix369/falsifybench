@@ -9,8 +9,7 @@ import { ReceiptSummary } from './components/ReceiptSummary'
 import { ResultSurface } from './components/ResultSurface'
 import { ScenarioCard } from './components/ScenarioCard'
 import { StageTrace } from './components/StageTrace'
-import { MAT_001_ID } from './data/mat001'
-import { syntheticScenarioSource } from './data/scenarioSource'
+import { DEFAULT_BENCHMARK_ID, syntheticScenarioSource } from './data/scenarioSource'
 import { unsealRecovery } from './domain/evaluationCheck'
 import { isRunnableProvenance, PARTNER_UNAVAILABLE_REASON } from './domain/provenance'
 import { randomRunId, systemClock } from './domain/receipt'
@@ -74,8 +73,9 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carrie
     setFocusRequest((n) => n + 1)
   }, [actions])
 
-  const excludedIds =
-    state.reached >= AUDIT_STAGE_INDEX && evaluation ? (evaluation.hiddenTruth.untrustedEvidenceIds ?? []) : []
+  const unsealed = state.reached >= AUDIT_STAGE_INDEX && evaluation ? evaluation : null
+  const excludedIds = unsealed?.hiddenTruth.untrustedEvidenceIds ?? []
+  const excludedReason = unsealed?.hiddenTruth.untrustedReason
 
   const openReceipt = useCallback(() => {
     if (state.reached === LAST_STAGE_INDEX) select(LAST_STAGE_INDEX)
@@ -90,7 +90,7 @@ function Bench({ scenario, deps, onSelectBenchmark, focusScenarioOnMount, carrie
             activeId={scenario.id}
             onSelect={(id) => onSelectBenchmark(id, id === scenario.id ? null : actions.abandon(`switched to ${id}`))}
           />
-          <ScenarioCard ref={activeScenarioHeading} scenario={scenario} excludedIds={excludedIds} canRun={controls.canRun} onRun={run} />
+          <ScenarioCard ref={activeScenarioHeading} scenario={scenario} excludedIds={excludedIds} excludedReason={excludedReason} canRun={controls.canRun} onRun={run} />
           <StageTrace
             state={state}
             controls={controls}
@@ -136,14 +136,16 @@ export default function App({
   source = syntheticScenarioSource,
   deps = DEFAULT_DEPS,
   onSwitchView,
+  initialId = DEFAULT_BENCHMARK_ID,
 }: {
+  initialId?: string
   source?: ScenarioSource
   deps?: WalkthroughDeps
   onSwitchView?: (view: View) => void
 }) {
   const [scenario, setScenario] = useState<Scenario | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [activeId, setActiveId] = useState(MAT_001_ID)
+  const [activeId, setActiveId] = useState(initialId)
   const [switched, setSwitched] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [carried, setCarried] = useState<RunLogEntry | null>(null)
@@ -178,8 +180,8 @@ export default function App({
         <ErrorCard
           message={loadError}
           onReset={() => {
-            if (activeId === MAT_001_ID) window.location.reload()
-            else setActiveId(MAT_001_ID)
+            if (activeId === initialId) window.location.reload()
+            else setActiveId(initialId)
           }}
         />
       </div>

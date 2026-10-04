@@ -23,6 +23,7 @@ function shapeProblems(e: ScenarioEvaluation): string[] {
   const fields: [string, unknown, (v: unknown) => boolean][] = [
     ['hiddenTruth.summary', e?.hiddenTruth?.summary, isText],
     ['sufficientNextAction', e?.sufficientNextAction, isText],
+    ['guardedBasis', e?.guardedBasis, isTextList],
     ...(['agentLabel', 'verdict', 'confidenceLabel', 'claim', 'nextAction'] as const).map(
       (k): [string, unknown, (v: unknown) => boolean] => [`guarded.${k}`, g[k], isText],
     ),

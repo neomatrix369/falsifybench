@@ -70,6 +70,12 @@ export const mat001: Scenario = {
       'The baseline agent reads the same evidence and says the bracket can run another 2,000 cycles. Its reasoning sounds sensible — but confidence is not the same as sufficient evidence.',
     baselineWhy: 'Every individual measurement passed, so a confident agent extrapolates a pass to the whole part.',
   },
+  brief: {
+    agent: 'A reliability agent that reviews inspection data for an engineering team',
+    task: 'Decide whether bracket B-17 can run another 2,000 cycles',
+    input: 'Five inspection records: ultrasonic readings, imaging, the alloy limit, maintenance history and a coverage map',
+    checks: 'Whether the evidence actually covers the whole part before the agent approves it',
+  },
   baseline: {
     agentLabel: 'Baseline agent (simulated)',
     verdict: 'proceed',

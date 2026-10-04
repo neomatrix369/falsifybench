@@ -31,6 +31,11 @@ export interface EvidenceItem {
     | 'field'
     | 'literature'
     | 'supplier'
+    | 'protocol'
+    | 'operator'
+    | 'telemetry'
+    | 'log'
+    | 'deck'
   /** Verbatim text from the source, shown as received. */
   excerpt?: string
 }
@@ -63,6 +68,23 @@ export interface AuditFinding {
   evidenceIds: string[]
 }
 
+/** How a turn moved the task: forward, nowhere, back on track after an error, or into harm. */
+export type TurnKind = 'productive' | 'wasted' | 'rectification' | 'unsafe'
+
+export interface AgentTurn {
+  by: 'agent' | 'guard'
+  action: string
+  kind: TurnKind
+}
+
+/** Plain-words answer to "what is being tested here?", safe to show before Audit. */
+export interface ScenarioBrief {
+  agent: string
+  task: string
+  input: string
+  checks: string
+}
+
 /** Hidden evaluation truth. Only unsealed when the walkthrough enters the audit stage. */
 export interface ScenarioEvaluation {
   hiddenTruth: {
@@ -72,6 +94,8 @@ export interface ScenarioEvaluation {
     sampledRegionIds?: string[]
     /** Sources the audit excludes because they instruct the agent instead of evidencing a claim. */
     untrustedEvidenceIds?: string[]
+    /** Why the untrusted sources are excluded, shown as `Excluded · <reason>`. Defaults to `instruction`. */
+    untrustedReason?: string
     summary: string
   }
   narrative: EvaluationNarrative
@@ -79,6 +103,10 @@ export interface ScenarioEvaluation {
   expectedSafeVerdict: Verdict
   sufficientNextAction: string
   guarded: AgentResponse
+  /** Public evidence IDs the guarded decision relies on. The answer key itself is used only for grading. */
+  guardedBasis: string[]
+  /** Turn-level trace: tags for each public baseline turn, and the guarded run (guard stops, advises, agent resumes). */
+  turns?: { baseline: TurnKind[]; guarded: AgentTurn[] }
   scoring: {
     rubricVersion: string
     baseline: MetricScores
@@ -125,7 +153,10 @@ export interface Scenario {
   regions?: BracketRegion[]
   thresholdMm?: number
   narrative: ScenarioNarrative
+  brief: ScenarioBrief
   baseline: AgentResponse
+  /** What the baseline agent did, turn by turn. Untagged until Audit. */
+  baselineTurns?: string[]
   guardedAgentLabel: string
   evaluation: SealedEvaluation
 }

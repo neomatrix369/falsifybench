@@ -106,6 +106,6 @@ describe('Spec: coming next', () => {
   it('every spec track is either runnable or a non-runnable preview, never both', () => {
     const runnable = RUNNABLE_BENCHMARKS.map((b) => b.track)
     const previews = comingNextPreviews.map((p) => p.track)
-    expect([...runnable, ...previews].sort()).toEqual(['Evidence integrity', 'Release readiness', 'Research validity'])
+    expect([...runnable, ...previews].sort()).toEqual(['Evidence integrity', 'Lab automation', 'Release readiness', 'Research validity'])
   })
 })
