@@ -66,6 +66,7 @@ Mock mode needs no secrets and no network access.
 | [Run pipeline](docs/PIPELINE.md) | A run from its inputs through each stage to every way it can end (complete, interrupted, failed or errored), with the known gaps |
 | [Benchmark score](docs/SCORE.md) | How the data score, its gates and the published report are computed |
 | [Implementation status](docs/IMPLEMENTATION_STATUS.md) | What is real and what is mocked or stubbed, each capability's status and MoSCoW priority, and the steps to replace the mocks |
+| [Rule grader](docs/GRADER.md) | The offline, deterministic rule grader for the four rubric metrics, its rules and its calibration against the hand scores (not yet wired in) |
 | [QA / release review](docs/QA.md) | Historical acceptance results and fixes; not a review of current main |
 | [Documentation audit](docs/DOC_AUDIT.md) | Two-way documentation/implementation findings and verification limits |
 | [Implementation and MoSCoW inventory](docs/IMPLEMENTATION_MOSCOW.md) | Full, partial and not-implemented capabilities with proposed priorities and source evidence |
