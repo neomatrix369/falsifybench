@@ -65,7 +65,8 @@ Do not bring its broad platform scope: agent networks, autonomous orchestration,
 At desktop presentation width (optimise for 1280–1440px), use a sticky header and a two-column main shell around 35/65.
 
 ```text
-Header: FalsifyBench | Scenario previews anchor | Current receipt anchor | Benchmark score link | Data mode selector | Synthetic status
+Header: FalsifyBench | About / Benchmark view switch | Scenario previews anchor | Current receipt anchor | Benchmark score link | Synthetic status
+  - benchmark view only: the two anchors, and a Data mode selector bar under the header
 
 Left: stable controls and visual run trace
   - Runnable benchmarks picker (MAT-001, EI-001), then the active benchmark card
@@ -83,6 +84,8 @@ Right: active result surface
 ```
 
 Header anchors scroll to the preview cards and current receipt, and the always-visible `Benchmark score` link opens the generated `/score/index.html`; do not build separate scenario-library or run-history pages. Keep the colour semantics — a light neutral ground, charcoal text, one primary action colour, green for completion, amber for uncertainty, and red only for unsafe/blocked states — but define the exact tokens in `DESIGN.md` per the Design quality bar below rather than shipping default framework colours. Use clean line icons sparingly, subdued borders, legible tabular metric typography, and restrained motion. Status must never rely on colour alone. Responsive behaviour may degrade gracefully below desktop; mobile optimisation is out of scope.
+
+**About view.** A first visit in a tab opens the About (landing) page. `Open the benchmark` or the header `About` / `Benchmark` switch changes view; once the benchmark has been opened, later loads in the same tab go straight to it (`sessionStorage`), and `#about` always opens About. The benchmark stays mounted while About is shown, so a run in progress survives the visit. About reads its results from the published `score/score.json`, with a fallback when it cannot be read, never from hard-coded copy, and contains no sealed term. Its roadmap and coverage (`src/config/landing.ts`) must agree with `docs/IMPLEMENTATION_STATUS.md`.
 
 ### Guided walkthrough
 
@@ -369,7 +372,8 @@ Use the maximum useful parallelism within a one-hour integration window: one wri
 ## Acceptance checklist
 
 - [ ] A new visitor understands the initial agent claim, R4 evidence gap, safer action, and score improvement in under 60 seconds.
-- [ ] The first screen defaults to MAT-001 and visibly labels it `Synthetic · hand-audited`.
+- [ ] A first visit opens About, which contains no sealed term and reads its results from `score/score.json`; `Open the benchmark` and the header switch reach the benchmark and back without losing a run.
+- [ ] The benchmark view defaults to MAT-001 and visibly labels it `Synthetic · hand-audited`.
 - [ ] `Run benchmark`, `Back`, `Next step`, `Auto-play`, and `Reset` work deterministically, with the documented disabled states.
 - [ ] Manual and autoplay traverse the same five stages and produce identical fixture outputs.
 - [ ] Before Audit, the DOM and accessibility tree contain neither the `highest-stress` nor `zero ultrasonic` finding; at Audit, both appear with the R4 explanation.

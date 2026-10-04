@@ -40,9 +40,12 @@ Mock mode needs no secrets and no network access.
 | Concern | Location |
 |---|---|
 | Branding (name isolated for renaming) | `src/config/branding.ts` |
+| About / Benchmark view switch and the About (landing) page; its copy, roadmap and coverage | `src/Root.tsx`, `src/components/Landing.tsx`, `src/config/landing.ts` |
 | Domain types and `ScenarioSource` / `PartnerScenarioValidator` seams | `src/domain/types.ts` |
 | Five-stage walkthrough state machine (manual and auto-play share the same transitions) | `src/domain/walkthrough.ts`, `src/domain/stages.ts` |
 | Scoring helper (`total = round(mean(...))`, delta) | `src/domain/scoring.ts` |
+| Data benchmark score (`npm run score`, gates and report) | `src/domain/benchmarkScore.ts`, `tools/score/score.ts` |
+| Checks on an unsealed evaluation (shape plus data gates I3–I8) and the 15 s unseal timeout | `src/domain/evaluationCheck.ts`, `src/domain/unsealTimeout.ts` |
 | Provenance labels and partner-validation stub | `src/domain/provenance.ts` |
 | Receipt creation (injected clock and run ID; refuses incomplete runs) | `src/domain/receipt.ts` |
 | MAT-001 public fixture | `src/data/mat001.ts` |
@@ -53,18 +56,20 @@ Mock mode needs no secrets and no network access.
 | React hook wiring the reducer, auto-play timer, and audit unsealing | `src/hooks/useWalkthrough.ts` |
 | UI | `src/components/*`, `src/App.tsx` |
 
-[`docs/PIPELINE.md`](docs/PIPELINE.md) follows a run from its inputs through each stage to every way it can end (complete, interrupted, failed or errored), with the known gaps.
-
 ## Documentation
 
 | Document | Purpose |
 |---|---|
 | [Project playbook](docs/falsifybench-playbook.md) | Product scope, fixture specifications and delivery/acceptance contract |
+| [Design system](DESIGN.md) | Visual direction, tokens and motion rules |
+| [Run pipeline](docs/PIPELINE.md) | A run from its inputs through each stage to every way it can end (complete, interrupted, failed or errored), with the known gaps |
+| [Benchmark score](docs/SCORE.md) | How the data score, its gates and the published report are computed |
+| [Implementation status](docs/IMPLEMENTATION_STATUS.md) | What is real and what is mocked or stubbed, each capability's status and MoSCoW priority, and the steps to replace the mocks |
+| [QA / release review](docs/QA.md) | Historical acceptance results and fixes; not a review of current main |
 | [Documentation audit](docs/DOC_AUDIT.md) | Two-way documentation/implementation findings and verification limits |
 | [Implementation and MoSCoW inventory](docs/IMPLEMENTATION_MOSCOW.md) | Full, partial and not-implemented capabilities with proposed priorities and source evidence |
 
 The audit and inventory are dated snapshots of revision [`43cf9d390f49`](https://github.com/neomatrix369/falsifybench/commit/43cf9d390f499d419225be6c72d8badf66d9161a), not current-main release certification. See their scope notes before applying findings to newer changes.
-[`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) lists what is real and what is mocked or stubbed, gives each capability a status (fully, partially or not implemented) and a MoSCoW priority, and sets out the steps to replace the mocks with real agents, grading and data.
 
 ## Deferred seams (not in this PoC)
 
