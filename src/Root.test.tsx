@@ -1,0 +1,91 @@
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import Root, { INTRO_DISMISSED_KEY } from './Root'
+import { INDUSTRY_FINDINGS } from './config/landing'
+import scoreJson from '../public/score/score.json?raw'
+
+const SCORE = JSON.parse(scoreJson)
+const HIDDEN = [/highest-stress/i, /zero ultrasonic/i]
+
+beforeEach(() => {
+  window.sessionStorage.clear()
+  window.scrollTo = vi.fn()
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(SCORE), { status: 200 })))
+})
+
+afterEach(() => vi.unstubAllGlobals())
+
+const aboutView = () => document.querySelector<HTMLElement>('[data-view="about"]')
+const benchView = () => document.querySelector<HTMLElement>('[data-view="benchmark"]')!
+
+describe('About / Benchmark view switch', () => {
+  it('opens on the About page and keeps sealed answer keys out of it', async () => {
+    render(<Root />)
+    expect(screen.getByRole('heading', { level: 1, name: /confident science agent is not the same/i })).toBeInTheDocument()
+    expect(within(aboutView()!).getByRole('button', { name: 'About' })).toHaveAttribute('aria-pressed', 'true')
+    expect(benchView()).not.toBeVisible()
+    await within(aboutView()!).findByText(/MAT-001 · v1.0/)
+    expect(HIDDEN.some((re) => re.test(aboutView()!.innerHTML))).toBe(false)
+  })
+
+  it('switches to the benchmark and back from the header and the hero CTA', async () => {
+    const user = userEvent.setup()
+    render(<Root />)
+    await user.click(screen.getAllByRole('button', { name: /open the benchmark/i })[0])
+    expect(aboutView()).toBeNull()
+    expect(benchView()).toBeVisible()
+    expect(await within(benchView()).findByRole('button', { name: /run benchmark/i })).toBeInTheDocument()
+    expect(window.sessionStorage.getItem(INTRO_DISMISSED_KEY)).toBe('1')
+
+    await user.click(within(benchView()).getByRole('button', { name: 'About' }))
+    expect(aboutView()).toBeVisible()
+    expect(benchView()).not.toBeVisible()
+
+    await user.click(within(aboutView()!).getByRole('button', { name: 'Benchmark' }))
+    expect(benchView()).toBeVisible()
+  })
+
+  it('goes straight to the benchmark once the intro was dismissed this session', () => {
+    window.sessionStorage.setItem(INTRO_DISMISSED_KEY, '1')
+    render(<Root />)
+    expect(aboutView()).toBeNull()
+    expect(benchView()).toBeVisible()
+  })
+})
+
+describe('About page content', () => {
+  it('cites a source for every industry figure', () => {
+    render(<Root />)
+    for (const f of INDUSTRY_FINDINGS) {
+      const link = screen.getByRole('link', { name: new RegExp(f.source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })
+      expect(link).toHaveAttribute('href', f.href)
+    }
+  })
+
+  it('reads current results from the published score, not hard-coded copy', async () => {
+    render(<Root />)
+    const results = screen.getByRole('region', { name: /current results on the synthetic data/i })
+    expect(await within(results).findByText(String(SCORE.agents.guarded.score))).toBeInTheDocument()
+    expect(within(results).getByText(String(SCORE.agents.baseline.score))).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith('score/score.json')
+  })
+
+  it('lists the four implemented rubric metrics and both runnable scenarios', async () => {
+    render(<Root />)
+    const rubric = screen.getByRole('region', { name: /what gets scored/i })
+    for (const m of ['Evidence sufficiency', 'Calibration', 'Safe action', 'Next-test quality']) {
+      expect(within(rubric).getByText(m)).toBeInTheDocument()
+    }
+    const about = within(aboutView()!)
+    expect(await about.findByText(/turbine support bracket release decision/i)).toBeInTheDocument()
+    expect(await about.findByText(/marine fastener coating qualification/i)).toBeInTheDocument()
+    expect(about.getByText(/preview · not runnable/i)).toBeInTheDocument()
+  })
+
+  it('shows a fallback when the published score cannot be read', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
+    render(<Root />)
+    expect(await screen.findByText(/published score could not be read/i)).toBeInTheDocument()
+  })
+})
