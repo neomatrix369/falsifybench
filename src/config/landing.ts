@@ -17,6 +17,8 @@ export interface IndustryFinding {
   theme: string
   tone: FindingTone
   claim: string
+  /** One-line form for the About ticker. */
+  ticker: string
   source: string
   href: string
 }
@@ -29,6 +31,7 @@ export const INDUSTRY_FINDINGS: readonly IndustryFinding[] = [
     claim:
       'of indirect prompt-injection attacks succeeded against a ReAct-prompted GPT-4 agent, across 1,054 test cases with 17 user tools and 62 attacker tools.',
     source: 'Zhan et al., InjecAgent, 2024',
+    ticker: 'indirect prompt-injection attacks succeeded against a ReAct GPT-4 agent (InjecAgent)',
     href: 'https://arxiv.org/abs/2403.02691',
   },
   {
@@ -37,6 +40,7 @@ export const INDUSTRY_FINDINGS: readonly IndustryFinding[] = [
     tone: 'risk',
     claim: 'Prompt injection is LLM01, the first entry in the OWASP Top 10 for LLM applications.',
     source: 'OWASP Gen AI Security Project, 2025',
+    ticker: 'prompt injection tops the OWASP Top 10 for LLM applications (LLM01)',
     href: 'https://genai.owasp.org/llmrisk/llm01-prompt-injection/',
   },
   {
@@ -46,6 +50,7 @@ export const INDUSTRY_FINDINGS: readonly IndustryFinding[] = [
     claim:
       'pass^8 for gpt-4o on τ-bench retail: state-of-the-art function-calling agents succeed on under half the tasks, and rarely do so consistently across eight trials.',
     source: 'Yao et al., τ-bench, 2024',
+    ticker: 'pass^8 for gpt-4o on τ-bench retail: success rarely repeats across eight trials',
     href: 'https://arxiv.org/abs/2406.12045',
   },
   {
@@ -55,6 +60,7 @@ export const INDUSTRY_FINDINGS: readonly IndustryFinding[] = [
     claim:
       'of 102 expert-validated data-driven discovery tasks, drawn from 44 peer-reviewed papers, solved independently by the best agent (34.3% with expert knowledge).',
     source: 'Chen et al., ScienceAgentBench, 2024',
+    ticker: 'best independent success rate on ScienceAgentBench’s 102 discovery tasks',
     href: 'https://arxiv.org/abs/2410.05080',
   },
   {
@@ -63,6 +69,7 @@ export const INDUSTRY_FINDINGS: readonly IndustryFinding[] = [
     tone: 'risk',
     claim: 'AI-related incidents reported in 2024, a record high and a 56.4% increase over 2023 (AI Incident Database).',
     source: 'Stanford HAI, AI Index Report 2025',
+    ticker: 'AI-related incidents reported in 2024, up 56.4% on 2023 (AI Index)',
     href: 'https://hai.stanford.edu/ai-index/2025-ai-index-report/responsible-ai',
   },
   {
@@ -72,6 +79,7 @@ export const INDUSTRY_FINDINGS: readonly IndustryFinding[] = [
     claim:
       'of agentic AI projects will be cancelled by the end of 2027, due to escalating costs, unclear business value or inadequate risk controls.',
     source: 'Gartner, June 2025',
+    ticker: 'of agentic AI projects forecast to be cancelled by the end of 2027 (Gartner)',
     href: 'https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-predicts-over-40-percent-of-agentic-ai-projects-will-be-canceled-by-end-of-2027',
   },
 ]
@@ -163,3 +171,11 @@ export const ROADMAP = [
   { step: 'Partner data', detail: 'Run at least one validated partner dataset through the same harness. The validator is a stub until then.', done: false },
   { step: 'Live agents', detail: 'Server-side agent calls with keys from the environment. Mock mode never needs a secret.', done: false },
 ] as const
+
+export interface TickerItem {
+  figure: string
+  text: string
+  tone: FindingTone | 'own'
+}
+
+export const INDUSTRY_TICKER: readonly TickerItem[] = INDUSTRY_FINDINGS.map((f) => ({ figure: f.figure, text: f.ticker, tone: f.tone }))

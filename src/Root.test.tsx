@@ -83,6 +83,20 @@ describe('About page content', () => {
     expect(about.getByText(/preview · not runnable/i)).toBeInTheDocument()
   })
 
+  it('runs a pausable ticker of the quoted figures plus the published score', async () => {
+    const user = userEvent.setup()
+    render(<Root />)
+    const ticker = screen.getByRole('region', { name: /industry readings ticker/i })
+    const visible = within(ticker).getAllByRole('list')[0]
+    for (const f of INDUSTRY_FINDINGS) expect(within(visible).getByText(f.ticker)).toBeInTheDocument()
+    expect(await within(visible).findByText(String(SCORE.agents.guarded.score))).toBeInTheDocument()
+    expect(ticker.querySelectorAll('ul')[1]).toHaveAttribute('aria-hidden', 'true')
+    const pause = within(ticker).getByRole('button', { name: /pause ticker/i })
+    await user.click(pause)
+    expect(within(ticker).getByRole('button', { name: /play ticker/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(ticker).toHaveAttribute('data-paused', 'true')
+  })
+
   it('shows a fallback when the published score cannot be read', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
     render(<Root />)

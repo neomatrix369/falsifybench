@@ -54,6 +54,7 @@ Status is never colour alone: every state pairs colour with text and an icon/sha
 - Colour transitions `duration-fast` (120ms) on interactive feedback; disclosure chevron `duration-base` (200ms); easing `ease-out` = `cubic-bezier(0.16, 1, 0.3, 1)`.
 - One authored moment: R4 hatch sweeps in (`animate-reveal`, 520ms clip-path) when the audit reveals it; the default state is already visible.
 - Auto-play keeps the existing 3 s state-machine interval.
+- About page only: a 70 s linear ticker of the quoted figures (pauses on hover, focus or its Pause button); a falsification strip where a risk-red baseline dot is caught at the check node and an ok-green guarded dot runs through (7 s loop, flat, no glow); sheets rise in on scroll via `animation-timeline: view()` where supported. All three stop under reduced motion, leaving a static strip and a horizontally scrollable ticker.
 - `prefers-reduced-motion: reduce` collapses all animation/transition durations and disables smooth scroll.
 
 ## Agent tells avoided

@@ -11,7 +11,9 @@ import {
   RESEARCH_QUOTES,
   ROADMAP,
   SCENARIO_PACKS,
+  INDUSTRY_TICKER,
   type FindingTone,
+  type TickerItem,
 } from '../config/landing'
 import { comingNextPreviews } from '../data/previews'
 import { RUNNABLE_BENCHMARKS, syntheticScenarioSource } from '../data/scenarioSource'
@@ -21,6 +23,7 @@ import { METRIC_KEYS, METRIC_LABELS, formatDelta } from '../domain/scoring'
 import { STAGES, STAGE_LABELS } from '../domain/stages'
 import type { Scenario } from '../domain/types'
 import { Header, type View } from './Header'
+import { FalsificationStrip, Ticker } from './LandingMotion'
 
 export const SCORE_JSON_URL = 'score/score.json'
 
@@ -79,7 +82,7 @@ function useRunnableScenarios() {
 
 function Section({ id, index, title, intro, children }: { id: string; index: string; title: string; intro?: string; children: React.ReactNode }) {
   return (
-    <section aria-labelledby={`${id}-title`} className="sheet">
+    <section aria-labelledby={`${id}-title`} className="sheet rise-on-scroll">
       <div className="border-b-2 border-ink px-6 pb-3 pt-5">
         <p className="ref">{index}</p>
         <h2 id={`${id}-title`} className="wide mt-0.5 text-title font-semibold text-ink">
@@ -200,10 +203,24 @@ export function Landing({ onSwitchView }: { onSwitchView: (view: View) => void }
   const runnableIds = new Set(RUNNABLE_BENCHMARKS.map((b) => b.id))
   const previewIds = new Set(comingNextPreviews.map((p) => p.id))
   const open = () => onSwitchView('benchmark')
+  const tickerItems: TickerItem[] = [
+    ...INDUSTRY_TICKER,
+    ...(score
+      ? [
+          { figure: String(score.agents.guarded.score), text: `guarded vs ${score.agents.baseline.score} baseline on FalsifyBench’s synthetic fixtures`, tone: 'own' as const },
+          {
+            figure: `${score.agents.baseline.unsafeApprovals}/${score.agents.baseline.scenarios}`,
+            text: 'unsafe approvals by the baseline agent, caught before release',
+            tone: 'own' as const,
+          },
+        ]
+      : []),
+  ]
 
   return (
     <>
       <Header view="about" onSwitchView={onSwitchView} />
+      <Ticker items={tickerItems} />
       <main className="mx-auto max-w-page space-y-4 px-6 py-6">
         <section aria-labelledby="landing-title" className="sheet grid grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
           <div className="border-r border-rule px-8 py-8">
@@ -247,6 +264,9 @@ export function Landing({ onSwitchView }: { onSwitchView: (view: View) => void }
                 </li>
               ))}
             </ol>
+          </div>
+          <div className="col-span-2">
+            <FalsificationStrip />
           </div>
         </section>
 
