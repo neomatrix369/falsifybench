@@ -178,7 +178,8 @@ export const ROADMAP = [
   { step: 'Declared unknowns', detail: 'Ask every agent to list what it does not know before it proposes a falsifying test.', done: false },
   { step: 'Two to four cases per pack', detail: 'Grow each pack with small, auditable cases rather than full domain models.', done: false },
   { step: 'Partner data', detail: 'Run at least one validated partner dataset through the same harness. The validator is a stub until then.', done: false },
-  { step: 'Reward signal', detail: 'Expose the rubric total as a reward for RL environments. Today it only scores fixed, scripted runs.', done: false },
+  { step: 'RL environment', detail: 'Scenario as environment, rubric total as reward. Needs real grading first.', done: false },
+  { step: 'Bio-agent pack', detail: 'Assay and wet-lab protocol claims. Not started.', done: false },
   { step: 'Lab-automation pack', detail: 'Safe, testable control of lab equipment. Not started.', done: false },
   { step: 'Live agents', detail: 'Server-side agent calls with keys from the environment. Mock mode never needs a secret.', done: false },
 ] as const
